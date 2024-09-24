@@ -1,0 +1,38 @@
+version: 3
+
+vars:
+  USERNAME: jmurv
+  IMAGE_NAME: sso
+
+tasks:
+
+  app:
+    desc: Run app
+    cmds:
+      - "go run cmd/main.go"
+
+  pb:
+    desc: Gen Proto file
+    cmds:
+      - "protoc --go_out=. --go-grpc_out=. --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative api/pb/sso.proto"
+
+  build:
+    desc: Build app
+    cmds:
+      - "docker build --no-cache -t {{.USERNAME}}/{{.IMAGE_NAME}}:latest ."
+
+  push:
+    desc: Push image to docker registry
+    cmds:
+      - "docker push {{.USERNAME}}/{{.IMAGE_NAME}}:latest"
+
+  db:
+    desc: Run dev db
+    cmds:
+      - "docker run -d --rm --name sso_db \
+        -p 5432:5432 \
+        -e POSTGRES_PASSWORD=794613825Zx! \
+        -e POSTGRES_DB=sso_db \
+        -e POSTGRES_USER=postgres \
+        -v pg_sso:/var/lib/postgresql/data \
+        postgres:15.0-alpine"

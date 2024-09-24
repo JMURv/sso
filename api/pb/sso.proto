@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "github.com/JMURv/par-pro/api/pb/users";
+import "google/protobuf/timestamp.proto";
+
+message Empty {}
+
+message uuidMsg {
+  string uuid = 1;
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string password = 3;
+  string email = 4;
+  string avatar = 5;
+  string address = 6;
+  string phone = 7;
+  bool is_opt = 8;
+  bool is_admin = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+service SSO {
+  rpc SendLoginCode (SendLoginCodeReq) returns (Empty);
+  rpc CheckLoginCode (CheckLoginCodeReq) returns (CheckLoginCodeRes);
+  rpc CheckEmail (EmailMsg) returns (CheckEmailRes);
+  rpc Logout (Empty) returns (Empty);
+  rpc SendForgotPasswordEmail (EmailMsg) returns (Empty);
+  rpc CheckForgotPasswordEmail (CheckForgotPasswordEmailReq) returns (Empty);
+  rpc SendSupportEmail (SendSupportEmailReq) returns (Empty);
+  rpc Me (Empty) returns (User);
+  rpc UpdateMe(User) returns (User);
+}
+
+message SendLoginCodeReq {
+  string email = 1;
+  string password = 2;
+}
+
+message CheckLoginCodeReq {
+  string email = 1;
+  int32 code = 2;
+}
+
+message CheckLoginCodeRes {
+  string access = 1;
+  string refresh = 2;
+}
+
+message EmailMsg {
+  string email = 1;
+}
+
+message CheckEmailRes {
+  bool is_exist = 1;
+}
+
+message CheckForgotPasswordEmailReq {
+  string password = 1;
+  string uidb64 = 2;
+  string token = 3;
+}
+
+message SendSupportEmailReq {
+  string theme = 1;
+  string text = 2;
+}
+
+service Users {
+  rpc UserSearch (UserSearchReq) returns (PaginatedUsersRes);
+  rpc ListUsers (ListUsersReq) returns (PaginatedUsersRes);
+  rpc Register (RegisterReq) returns (RegisterRes);
+  rpc GetUser (uuidMsg) returns (User);
+  rpc UpdateUser (UserWithUid) returns (User);
+  rpc DeleteUser (uuidMsg) returns (Empty);
+}
+
+message UserWithUid {
+  User user = 1;
+  string uid = 2;
+}
+
+message FileReq {
+  bytes file = 1;
+  string filename = 2;
+}
+
+message RegisterReq {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+  FileReq file = 4;
+}
+
+message RegisterRes {
+  User user = 1;
+  string access = 2;
+  string refresh = 3;
+}
+
+message ListUsersReq {
+  uint64 page = 1;
+  uint64 size = 2;
+}
+
+message UserSearchReq {
+  string query = 1;
+  uint64 page = 2;
+  uint64 size = 3;
+}
+
+message PaginatedUsersRes {
+  repeated User data = 1;
+  int64 count = 2;
+  int64 total_pages = 3;
+  int64 current_page = 4;
+  bool has_next_page = 5;
+}

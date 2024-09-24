@@ -1,0 +1,23 @@
+version: 3
+
+tasks:
+
+  mock:
+    desc: Generate mocks
+    cmds:
+      - mockgen -source="gorm_interface.go" -destination="mocks/gorm_repos.go" -package=mocks
+
+  t:
+    desc: Run tests
+    cmds:
+      - "go test"
+
+  cov:
+    desc: Run coverage
+    cmds:
+      - "go test -coverprofile=cov.out ./... && go tool cover -func=cov.out"
+
+  html:
+    desc: Run coverage
+    cmds:
+      - "go test -coverprofile=cov.out ./... && go tool cover -html=cov.out"

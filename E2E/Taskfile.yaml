@@ -1,0 +1,22 @@
+version: 3
+
+vars:
+  USERNAME: jmurv
+  IMAGE_NAME: par-pro-backend
+
+tasks:
+
+  test:
+    desc: Run app
+    cmds:
+      - "go test"
+
+  cover:
+    desc: Run coverage
+    cmds:
+      - "go test -coverprofile=cov.out ./... && go tool cover -func=cov.out"
+
+  cover-html:
+    desc: Run coverage
+    cmds:
+      - "go test -coverprofile=cov.out ./... && go tool cover -html=cov.out"

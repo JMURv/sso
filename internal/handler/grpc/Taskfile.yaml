@@ -1,0 +1,23 @@
+version: 3
+
+tasks:
+
+  mock:
+    desc: Generate mocks
+    cmds:
+      - mockgen -source="grpc.go" -destination="mocks/mock_repos.go" -package=mocks
+
+  test:
+    desc: Run app
+    cmds:
+      - "go test"
+
+  cover:
+    desc: Run coverage
+    cmds:
+      - "go test -coverprofile=cov.out ./... && go tool cover -func=cov.out"
+
+  html:
+    desc: Run coverage
+    cmds:
+      - "go test -coverprofile=cov.out ./... && go tool cover -html=cov.out"

@@ -1,0 +1,1 @@
+[![Go Coverage](https://github.com/JMURv/sso/wiki/coverage.svg)](https://raw.githack.com/wiki/JMURv/sso/coverage.html)

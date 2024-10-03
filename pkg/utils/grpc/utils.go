@@ -18,23 +18,15 @@ func ListModelToProto(u []*md.User) []*pb.User {
 
 func ModelToProto(u *md.User) *pb.User {
 	return &pb.User{
-		Id:       u.ID.String(),
-		Name:     u.Name,
-		Password: u.Password,
-		Email:    u.Email,
-		Avatar:   u.Avatar,
-		Address:  u.Address,
-		Phone:    u.Phone,
-		IsOpt:    u.IsOpt,
-		IsAdmin:  u.IsAdmin,
-		CreatedAt: &timestamppb.Timestamp{
-			Seconds: u.CreatedAt.Unix(),
-			Nanos:   int32(u.CreatedAt.Nanosecond()),
-		},
-		UpdatedAt: &timestamppb.Timestamp{
-			Seconds: u.UpdatedAt.Unix(),
-			Nanos:   int32(u.UpdatedAt.Nanosecond()),
-		},
+		Id:        u.ID.String(),
+		Name:      u.Name,
+		Password:  u.Password,
+		Email:     u.Email,
+		Avatar:    u.Avatar,
+		Address:   u.Address,
+		Phone:     u.Phone,
+		CreatedAt: timestamppb.New(u.CreatedAt),
+		UpdatedAt: timestamppb.New(u.UpdatedAt),
 	}
 }
 
@@ -46,8 +38,6 @@ func ProtoToModel(u *pb.User) *md.User {
 		Avatar:    u.Avatar,
 		Address:   u.Address,
 		Phone:     u.Phone,
-		IsOpt:     u.IsOpt,
-		IsAdmin:   u.IsAdmin,
 		CreatedAt: u.CreatedAt.AsTime(),
 		UpdatedAt: u.UpdatedAt.AsTime(),
 	}

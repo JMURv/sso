@@ -28,17 +28,6 @@ const usersSearchCacheKey = "users-search:%v:%v:%v"
 const usersListKey = "users-list:%v:%v"
 const invalidateUserRelatedCachePattern = "users-*"
 
-type userRepo interface {
-	ListUsers(ctx context.Context, page, size int) (*utils.PaginatedData, error)
-	GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
-
-	CreateUser(ctx context.Context, u *model.User) error
-	UpdateUser(ctx context.Context, userID uuid.UUID, newData *model.User) (*model.User, error)
-	DeleteUser(ctx context.Context, userID uuid.UUID) error
-	UserSearch(ctx context.Context, query string, page int, size int) (*utils.PaginatedData, error)
-}
-
 func (c *Controller) invalidateUserRelatedCache() {
 	ctx := context.Background()
 	if err := c.cache.InvalidateKeysByPattern(ctx, invalidateUserRelatedCachePattern); err != nil {
@@ -56,7 +45,10 @@ func (c *Controller) IsUserExist(ctx context.Context, email string) (isExist boo
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		return false, nil
 	} else if err != nil {
-		zap.L().Debug("failed to get user", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to get user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return true, err
 	}
 
@@ -77,13 +69,21 @@ func (c *Controller) UserSearch(ctx context.Context, query string, page, size in
 
 	res, err := c.repo.UserSearch(ctx, query, page, size)
 	if err != nil {
-		zap.L().Debug("failed to search users", zap.Error(err), zap.String("op", op), zap.String("query", query))
+		zap.L().Debug(
+			"failed to search users",
+			zap.Error(err), zap.String("op", op),
+			zap.String("query", query),
+		)
 		return nil, err
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
 		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug("failed to set to cache", zap.Error(err), zap.String("op", op), zap.String("query", query))
+			zap.L().Debug(
+				"failed to set to cache",
+				zap.Error(err), zap.String("op", op),
+				zap.String("query", query),
+			)
 		}
 	}
 
@@ -104,15 +104,28 @@ func (c *Controller) ListUsers(ctx context.Context, page, size int) (*utils.Pagi
 
 	res, err := c.repo.ListUsers(ctx, page, size)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		zap.L().Debug(
+			"failed to list users",
+			zap.Error(err), zap.String("op", op),
+			zap.Int("page", page), zap.Int("size", size),
+		)
 		return nil, ErrNotFound
 	} else if err != nil {
-		zap.L().Debug("failed to list users", zap.Error(err), zap.String("op", op), zap.Int("page", page), zap.Int("size", size))
+		zap.L().Debug(
+			"failed to list users",
+			zap.Error(err), zap.String("op", op),
+			zap.Int("page", page), zap.Int("size", size),
+		)
 		return nil, err
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
 		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug("failed to set to cache", zap.Error(err), zap.String("op", op), zap.Int("page", page), zap.Int("size", size))
+			zap.L().Debug(
+				"failed to set to cache",
+				zap.Error(err), zap.String("op", op),
+				zap.Int("page", page), zap.Int("size", size),
+			)
 		}
 	}
 	return res, nil
@@ -132,15 +145,28 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*model.
 
 	res, err := c.repo.GetUserByID(ctx, userID)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		zap.L().Debug(
+			"failed to find user",
+			zap.Error(err), zap.String("op", op),
+			zap.String("userID", userID.String()),
+		)
 		return nil, ErrNotFound
 	} else if err != nil {
-		zap.L().Debug("failed to get user", zap.Error(err), zap.String("op", op), zap.String("userID", userID.String()))
+		zap.L().Debug(
+			"failed to get user",
+			zap.Error(err), zap.String("op", op),
+			zap.String("userID", userID.String()),
+		)
 		return nil, err
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
 		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug("failed to set to cache", zap.Error(err), zap.String("op", op), zap.String("userID", userID.String()))
+			zap.L().Debug(
+				"failed to set to cache",
+				zap.Error(err), zap.String("op", op),
+				zap.String("userID", userID.String()),
+			)
 		}
 	}
 
@@ -161,39 +187,61 @@ func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*model.U
 
 	res, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		zap.L().Debug(
+			"failed to find user",
+			zap.Error(err), zap.String("op", op),
+			zap.String("email", email),
+		)
 		return nil, ErrNotFound
 	} else if err != nil {
-		zap.L().Debug("failed to get user", zap.Error(err), zap.String("op", op), zap.String("email", email))
+		zap.L().Debug(
+			"failed to get user",
+			zap.Error(err), zap.String("op", op),
+			zap.String("email", email),
+		)
 		return nil, err
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
 		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug("failed to set to cache", zap.Error(err), zap.String("op", op), zap.String("email", email))
+			zap.L().Debug(
+				"failed to set to cache",
+				zap.Error(err), zap.String("op", op),
+				zap.String("email", email),
+			)
 		}
 	}
 
 	return res, nil
 }
 
-func (c *Controller) CreateUser(ctx context.Context, u *model.User, fileName string, bytes []byte) (*model.User, string, string, error) {
+func (c *Controller) CreateUser(ctx context.Context, u *model.User, fileName string, bytes []byte) (uuid.UUID, string, string, error) {
 	const op = "users.CreateUser.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	err := c.repo.CreateUser(ctx, u)
+	id, err := c.repo.CreateUser(ctx, u)
 	if err != nil && errors.Is(err, repo.ErrAlreadyExists) {
-		zap.L().Debug("user already exists", zap.Error(err), zap.String("op", op))
-		return nil, "", "", ErrAlreadyExists
+		zap.L().Debug(
+			"user already exists",
+			zap.Error(err), zap.String("op", op),
+		)
+		return uuid.Nil, "", "", ErrAlreadyExists
 	} else if err != nil {
-		zap.L().Debug("failed to create user", zap.Error(err), zap.String("op", op))
-		return nil, "", "", err
+		zap.L().Debug(
+			"failed to create user",
+			zap.Error(err), zap.String("op", op),
+		)
+		return uuid.Nil, "", "", err
 	}
 
 	if bytes, err := json.Marshal(u); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, fmt.Sprintf(userCacheKey, u.ID), bytes); err != nil {
-			zap.L().Debug("failed to set to cache", zap.Error(err), zap.String("op", op))
+		if err = c.cache.Set(ctx, consts.DefaultCacheTime, fmt.Sprintf(userCacheKey, id), bytes); err != nil {
+			zap.L().Debug(
+				"failed to set to cache",
+				zap.Error(err), zap.String("op", op),
+			)
 		}
 	}
 
@@ -210,42 +258,59 @@ func (c *Controller) CreateUser(ctx context.Context, u *model.User, fileName str
 
 	accessToken, err := c.auth.NewToken(u, auth.AccessTokenDuration)
 	if err != nil {
-		zap.L().Debug("failed to create access token", zap.Error(err), zap.String("op", op))
-		return u, "", "", ErrWhileGeneratingToken
+		zap.L().Debug(
+			"failed to create access token",
+			zap.Error(err), zap.String("op", op),
+		)
+		return id, "", "", ErrWhileGeneratingToken
 	}
 
 	refreshToken, err := c.auth.NewToken(u, auth.RefreshTokenDuration)
 	if err != nil {
-		zap.L().Debug("failed to create refresh token", zap.Error(err), zap.String("op", op))
-		return u, "", "", ErrWhileGeneratingToken
+		zap.L().Debug(
+			"failed to create refresh token",
+			zap.Error(err), zap.String("op", op),
+		)
+		return id, "", "", ErrWhileGeneratingToken
 	}
 
 	go c.invalidateUserRelatedCache()
-	return u, accessToken, refreshToken, nil
+	return id, accessToken, refreshToken, nil
 }
 
-func (c *Controller) UpdateUser(ctx context.Context, userID uuid.UUID, newData *model.User) (*model.User, error) {
+func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *model.User) error {
 	const op = "users.UpdateUser.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	res, err := c.repo.UpdateUser(ctx, userID, newData)
+	err := c.repo.UpdateUser(ctx, id, req)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		return nil, ErrNotFound
+		zap.L().Debug(
+			"failed to find user",
+			zap.Error(err), zap.String("op", op),
+			zap.String("id", id.String()),
+		)
+		return ErrNotFound
 	} else if err != nil {
-		zap.L().Debug("failed to update user", zap.Error(err), zap.String("op", op), zap.String("userID", userID.String()))
-		return nil, err
+		zap.L().Debug(
+			"failed to update user",
+			zap.Error(err), zap.String("op", op),
+			zap.String("id", id.String()),
+		)
+		return err
 	}
 
-	if bytes, err := json.Marshal(res); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, fmt.Sprintf(userCacheKey, res.ID), bytes); err != nil {
-			zap.L().Debug("failed to set to cache", zap.Error(err), zap.String("op", op), zap.String("userID", userID.String()))
-		}
+	if err := c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, id)); err != nil {
+		zap.L().Debug(
+			"failed to delete from cache",
+			zap.Error(err), zap.String("op", op),
+			zap.String("id", id.String()),
+		)
 	}
 
 	go c.invalidateUserRelatedCache()
-	return res, nil
+	return nil
 }
 
 func (c *Controller) DeleteUser(ctx context.Context, userID uuid.UUID) error {
@@ -255,12 +320,20 @@ func (c *Controller) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	defer span.Finish()
 
 	if err := c.repo.DeleteUser(ctx, userID); err != nil {
-		zap.L().Debug("failed to delete user", zap.Error(err), zap.String("op", op), zap.String("userID", userID.String()))
+		zap.L().Debug(
+			"failed to delete user",
+			zap.Error(err), zap.String("op", op),
+			zap.String("userID", userID.String()),
+		)
 		return err
 	}
 
 	if err := c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, userID)); err != nil {
-		zap.L().Debug("failed to delete from cache", zap.Error(err), zap.String("op", op), zap.String("userID", userID.String()))
+		zap.L().Debug(
+			"failed to delete from cache",
+			zap.Error(err), zap.String("op", op),
+			zap.String("userID", userID.String()),
+		)
 	}
 
 	go c.invalidateUserRelatedCache()
@@ -275,14 +348,24 @@ func (c *Controller) SendSupportEmail(ctx context.Context, uid uuid.UUID, theme,
 
 	u, err := c.repo.GetUserByID(ctx, uid)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		zap.L().Debug(
+			"Error find user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return ErrNotFound
 	} else if err != nil {
-		zap.L().Debug("Error getting user", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"Error getting user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
 	if err = c.smtp.SendSupportEmail(ctx, u, theme, text); err != nil {
-		zap.L().Debug("Error sending email", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"Error sending email",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
@@ -297,7 +380,10 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, password stri
 
 	storedCode, err := c.cache.GetCode(ctx, fmt.Sprintf(recoveryCacheKey, uid))
 	if err != nil {
-		zap.L().Debug("Error getting from cache", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"Error getting from cache",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
@@ -307,9 +393,16 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, password stri
 
 	u, err := c.repo.GetUserByID(ctx, uid)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		zap.L().Debug(
+			"Error find user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return ErrNotFound
 	} else if err != nil {
-		zap.L().Debug("Error getting user", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"Error getting user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
@@ -319,13 +412,19 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, password stri
 	}
 
 	u.Password = string(newPassword)
-	if _, err = c.repo.UpdateUser(ctx, uid, u); err != nil {
-		zap.L().Debug("Error updating user", zap.Error(err), zap.String("op", op))
+	if err = c.repo.UpdateUser(ctx, uid, u); err != nil {
+		zap.L().Debug(
+			"Error updating user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
 	if err = c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, uid)); err != nil {
-		zap.L().Debug("Error deleting from cache", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"Error deleting from cache",
+			zap.Error(err), zap.String("op", op),
+		)
 	}
 
 	return nil
@@ -339,9 +438,16 @@ func (c *Controller) SendForgotPasswordEmail(ctx context.Context, email string) 
 
 	u, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		zap.L().Debug(
+			"failed to find user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return ErrInvalidCredentials
 	} else if err != nil {
-		zap.L().Debug("failed to get user", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to get user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
@@ -349,12 +455,18 @@ func (c *Controller) SendForgotPasswordEmail(ctx context.Context, email string) 
 	code := rand.Intn(9999-1000+1) + 1000
 
 	if err = c.cache.Set(ctx, time.Minute*15, fmt.Sprintf(recoveryCacheKey, u.ID.String()), code); err != nil {
-		zap.L().Debug("failed to set to cache", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to set to cache",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
 	if err = c.smtp.SendForgotPasswordEmail(ctx, strconv.Itoa(code), u.ID.String(), email); err != nil {
-		zap.L().Debug("failed to send email", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to send email",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
@@ -369,9 +481,16 @@ func (c *Controller) SendLoginCode(ctx context.Context, email, password string) 
 
 	u, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		zap.L().Debug(
+			"failed to find user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return ErrInvalidCredentials
 	} else if err != nil {
-		zap.L().Debug("failed to get user", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to get user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
@@ -383,12 +502,18 @@ func (c *Controller) SendLoginCode(ctx context.Context, email, password string) 
 	code := rand.Intn(9999-1000+1) + 1000
 
 	if err = c.cache.Set(ctx, time.Minute*15, fmt.Sprintf(codeCacheKey, email), code); err != nil {
-		zap.L().Debug("failed to set to cache", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to set to cache",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
 	if err = c.smtp.SendLoginEmail(ctx, code, email); err != nil {
-		zap.L().Debug("failed to send an email", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to send an email",
+			zap.Error(err), zap.String("op", op),
+		)
 		return err
 	}
 
@@ -405,7 +530,10 @@ func (c *Controller) CheckLoginCode(ctx context.Context, email string, code int)
 	if err != nil && errors.Is(err, cache.ErrNotFoundInCache) {
 		return "", "", ErrNotFound
 	} else if err != nil {
-		zap.L().Debug("failed to get from cache", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to get from cache",
+			zap.Error(err), zap.String("op", op),
+		)
 		return "", "", err
 	}
 
@@ -415,21 +543,34 @@ func (c *Controller) CheckLoginCode(ctx context.Context, email string, code int)
 
 	u, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		zap.L().Debug(
+			"failed to find user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return "", "", ErrNotFound
 	} else if err != nil {
-		zap.L().Debug("failed to get user", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to get user",
+			zap.Error(err), zap.String("op", op),
+		)
 		return "", "", err
 	}
 
 	accessToken, err := c.auth.NewToken(u, auth.AccessTokenDuration)
 	if err != nil {
-		zap.L().Debug("failed to generate access token", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to generate access token",
+			zap.Error(err), zap.String("op", op),
+		)
 		return "", "", ErrWhileGeneratingToken
 	}
 
 	refreshToken, err := c.auth.NewToken(u, auth.RefreshTokenDuration)
 	if err != nil {
-		zap.L().Debug("failed to generate refresh token", zap.Error(err), zap.String("op", op))
+		zap.L().Debug(
+			"failed to generate refresh token",
+			zap.Error(err), zap.String("op", op),
+		)
 		return "", "", ErrWhileGeneratingToken
 	}
 	return accessToken, refreshToken, nil

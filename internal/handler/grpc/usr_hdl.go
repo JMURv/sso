@@ -38,7 +38,6 @@ func (h *Handler) UserSearch(ctx context.Context, req *pb.UserSearchReq) (*pb.Pa
 	u, err := h.ctrl.UserSearch(ctx, q, int(page), int(size))
 	if err != nil {
 		c = codes.Internal
-		zap.L().Debug("failed to search users", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
@@ -72,7 +71,6 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.ListUsersReq) (*pb.Pagi
 	u, err := h.ctrl.ListUsers(ctx, int(page), int(size))
 	if err != nil {
 		c = codes.Internal
-		zap.L().Debug("failed to list users", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
@@ -108,19 +106,17 @@ func (h *Handler) Register(ctx context.Context, req *pb.RegisterReq) (*pb.Regist
 		return nil, status.Errorf(c, err.Error())
 	}
 
-	u, access, refresh, err := h.ctrl.CreateUser(ctx, protoUser, req.File.Filename, req.File.File)
+	uid, access, refresh, err := h.ctrl.CreateUser(ctx, protoUser, req.File.Filename, req.File.File)
 	if err != nil && errors.Is(err, ctrl.ErrAlreadyExists) {
 		c = codes.AlreadyExists
-		zap.L().Debug("user already exists", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, err.Error())
 	} else if err != nil {
 		c = codes.Internal
-		zap.L().Debug("failed to create user", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
 	return &pb.RegisterRes{
-		User:    utils.ModelToProto(u),
+		Uid:     uid.String(),
 		Access:  access,
 		Refresh: refresh,
 	}, nil
@@ -147,18 +143,16 @@ func (h *Handler) GetUser(ctx context.Context, req *pb.UuidMsg) (*pb.User, error
 	u, err := h.ctrl.GetUserByID(ctx, uid)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = codes.NotFound
-		zap.L().Debug("user not found", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, err.Error())
 	} else if err != nil {
 		c = codes.Internal
-		zap.L().Debug("failed to get user", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
 	return utils.ModelToProto(u), nil
 }
 
-func (h *Handler) UpdateUser(ctx context.Context, req *pb.UserWithUid) (*pb.User, error) {
+func (h *Handler) UpdateUser(ctx context.Context, req *pb.UserWithUid) (*pb.UuidMsg, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.UpdateUser.handler"
 
@@ -190,18 +184,16 @@ func (h *Handler) UpdateUser(ctx context.Context, req *pb.UserWithUid) (*pb.User
 		return nil, status.Errorf(c, err.Error())
 	}
 
-	res, err := h.ctrl.UpdateUser(ctx, uid, protoUser)
+	err = h.ctrl.UpdateUser(ctx, uid, protoUser)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = codes.NotFound
-		zap.L().Debug("user not found", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, err.Error())
 	} else if err != nil {
 		c = codes.Internal
-		zap.L().Debug("failed to update user", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return utils.ModelToProto(res), nil
+	return &pb.UuidMsg{Uuid: uid.String()}, nil
 }
 
 func (h *Handler) DeleteUser(ctx context.Context, req *pb.UuidMsg) (*pb.Empty, error) {
@@ -232,7 +224,6 @@ func (h *Handler) DeleteUser(ctx context.Context, req *pb.UuidMsg) (*pb.Empty, e
 	err = h.ctrl.DeleteUser(ctx, uid)
 	if err != nil {
 		c = codes.Internal
-		zap.L().Debug("failed to delete user", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 

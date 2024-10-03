@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/cache/redis"
@@ -13,8 +14,6 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -73,35 +72,40 @@ func CreateUser(router *mux.Router) (user map[string]any, access string) {
 }
 
 func CleanDB(t *testing.T) {
-	conn, err := gorm.Open(
-		postgres.Open(
-			fmt.Sprintf(
-				"postgres://%s:%s@%s:%v/%s",
-				Conf.DB.User,
-				Conf.DB.Password,
-				Conf.DB.Host,
-				Conf.DB.Port,
-				Conf.DB.Database+"_test",
-			),
-		), &gorm.Config{},
-	)
+	conn, err := sql.Open("postgres", fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
+		Conf.DB.User,
+		Conf.DB.Password,
+		Conf.DB.Host,
+		Conf.DB.Port,
+		Conf.DB.Database+"_test",
+	))
 	if err != nil {
 		t.Log(err)
 	}
+	defer conn.Close()
 
-	sqlDB, err := conn.DB()
+	rows, err := conn.Query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sqlDB.Close()
+	defer rows.Close()
 
 	var tables []string
-	if err := conn.Raw("SELECT tablename FROM pg_tables WHERE schemaname = 'public'").Scan(&tables).Error; err != nil {
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
+		tables = append(tables, name)
+	}
+
+	if err := rows.Err(); err != nil {
 		t.Fatal(err)
 	}
 
 	for _, table := range tables {
-		if err := conn.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)).Error; err != nil {
+		if _, err := conn.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -5,8 +5,7 @@ import (
 	"errors"
 	pb "github.com/JMURv/sso/api/pb"
 	ctrl "github.com/JMURv/sso/internal/controller"
-	m2 "github.com/JMURv/sso/internal/controller/mocks"
-	"github.com/JMURv/sso/internal/handler/grpc/mocks"
+	"github.com/JMURv/sso/mocks"
 	md "github.com/JMURv/sso/pkg/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +20,7 @@ func TestSendLoginCode(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -83,7 +82,7 @@ func TestCheckLoginCode(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -149,7 +148,7 @@ func TestCheckEmail(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -215,7 +214,7 @@ func TestLogout(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	// Case 1: Missing UID in context (Unauthenticated)
@@ -252,7 +251,7 @@ func TestSendForgotPasswordEmail(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -305,7 +304,7 @@ func TestCheckForgotPasswordEmail(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -403,7 +402,7 @@ func TestSendSupportEmail(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -469,7 +468,7 @@ func TestMe(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	// Create a valid context with a UID
@@ -538,14 +537,12 @@ func TestUpdateMe(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
-	// Create a valid context with a UID
 	validUID := uuid.New().String()
 	ctx := context.WithValue(context.Background(), "uid", validUID)
 
-	// Case 1: Missing UID in context
 	t.Run("Missing UID", func(t *testing.T) {
 		ctxWithoutUID := context.Background()
 		res, err := h.UpdateMe(ctxWithoutUID, &pb.User{})
@@ -554,7 +551,6 @@ func TestUpdateMe(t *testing.T) {
 		assert.Equal(t, codes.Unauthenticated, status.Code(err))
 	})
 
-	// Case 2: Invalid UID
 	t.Run("Invalid UID", func(t *testing.T) {
 		invalidCtx := context.WithValue(context.Background(), "uid", "invalid-uuid")
 		res, err := h.UpdateMe(invalidCtx, &pb.User{})
@@ -563,7 +559,6 @@ func TestUpdateMe(t *testing.T) {
 		assert.Equal(t, codes.InvalidArgument, status.Code(err))
 	})
 
-	// Case 3: Request is nil
 	t.Run("Nil Request", func(t *testing.T) {
 		res, err := h.UpdateMe(ctx, nil)
 
@@ -571,10 +566,9 @@ func TestUpdateMe(t *testing.T) {
 		assert.Equal(t, codes.InvalidArgument, status.Code(err))
 	})
 
-	// Case 4: Validation error
 	t.Run("Validation Error", func(t *testing.T) {
 		invalidUser := &pb.User{Name: "", Email: "invalid-email"}
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
+		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		res, err := h.UpdateMe(ctx, invalidUser)
 
@@ -582,10 +576,9 @@ func TestUpdateMe(t *testing.T) {
 		assert.Equal(t, codes.InvalidArgument, status.Code(err))
 	})
 
-	// Case 5: User not found
 	t.Run("User Not Found", func(t *testing.T) {
 		user := &pb.User{Name: "Test User", Email: "test@example.com"}
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, ctrl.ErrNotFound)
+		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(ctrl.ErrNotFound)
 
 		res, err := h.UpdateMe(ctx, user)
 
@@ -593,10 +586,9 @@ func TestUpdateMe(t *testing.T) {
 		assert.Equal(t, codes.NotFound, status.Code(err))
 	})
 
-	// Case 6: Internal error from controller
 	t.Run("Internal Error", func(t *testing.T) {
 		user := &pb.User{Name: "Test User", Email: "test@example.com"}
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("internal error"))
+		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("internal error"))
 
 		res, err := h.UpdateMe(ctx, user)
 
@@ -604,22 +596,13 @@ func TestUpdateMe(t *testing.T) {
 		assert.Equal(t, codes.Internal, status.Code(err))
 	})
 
-	// Case 7: Success - user updated
 	t.Run("Success", func(t *testing.T) {
 		user := &pb.User{Name: "Test User", Email: "test@example.com"}
-		updatedUser := &md.User{
-			ID:    uuid.New(),
-			Name:  "Updated User",
-			Email: "updated@example.com",
-		}
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(updatedUser, nil)
+		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 		res, err := h.UpdateMe(ctx, user)
 
 		assert.NotNil(t, res)
 		assert.Nil(t, err)
-		assert.Equal(t, updatedUser.ID.String(), res.Id)
-		assert.Equal(t, updatedUser.Name, res.Name)
-		assert.Equal(t, updatedUser.Email, res.Email)
 	})
 }

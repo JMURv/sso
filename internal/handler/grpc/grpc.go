@@ -24,8 +24,8 @@ type Ctrl interface {
 	ListUsers(ctx context.Context, page int, size int) (*utils.PaginatedData, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
-	CreateUser(ctx context.Context, u *md.User, fileName string, bytes []byte) (*md.User, string, string, error)
-	UpdateUser(ctx context.Context, userID uuid.UUID, newData *md.User) (*md.User, error)
+	CreateUser(ctx context.Context, u *md.User, fileName string, bytes []byte) (uuid.UUID, string, string, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	SendSupportEmail(ctx context.Context, uid uuid.UUID, theme string, text string) error
 	CheckForgotPasswordEmail(ctx context.Context, password string, uid uuid.UUID, code int) error

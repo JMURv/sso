@@ -14,6 +14,7 @@ FROM alpine:3.19
 
 WORKDIR /app
 
+COPY ./db /app/db
 COPY --from=builder /app/main ./
 
 EXPOSE 50050

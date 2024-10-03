@@ -21,7 +21,7 @@ db:
   port: 5432
   user: "postgres"
   password: "password"
-  database: "par_pro_sso_db"
+  database: "sso_db"
 
 redis:
   addr: "localhost:6379"

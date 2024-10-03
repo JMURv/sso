@@ -77,10 +77,13 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		fileName = handler.Filename
 	}
 
-	usr, access, refresh, err := h.ctrl.CreateUser(r.Context(), u, fileName, bytes)
-	if err != nil {
+	uid, access, refresh, err := h.ctrl.CreateUser(r.Context(), u, fileName, bytes)
+	if err != nil && errors.Is(err, controller.ErrAlreadyExists) {
+		c = http.StatusConflict
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to create user", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -105,11 +108,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	utils.SuccessResponse(w, c, struct {
-		User *model.User `json:"user"`
-	}{
-		User: usr,
-	})
+	utils.SuccessResponse(w, c, uid)
 }
 
 func (h *Handler) userSearch(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +136,6 @@ func (h *Handler) userSearch(w http.ResponseWriter, r *http.Request) {
 	res, err := h.ctrl.UserSearch(r.Context(), query, page, size)
 	if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("Failed to search users", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -165,7 +163,6 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	res, err := h.ctrl.ListUsers(r.Context(), page, size)
 	if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to list users", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -183,20 +180,21 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	uid, err := uuid.Parse(mux.Vars(r)["id"])
 	if uid == uuid.Nil || err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to parse uid", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to parse uid",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrParseUUID)
 		return
 	}
 
 	res, err := h.ctrl.GetUserByID(r.Context(), uid)
 	if err != nil && errors.Is(err, controller.ErrNotFound) {
 		c = http.StatusNotFound
-		zap.L().Debug("user not found", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to get user", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -214,39 +212,47 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	uid, err := uuid.Parse(mux.Vars(r)["id"])
 	if err != nil || uid == uuid.Nil {
 		c = http.StatusUnauthorized
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to parse uid",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrParseUUID)
 		return
 	}
 
 	req := &model.User{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to decode request", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to decode request",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
 		return
 	}
 
 	if err = validation.UserValidation(req); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Debug(
+			"failed to validate obj",
+			zap.String("op", op), zap.Error(err),
+		)
 		utils.ErrResponse(w, c, err)
 		return
 	}
 
-	res, err := h.ctrl.UpdateUser(r.Context(), uid, req)
+	err = h.ctrl.UpdateUser(r.Context(), uid, req)
 	if err != nil && errors.Is(err, controller.ErrNotFound) {
 		c = http.StatusNotFound
-		zap.L().Debug("user not found", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to update user", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
 
-	utils.SuccessResponse(w, c, res)
+	utils.SuccessResponse(w, c, "OK")
 }
 
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
@@ -259,14 +265,17 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	uid, err := uuid.Parse(mux.Vars(r)["id"])
 	if err != nil {
 		c = http.StatusUnauthorized
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to parse uid",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrParseUUID)
 		return
 	}
 
 	err = h.ctrl.DeleteUser(r.Context(), uid)
 	if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to delete user", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}

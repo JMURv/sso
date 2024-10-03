@@ -3,11 +3,20 @@ package ctrl
 import (
 	"context"
 	"github.com/JMURv/sso/pkg/model"
+	utils "github.com/JMURv/sso/pkg/utils/http"
+	"github.com/google/uuid"
 	"time"
 )
 
-type appRepo interface {
-	userRepo
+type userRepo interface {
+	ListUsers(ctx context.Context, page, size int) (*utils.PaginatedData, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
+
+	CreateUser(ctx context.Context, req *model.User) (uuid.UUID, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, req *model.User) error
+	DeleteUser(ctx context.Context, userID uuid.UUID) error
+	UserSearch(ctx context.Context, query string, page int, size int) (*utils.PaginatedData, error)
 }
 
 type Auth interface {
@@ -36,12 +45,12 @@ type SMTPRepo interface {
 
 type Controller struct {
 	auth  Auth
-	repo  appRepo
+	repo  userRepo
 	cache CacheRepo
 	smtp  SMTPRepo
 }
 
-func New(auth Auth, repo appRepo, cache CacheRepo, smtp SMTPRepo) *Controller {
+func New(auth Auth, repo userRepo, cache CacheRepo, smtp SMTPRepo) *Controller {
 	return &Controller{
 		auth:  auth,
 		repo:  repo,

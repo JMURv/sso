@@ -5,8 +5,7 @@ import (
 	"errors"
 	pb "github.com/JMURv/sso/api/pb"
 	ctrl "github.com/JMURv/sso/internal/controller"
-	m2 "github.com/JMURv/sso/internal/controller/mocks"
-	"github.com/JMURv/sso/internal/handler/grpc/mocks"
+	"github.com/JMURv/sso/mocks"
 	md "github.com/JMURv/sso/pkg/model"
 	gutils "github.com/JMURv/sso/pkg/utils/grpc"
 	utils "github.com/JMURv/sso/pkg/utils/http"
@@ -23,7 +22,7 @@ func TestUserSearch(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -71,7 +70,7 @@ func TestListUsers(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -117,7 +116,7 @@ func TestRegister(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -133,7 +132,7 @@ func TestRegister(t *testing.T) {
 		Password: req.Password,
 	}
 
-	expectedUser := &md.User{}
+	idx := uuid.New()
 	accessToken := "access-token"
 	refreshToken := "refresh-token"
 
@@ -149,11 +148,12 @@ func TestRegister(t *testing.T) {
 	// Case 2: Success case - user created
 	t.Run("Success", func(t *testing.T) {
 		mockCtrl.EXPECT().CreateUser(gomock.Any(), protoUser, req.File.Filename, req.File.File).
-			Return(expectedUser, accessToken, refreshToken, nil).Times(1)
+			Return(idx, accessToken, refreshToken, nil).Times(1)
 
 		res, err := h.Register(ctx, req)
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
+		assert.Equal(t, idx.String(), res.Uid)
 		assert.Equal(t, accessToken, res.Access)
 		assert.Equal(t, refreshToken, res.Refresh)
 	})
@@ -161,7 +161,7 @@ func TestRegister(t *testing.T) {
 	// Case 3: User already exists
 	t.Run("User already exists", func(t *testing.T) {
 		mockCtrl.EXPECT().CreateUser(gomock.Any(), protoUser, req.File.Filename, req.File.File).
-			Return(nil, "", "", ctrl.ErrAlreadyExists).Times(1)
+			Return(uuid.Nil, "", "", ctrl.ErrAlreadyExists).Times(1)
 
 		res, err := h.Register(ctx, req)
 		assert.Nil(t, res)
@@ -171,7 +171,7 @@ func TestRegister(t *testing.T) {
 	// Case 4: Internal error
 	t.Run("Internal error", func(t *testing.T) {
 		mockCtrl.EXPECT().CreateUser(gomock.Any(), protoUser, req.File.Filename, req.File.File).
-			Return(nil, "", "", errors.New("internal error")).Times(1)
+			Return(uuid.Nil, "", "", errors.New("internal error")).Times(1)
 
 		res, err := h.Register(ctx, req)
 		assert.Nil(t, res)
@@ -184,7 +184,7 @@ func TestGetUser(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -237,7 +237,7 @@ func TestUpdateUser(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.WithValue(context.Background(), "uid", "user-uid")
@@ -247,7 +247,6 @@ func TestUpdateUser(t *testing.T) {
 	}
 	validUUID := uuid.MustParse(req.Uid)
 	protoUser := gutils.ProtoToModel(req.User)
-	expectedUser := &md.User{}
 
 	// Case 1: Unauthorized
 	t.Run("Unauthorized", func(t *testing.T) {
@@ -281,19 +280,17 @@ func TestUpdateUser(t *testing.T) {
 
 	// Case 4: Success case - user updated
 	t.Run("User updated", func(t *testing.T) {
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), validUUID, protoUser).Return(expectedUser, nil).Times(1)
-
-		expectedProtoUser := gutils.ModelToProto(expectedUser)
+		mockCtrl.EXPECT().UpdateUser(gomock.Any(), validUUID, protoUser).Return(nil).Times(1)
 
 		res, err := h.UpdateUser(ctx, req)
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
-		assert.Equal(t, expectedProtoUser, res)
+		assert.Equal(t, &pb.UuidMsg{Uuid: res.Uuid}, res)
 	})
 
 	// Case 5: User not found
 	t.Run("User not found", func(t *testing.T) {
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), validUUID, protoUser).Return(nil, ctrl.ErrNotFound).Times(1)
+		mockCtrl.EXPECT().UpdateUser(gomock.Any(), validUUID, protoUser).Return(ctrl.ErrNotFound).Times(1)
 
 		res, err := h.UpdateUser(ctx, req)
 		assert.Nil(t, res)
@@ -302,7 +299,7 @@ func TestUpdateUser(t *testing.T) {
 
 	// Case 6: Internal error
 	t.Run("Internal error", func(t *testing.T) {
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), validUUID, protoUser).Return(nil, errors.New("internal error")).Times(1)
+		mockCtrl.EXPECT().UpdateUser(gomock.Any(), validUUID, protoUser).Return(errors.New("internal error")).Times(1)
 
 		res, err := h.UpdateUser(ctx, req)
 		assert.Nil(t, res)
@@ -315,7 +312,7 @@ func TestDeleteUser(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := m2.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuth(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.WithValue(context.Background(), "uid", "user-uid")

@@ -353,7 +353,7 @@ func (h *Handler) UpdateMe(ctx context.Context, req *pb.User) (*pb.User, error) 
 		return nil, status.Errorf(c, err.Error())
 	}
 
-	u, err := h.ctrl.UpdateUser(ctx, uid, user)
+	err = h.ctrl.UpdateUser(ctx, uid, user)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = codes.NotFound
 		zap.L().Debug("user not found", zap.String("op", op), zap.Error(err))
@@ -364,5 +364,5 @@ func (h *Handler) UpdateMe(ctx context.Context, req *pb.User) (*pb.User, error) 
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return utils.ModelToProto(u), nil
+	return &pb.User{}, nil
 }

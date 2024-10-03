@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	rrepo "github.com/JMURv/sso/internal/repository"
 	md "github.com/JMURv/sso/pkg/model"
@@ -9,27 +10,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 	"regexp"
 	"testing"
+	"time"
 )
 
 func TestUserSearch(t *testing.T) {
-	mockDB, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer mockDB.Close()
-
-	dialector := postgres.New(postgres.Config{
-		Conn: mockDB,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
-	assert.NoError(t, err)
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
 
 	repo := Repository{conn: db}
 
-	const countQ = `^SELECT count(.+) FROM "users"`
-	const q = `^SELECT \* FROM "users" WHERE`
+	const countQ = `SELECT COUNT(*) FROM users WHERE name ILIKE $1 OR email ILIKE $2`
+	const q = `SELECT id, name, password, email, avatar, address, phone, created_at, updated_at FROM users WHERE name ILIKE $1 OR email ILIKE $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`
+
 	query := "test"
 	page := 1
 	size := 10
@@ -37,21 +32,61 @@ func TestUserSearch(t *testing.T) {
 	expectedTotalPages := int((expectedCount + int64(size) - 1) / int64(size))
 
 	mockUsers := []md.User{
-		{ID: uuid.New(), Name: "John Doe", Email: "johndoe@example.com"},
-		{ID: uuid.New(), Name: "Jane Smith", Email: "janesmith@example.com"},
+		{
+			ID:        uuid.New(),
+			Name:      "John Doe",
+			Password:  "password",
+			Email:     "johndoe@example.com",
+			Avatar:    "https://example.com/avatar.jpg",
+			Address:   "123 Main St",
+			Phone:     "123-456-7890",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		{
+			ID:        uuid.New(),
+			Name:      "Jane Smith",
+			Password:  "password",
+			Email:     "janesmith@example.com",
+			Avatar:    "https://example.com/avatar.jpg",
+			Address:   "123 Main St",
+			Phone:     "123-456-7890",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
 	}
 
 	t.Run("Success case", func(t *testing.T) {
-		mock.ExpectQuery(countQ).
+		mock.ExpectQuery(regexp.QuoteMeta(countQ)).
 			WithArgs("%"+query+"%", "%"+query+"%").
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(expectedCount))
 
-		rows := sqlmock.NewRows([]string{"id", "name", "email"}).
-			AddRow(mockUsers[0].ID.String(), mockUsers[0].Name, mockUsers[0].Email).
-			AddRow(mockUsers[1].ID.String(), mockUsers[1].Name, mockUsers[1].Email)
+		rows := sqlmock.NewRows([]string{"id", "name", "password", "email", "avatar", "address", "phone", "created_at", "updated_at"}).
+			AddRow(
+				mockUsers[0].ID.String(),
+				mockUsers[0].Name,
+				mockUsers[0].Password,
+				mockUsers[0].Email,
+				mockUsers[0].Avatar,
+				mockUsers[0].Address,
+				mockUsers[0].Phone,
+				mockUsers[0].CreatedAt,
+				mockUsers[0].UpdatedAt,
+			).
+			AddRow(
+				mockUsers[1].ID.String(),
+				mockUsers[1].Name,
+				mockUsers[1].Password,
+				mockUsers[1].Email,
+				mockUsers[1].Avatar,
+				mockUsers[1].Address,
+				mockUsers[1].Phone,
+				mockUsers[1].CreatedAt,
+				mockUsers[1].UpdatedAt,
+			)
 
-		mock.ExpectQuery(q).
-			WithArgs("%"+query+"%", "%"+query+"%", size).
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WithArgs("%"+query+"%", "%"+query+"%", size, (page-1)*size).
 			WillReturnRows(rows)
 
 		resp, err := repo.UserSearch(context.Background(), query, page, size)
@@ -66,7 +101,7 @@ func TestUserSearch(t *testing.T) {
 	})
 
 	t.Run("Count error", func(t *testing.T) {
-		mock.ExpectQuery(countQ).
+		mock.ExpectQuery(regexp.QuoteMeta(countQ)).
 			WithArgs("%"+query+"%", "%"+query+"%").
 			WillReturnError(errors.New("count error"))
 
@@ -81,12 +116,12 @@ func TestUserSearch(t *testing.T) {
 	})
 
 	t.Run("Find error", func(t *testing.T) {
-		mock.ExpectQuery(countQ).
+		mock.ExpectQuery(regexp.QuoteMeta(countQ)).
 			WithArgs("%"+query+"%", "%"+query+"%").
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(expectedCount))
 
-		mock.ExpectQuery(q).
-			WithArgs("%"+query+"%", "%"+query+"%", size).
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WithArgs("%"+query+"%", "%"+query+"%", size, (page-1)*size).
 			WillReturnError(errors.New("find error"))
 
 		resp, err := repo.UserSearch(context.Background(), query, page, size)
@@ -100,12 +135,12 @@ func TestUserSearch(t *testing.T) {
 	})
 
 	t.Run("Empty result", func(t *testing.T) {
-		mock.ExpectQuery(countQ).
+		mock.ExpectQuery(regexp.QuoteMeta(countQ)).
 			WithArgs("%"+query+"%", "%"+query+"%").
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-		mock.ExpectQuery(q).
-			WithArgs("%"+query+"%", "%"+query+"%", size).
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WithArgs("%"+query+"%", "%"+query+"%", size, (page-1)*size).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}))
 
 		resp, err := repo.UserSearch(context.Background(), query, page, size)
@@ -123,19 +158,16 @@ func TestUserSearch(t *testing.T) {
 }
 
 func TestListUsers(t *testing.T) {
-	mockDB, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer mockDB.Close()
-
-	dialector := postgres.New(postgres.Config{
-		Conn: mockDB,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
-	assert.NoError(t, err)
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
 
 	repo := Repository{conn: db}
-	const countQ = `^SELECT count(.+) FROM "users"`
-	const q = `^SELECT \* FROM "users" ORDER BY created_at desc LIMIT`
+	const countQ = `SELECT COUNT(*) FROM users`
+	const q = `SELECT id, name, password, email, avatar, address, phone, created_at, updated_at 
+		 FROM users 
+		 ORDER BY created_at DESC 
+		 LIMIT $1 OFFSET $2`
 
 	page := 1
 	size := 10
@@ -143,20 +175,59 @@ func TestListUsers(t *testing.T) {
 	expectedTotalPages := int((expectedCount + int64(size) - 1) / int64(size))
 
 	mockUsers := []md.User{
-		{ID: uuid.New(), Name: "John Doe", Email: "johndoe@example.com"},
-		{ID: uuid.New(), Name: "Jane Smith", Email: "janesmith@example.com"},
+		{
+			ID:        uuid.New(),
+			Name:      "John Doe",
+			Password:  "password",
+			Email:     "johndoe@example.com",
+			Avatar:    "https://example.com/avatar.jpg",
+			Address:   "123 Main St",
+			Phone:     "123-456-7890",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		{
+			ID:        uuid.New(),
+			Name:      "Jane Smith",
+			Password:  "password",
+			Email:     "janesmith@example.com",
+			Avatar:    "https://example.com/avatar.jpg",
+			Address:   "123 Main St",
+			Phone:     "123-456-7890",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
 	}
 
 	t.Run("Success case", func(t *testing.T) {
-		mock.ExpectQuery(countQ).
+		mock.ExpectQuery(regexp.QuoteMeta(countQ)).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(expectedCount))
 
-		rows := sqlmock.NewRows([]string{"id", "name", "email"}).
-			AddRow(mockUsers[0].ID.String(), mockUsers[0].Name, mockUsers[0].Email).
-			AddRow(mockUsers[1].ID.String(), mockUsers[1].Name, mockUsers[1].Email)
+		rows := sqlmock.NewRows([]string{"id", "name", "password", "email", "avatar", "address", "phone", "created_at", "updated_at"}).
+			AddRow(
+				mockUsers[0].ID.String(),
+				mockUsers[0].Name,
+				mockUsers[0].Password,
+				mockUsers[0].Email,
+				mockUsers[0].Avatar,
+				mockUsers[0].Address,
+				mockUsers[0].Phone,
+				mockUsers[0].CreatedAt,
+				mockUsers[0].UpdatedAt,
+			).
+			AddRow(
+				mockUsers[1].ID.String(),
+				mockUsers[1].Name,
+				mockUsers[1].Password,
+				mockUsers[1].Email,
+				mockUsers[1].Avatar,
+				mockUsers[1].Address,
+				mockUsers[1].Phone,
+				mockUsers[1].CreatedAt,
+				mockUsers[1].UpdatedAt,
+			)
 
-		mock.ExpectQuery(q).
-			WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta(q)).WithArgs(size, (page-1)*size).WillReturnRows(rows)
 
 		resp, err := repo.ListUsers(context.Background(), page, size)
 
@@ -172,7 +243,7 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("Count error", func(t *testing.T) {
-		mock.ExpectQuery(countQ).
+		mock.ExpectQuery(regexp.QuoteMeta(countQ)).
 			WillReturnError(errors.New("count error"))
 
 		resp, err := repo.ListUsers(context.Background(), page, size)
@@ -186,10 +257,10 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("Find error", func(t *testing.T) {
-		mock.ExpectQuery(countQ).
+		mock.ExpectQuery(regexp.QuoteMeta(countQ)).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(expectedCount))
 
-		mock.ExpectQuery(q).
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
 			WillReturnError(errors.New("find error"))
 
 		resp, err := repo.ListUsers(context.Background(), page, size)
@@ -202,10 +273,10 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("Empty users", func(t *testing.T) {
-		mock.ExpectQuery(countQ).
+		mock.ExpectQuery(regexp.QuoteMeta(countQ)).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-		mock.ExpectQuery(q).
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}))
 
 		resp, err := repo.ListUsers(context.Background(), page, size)
@@ -222,30 +293,42 @@ func TestListUsers(t *testing.T) {
 }
 
 func TestGetUserByID(t *testing.T) {
-	mockDB, mock, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer mockDB.Close()
-
-	dialector := postgres.New(postgres.Config{
-		Conn: mockDB,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
-	require.NoError(t, err)
+	defer db.Close()
 
 	repo := Repository{conn: db}
 
-	const q = `^SELECT \* FROM "users" WHERE id=\$1 ORDER BY "users"."id" LIMIT \$2`
+	const q = `SELECT id, name, password, email, avatar, address, phone, created_at, updated_at
+		FROM users
+		WHERE id = $1`
 	testUser := md.User{
-		ID:    uuid.New(),
-		Name:  "Test User",
-		Email: "testuser@example.com",
+		ID:        uuid.New(),
+		Name:      "John Doe",
+		Password:  "password",
+		Email:     "johndoe@example.com",
+		Avatar:    "https://example.com/avatar.jpg",
+		Address:   "123 Main St",
+		Phone:     "123-456-7890",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	t.Run("Success case", func(t *testing.T) {
-		mock.ExpectQuery(q).
-			WithArgs(testUser.ID.String(), 1).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}).
-				AddRow(testUser.ID.String(), testUser.Name, testUser.Email))
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WithArgs(testUser.ID.String()).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "password", "email", "avatar", "address", "phone", "created_at", "updated_at"}).
+				AddRow(
+					testUser.ID.String(),
+					testUser.Name,
+					testUser.Password,
+					testUser.Email,
+					testUser.Avatar,
+					testUser.Address,
+					testUser.Phone,
+					testUser.CreatedAt,
+					testUser.UpdatedAt,
+				))
 
 		result, err := repo.GetUserByID(context.Background(), testUser.ID)
 
@@ -259,9 +342,9 @@ func TestGetUserByID(t *testing.T) {
 	})
 
 	t.Run("User not found case", func(t *testing.T) {
-		mock.ExpectQuery(q).
-			WithArgs(testUser.ID.String(), 1).
-			WillReturnError(gorm.ErrRecordNotFound)
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WithArgs(testUser.ID.String()).
+			WillReturnError(rrepo.ErrNotFound)
 
 		result, err := repo.GetUserByID(context.Background(), testUser.ID)
 		assert.Nil(t, result)
@@ -272,8 +355,8 @@ func TestGetUserByID(t *testing.T) {
 
 	var notExpectedError = errors.New("not expected error")
 	t.Run("Unexpected error case", func(t *testing.T) {
-		mock.ExpectQuery(q).
-			WithArgs(testUser.ID.String(), 1).
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WithArgs(testUser.ID.String()).
 			WillReturnError(notExpectedError)
 
 		result, err := repo.GetUserByID(context.Background(), testUser.ID)
@@ -286,19 +369,15 @@ func TestGetUserByID(t *testing.T) {
 }
 
 func TestGetUserByEmail(t *testing.T) {
-	mockDB, mock, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer mockDB.Close()
-
-	dialector := postgres.New(postgres.Config{
-		Conn: mockDB,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
-	require.NoError(t, err)
+	defer db.Close()
 
 	repo := Repository{conn: db}
 
-	const q = `^SELECT \* FROM "users" WHERE email=\$1 ORDER BY "users"."id" LIMIT \$2`
+	const q = `SELECT id, name, password, email, avatar, address, phone, created_at, updated_at
+		FROM users
+		WHERE email = $1`
 	testUser := md.User{
 		ID:    uuid.New(),
 		Name:  "Test User",
@@ -306,10 +385,20 @@ func TestGetUserByEmail(t *testing.T) {
 	}
 
 	t.Run("Success case", func(t *testing.T) {
-		mock.ExpectQuery(q).
-			WithArgs(testUser.Email, 1).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}).
-				AddRow(testUser.ID.String(), testUser.Name, testUser.Email))
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WithArgs(testUser.Email).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "password", "email", "avatar", "address", "phone", "created_at", "updated_at"}).
+				AddRow(
+					testUser.ID.String(),
+					testUser.Name,
+					testUser.Password,
+					testUser.Email,
+					testUser.Avatar,
+					testUser.Address,
+					testUser.Phone,
+					testUser.CreatedAt,
+					testUser.UpdatedAt,
+				))
 
 		result, err := repo.GetUserByEmail(context.Background(), testUser.Email)
 		assert.NoError(t, err)
@@ -322,9 +411,9 @@ func TestGetUserByEmail(t *testing.T) {
 	})
 
 	t.Run("User not found case", func(t *testing.T) {
-		mock.ExpectQuery(q).
-			WithArgs(testUser.Email, 1).
-			WillReturnError(gorm.ErrRecordNotFound)
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WithArgs(testUser.Email).
+			WillReturnError(rrepo.ErrNotFound)
 
 		result, err := repo.GetUserByEmail(context.Background(), testUser.Email)
 		assert.Nil(t, result)
@@ -335,8 +424,8 @@ func TestGetUserByEmail(t *testing.T) {
 
 	var notExpectedError = errors.New("not expected error")
 	t.Run("Unexpected error case", func(t *testing.T) {
-		mock.ExpectQuery(q).
-			WithArgs(testUser.Email, 1).
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WithArgs(testUser.Email).
 			WillReturnError(notExpectedError)
 
 		result, err := repo.GetUserByEmail(context.Background(), testUser.Email)
@@ -349,19 +438,16 @@ func TestGetUserByEmail(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	mockDB, mock, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer mockDB.Close()
-
-	dialector := postgres.New(postgres.Config{
-		Conn: mockDB,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
-	require.NoError(t, err)
+	defer db.Close()
 
 	repo := Repository{conn: db}
 
-	const q = `INSERT INTO "users"`
+	const selectQ = `SELECT id FROM users WHERE id=$1 OR email=$2`
+	const q = `INSERT INTO users (name, password, email, avatar, address, phone) 
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 RETURNING id`
 	testUser := &md.User{
 		ID:       uuid.New(),
 		Name:     "Test User",
@@ -370,7 +456,10 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	t.Run("Success case", func(t *testing.T) {
-		mock.ExpectBegin()
+
+		mock.ExpectQuery(regexp.QuoteMeta(selectQ)).
+			WithArgs(testUser.ID.String(), testUser.Email).
+			WillReturnError(sql.ErrNoRows)
 
 		mock.ExpectQuery(
 			regexp.QuoteMeta(q)).
@@ -378,47 +467,57 @@ func TestCreateUser(t *testing.T) {
 				sqlmock.NewRows([]string{"id"}).
 					AddRow(testUser.ID.String()))
 
-		mock.ExpectCommit()
-
-		err := repo.CreateUser(context.Background(), testUser)
+		_, err := repo.CreateUser(context.Background(), testUser)
 		assert.NoError(t, err)
 		err = mock.ExpectationsWereMet()
 		assert.NoError(t, err)
 	})
 
 	t.Run("Password is required", func(t *testing.T) {
+		mock.ExpectQuery(regexp.QuoteMeta(selectQ)).
+			WithArgs(testUser.ID.String(), testUser.Email).
+			WillReturnError(sql.ErrNoRows)
+
 		testUser.Password = ""
 
-		err := repo.CreateUser(context.Background(), testUser)
+		_, err := repo.CreateUser(context.Background(), testUser)
 		assert.Equal(t, rrepo.ErrPasswordIsRequired, err)
 	})
 
 	t.Run("Username is required", func(t *testing.T) {
+		mock.ExpectQuery(regexp.QuoteMeta(selectQ)).
+			WithArgs(testUser.ID.String(), testUser.Email).
+			WillReturnError(sql.ErrNoRows)
+
 		testUser.Password = "securepassword"
 		testUser.Name = ""
 
-		err := repo.CreateUser(context.Background(), testUser)
+		_, err := repo.CreateUser(context.Background(), testUser)
 		assert.Equal(t, rrepo.ErrUsernameIsRequired, err)
 	})
 
 	t.Run("Email is required", func(t *testing.T) {
+		mock.ExpectQuery(regexp.QuoteMeta(selectQ)).
+			WithArgs(testUser.ID.String(), "").
+			WillReturnError(sql.ErrNoRows)
+
 		testUser.Name = "Test User"
 		testUser.Email = ""
 
-		err := repo.CreateUser(context.Background(), testUser)
+		_, err := repo.CreateUser(context.Background(), testUser)
 		assert.Equal(t, rrepo.ErrEmailIsRequired, err)
 	})
 
 	t.Run("Error generating password", func(t *testing.T) {
 		testUser.Email = "testuser@example.com"
-		mock.ExpectBegin()
+		mock.ExpectQuery(regexp.QuoteMeta(selectQ)).
+			WithArgs(testUser.ID.String(), testUser.Email).
+			WillReturnError(sql.ErrNoRows)
 
 		mock.ExpectQuery(regexp.QuoteMeta(q)).
 			WillReturnError(rrepo.ErrGeneratingPassword)
 
-		mock.ExpectRollback()
-
-		err := repo.CreateUser(context.Background(), testUser)
+		_, err := repo.CreateUser(context.Background(), testUser)
 		assert.Equal(t, rrepo.ErrGeneratingPassword, err)
 		err = mock.ExpectationsWereMet()
 		assert.NoError(t, err)
@@ -426,13 +525,14 @@ func TestCreateUser(t *testing.T) {
 
 	t.Run("User already exists", func(t *testing.T) {
 		testUser.Email = "existinguser@example.com"
+		mock.ExpectQuery(regexp.QuoteMeta(selectQ)).
+			WithArgs(testUser.ID.String(), testUser.Email).
+			WillReturnError(sql.ErrNoRows)
 
-		mock.ExpectBegin()
-		mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "users"`)).
-			WillReturnError(gorm.ErrDuplicatedKey)
-		mock.ExpectRollback()
+		mock.ExpectQuery(regexp.QuoteMeta(q)).
+			WillReturnError(rrepo.ErrAlreadyExists)
 
-		err := repo.CreateUser(context.Background(), testUser)
+		_, err := repo.CreateUser(context.Background(), testUser)
 		assert.Equal(t, rrepo.ErrAlreadyExists, err)
 		err = mock.ExpectationsWereMet()
 		assert.NoError(t, err)
@@ -440,15 +540,9 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
-	mockDB, mock, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer mockDB.Close()
-
-	dialector := postgres.New(postgres.Config{
-		Conn: mockDB,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
-	require.NoError(t, err)
+	defer db.Close()
 
 	repo := Repository{conn: db}
 
@@ -460,83 +554,85 @@ func TestUpdateUser(t *testing.T) {
 		Password: "securepassword",
 	}
 
-	// Insert a user to update later
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "users"`)).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(testUserID.String()))
-	mock.ExpectCommit()
+	const insertQ = `INSERT INTO users (name, password, email, avatar, address, phone) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+	const selectQ = `SELECT id FROM users WHERE id=$1 OR email=$2`
 
-	err = repo.CreateUser(context.Background(), testUser)
+	mock.ExpectQuery(regexp.QuoteMeta(selectQ)).
+		WithArgs(testUser.ID.String(), testUser.Email).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(insertQ)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(testUserID.String()))
+
+	_, err = repo.CreateUser(context.Background(), testUser)
 	require.NoError(t, err)
 
 	newData := &md.User{
-		Name:    "Updated User",
-		Email:   "updateduser@example.com",
-		Avatar:  "new_avatar.png",
-		Address: "123 Updated St.",
-		Phone:   "123-456-7890",
-		IsAdmin: true,
-		IsOpt:   true,
+		Name:     "Updated User",
+		Password: "newsecurepassword",
+		Email:    "updateduser@example.com",
+		Avatar:   "new_avatar.png",
+		Address:  "123 Updated St.",
+		Phone:    "123-456-7890",
 	}
 
 	t.Run("Success case", func(t *testing.T) {
-		mock.ExpectQuery(`^SELECT \* FROM "users" WHERE id=\$1`).
-			WithArgs(testUserID.String(), 1).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email", "avatar", "address", "phone", "is_opt", "is_admin"}).
-				AddRow(testUser.ID.String(), testUser.Name, testUser.Email, "", "", "", false, false))
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE users 
+		 SET name = $1, password = $2, email = $3, avatar = $4, address = $5, phone = $6 
+		 WHERE id = $7`)).
+			WithArgs(
+				newData.Name,
+				newData.Password,
+				newData.Email,
+				newData.Avatar,
+				newData.Address,
+				newData.Phone,
+				testUserID.String(),
+			).
+			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		//mock.ExpectQuery(regexp.QuoteMeta(`UPDATE "users" SET`)).
-		//	WithArgs(newData.Name, newData.Email, newData.Avatar, newData.Address, newData.Phone, newData.IsOpt, newData.IsAdmin, testUserID.String()).
-		//	WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email", "avatar", "address", "phone", "is_opt", "is_admin"}).
-		//		AddRow(testUser.ID.String(), testUser.Name, testUser.Email, "", "", "", false, false))
-
-		updatedUser, err := repo.UpdateUser(context.Background(), testUserID, newData)
+		err := repo.UpdateUser(context.Background(), testUserID, newData)
 		assert.NoError(t, err)
-		assert.Equal(t, newData.Name, updatedUser.Name)
-		assert.Equal(t, newData.Email, updatedUser.Email)
-		assert.Equal(t, newData.Avatar, updatedUser.Avatar)
-		assert.Equal(t, newData.Address, updatedUser.Address)
-		assert.Equal(t, newData.Phone, updatedUser.Phone)
-		assert.Equal(t, newData.IsAdmin, updatedUser.IsAdmin)
-		assert.Equal(t, newData.IsOpt, updatedUser.IsOpt)
 		err = mock.ExpectationsWereMet()
 		assert.NoError(t, err)
 	})
 
-	t.Run("User not found case", func(t *testing.T) {
-		mock.ExpectQuery(`^SELECT \* FROM "users" WHERE id=\$1`).
-			WithArgs(testUserID.String(), 1).
-			WillReturnError(gorm.ErrRecordNotFound)
+	t.Run("User Not Found", func(t *testing.T) {
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE users 
+         SET name = $1, password = $2, email = $3, avatar = $4, address = $5, phone = $6 
+         WHERE id = $7`)).
+			WithArgs(
+				newData.Name,
+				newData.Password,
+				newData.Email,
+				newData.Avatar,
+				newData.Address,
+				newData.Phone,
+				testUserID.String(),
+			).
+			WillReturnResult(sqlmock.NewResult(1, 0))
 
-		updatedUser, err := repo.UpdateUser(context.Background(), testUserID, newData)
-		assert.Nil(t, updatedUser)
-		assert.Equal(t, rrepo.ErrNotFound, err)
+		err := repo.UpdateUser(context.Background(), testUserID, newData)
+		assert.ErrorIs(t, err, rrepo.ErrNotFound)
 		err = mock.ExpectationsWereMet()
 		assert.NoError(t, err)
 	})
 }
 
 func TestDeleteUser(t *testing.T) {
-	mockDB, mock, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer mockDB.Close()
-
-	dialector := postgres.New(postgres.Config{
-		Conn: mockDB,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
-	require.NoError(t, err)
+	defer db.Close()
 
 	repo := Repository{conn: db}
 
 	testUserID := uuid.New()
+	const deleteQ = `DELETE FROM users WHERE id = $1`
 
-	t.Run("Success case", func(t *testing.T) {
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "users"`)).
+	t.Run("Success", func(t *testing.T) {
+		mock.ExpectExec(regexp.QuoteMeta(deleteQ)).
 			WithArgs(testUserID.String()).
 			WillReturnResult(sqlmock.NewResult(0, 1))
-		mock.ExpectCommit()
 
 		err := repo.DeleteUser(context.Background(), testUserID)
 		assert.NoError(t, err)
@@ -545,15 +641,26 @@ func TestDeleteUser(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("User not found case", func(t *testing.T) {
-		mock.ExpectBegin()
-		mock.ExpectExec(`^DELETE FROM "users"`).
+	t.Run("User not found", func(t *testing.T) {
+		mock.ExpectExec(regexp.QuoteMeta(deleteQ)).
 			WithArgs(testUserID.String()).
-			WillReturnResult(sqlmock.NewResult(0, 0))
-		mock.ExpectCommit()
+			WillReturnResult(sqlmock.NewResult(1, 0))
 
 		err := repo.DeleteUser(context.Background(), testUserID)
+		assert.ErrorIs(t, err, rrepo.ErrNotFound)
+
+		err = mock.ExpectationsWereMet()
 		assert.NoError(t, err)
+	})
+
+	t.Run("Database Error", func(t *testing.T) {
+		mock.ExpectExec(regexp.QuoteMeta(deleteQ)).
+			WithArgs(testUserID.String()).
+			WillReturnError(errors.New("db error"))
+
+		err := repo.DeleteUser(context.Background(), testUserID)
+		assert.Error(t, err)
+
 		err = mock.ExpectationsWereMet()
 		assert.NoError(t, err)
 	})

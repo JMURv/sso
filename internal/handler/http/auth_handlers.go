@@ -46,23 +46,33 @@ func (h *Handler) sendSupportEmail(w http.ResponseWriter, r *http.Request) {
 
 	uid, err := uuid.Parse(r.Context().Value("uid").(string))
 	if err != nil {
+		zap.L().Debug(
+			"failed to parse uid",
+			zap.String("op", op), zap.Error(err),
+		)
 		c = http.StatusUnauthorized
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrParseUUID)
 		return
 	}
 
 	req := &sendSupportEmailRequest{}
 	if err = json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to decode request", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to decode request",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
 		return
 	}
 
 	err = h.ctrl.SendSupportEmail(r.Context(), uid, req.Theme, req.Text)
-	if err != nil {
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to send email", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -86,29 +96,45 @@ func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Reques
 	req := &checkForgotPasswordEmailRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to decode request", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to decode request",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
 		return
 	}
 
 	uidb64, err := uuid.Parse(req.Uidb64)
 	if err != nil {
+		zap.L().Debug(
+			"failed to parse uidb64",
+			zap.String("op", op), zap.Error(err),
+			zap.String("uidb64", req.Uidb64),
+		)
 		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrParseUUID)
 		return
 	}
 
 	intToken, err := strconv.Atoi(req.Token)
 	if err != nil {
+		zap.L().Debug(
+			"failed to parse token",
+			zap.String("op", op), zap.Error(err),
+			zap.String("token", req.Token),
+		)
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return
 	}
 
 	err = h.ctrl.CheckForgotPasswordEmail(r.Context(), req.Password, uidb64, intToken)
-	if err != nil {
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to send email", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -126,15 +152,21 @@ func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request
 	req := &model.User{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to decode request", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to decode request",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
 		return
 	}
 
 	err := h.ctrl.SendForgotPasswordEmail(r.Context(), req.Email)
-	if err != nil {
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to send email", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -151,16 +183,23 @@ func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 
 	uid, err := uuid.Parse(r.Context().Value("uid").(string))
 	if err != nil {
+		zap.L().Debug(
+			"failed to parse uid",
+			zap.String("op", op), zap.Error(err),
+		)
 		c = http.StatusUnauthorized
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrParseUUID)
 		return
 	}
 
 	req := &model.User{}
 	if err = json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to decode request", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to decode request",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
 		return
 	}
 
@@ -171,15 +210,18 @@ func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.ctrl.UpdateUser(r.Context(), uid, req)
-	if err != nil {
+	err = h.ctrl.UpdateUser(r.Context(), uid, req)
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to update user", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
 
-	utils.SuccessResponse(w, c, res)
+	utils.SuccessResponse(w, c, "OK")
 }
 
 func (h *Handler) checkEmail(w http.ResponseWriter, r *http.Request) {
@@ -192,8 +234,11 @@ func (h *Handler) checkEmail(w http.ResponseWriter, r *http.Request) {
 	u := &model.User{}
 	if err := json.NewDecoder(r.Body).Decode(u); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to decode request", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to decode request",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
 		return
 	}
 
@@ -206,7 +251,6 @@ func (h *Handler) checkEmail(w http.ResponseWriter, r *http.Request) {
 	isExist, err := h.ctrl.IsUserExist(r.Context(), u.Email)
 	if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to check existence of email", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -234,8 +278,11 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(data)
 	if err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to decode request", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to decode request",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
 		return
 	}
 
@@ -255,12 +302,10 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 	err = h.ctrl.SendLoginCode(r.Context(), email, pass)
 	if err != nil && err == controller.ErrInvalidCredentials {
 		c = http.StatusNotFound
-		zap.L().Debug("user not found", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to send login code", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -283,8 +328,11 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 	data := &checkLoginCodeRequest{}
 	if err := json.NewDecoder(r.Body).Decode(data); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to decode request", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, c, err)
+		zap.L().Debug(
+			"failed to decode request",
+			zap.String("op", op), zap.Error(err),
+		)
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
 		return
 	}
 
@@ -311,12 +359,10 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 	access, refresh, err := h.ctrl.CheckLoginCode(r.Context(), email, loginCode)
 	if err != nil && errors.Is(err, controller.ErrNotFound) {
 		c = http.StatusNotFound
-		zap.L().Debug("user not found", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to send login code", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -359,9 +405,12 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u, err := h.ctrl.GetUserByID(r.Context(), uid)
-	if err != nil {
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug("failed to get user", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}

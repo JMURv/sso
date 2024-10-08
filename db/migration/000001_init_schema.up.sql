@@ -1,5 +1,5 @@
-CREATE TABLE IF NOT EXISTS users (
-    id         UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS "user" (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       VARCHAR(50)  NOT NULL,
     password   VARCHAR(255) NOT NULL,
     email      VARCHAR(50)  NOT NULL UNIQUE,
@@ -8,13 +8,24 @@ CREATE TABLE IF NOT EXISTS users (
     address    VARCHAR(255),
     phone      VARCHAR(20),
 
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS permissions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    value BOOLEAN DEFAULT FALSE
+CREATE TABLE IF NOT EXISTS permission (
+    id    SERIAL PRIMARY KEY,
+    name  VARCHAR(255) UNIQUE NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS user_permission (
+    user_id       UUID NOT NULL,
+    permission_id BIGINT NOT NULL ,
+    PRIMARY KEY (user_id, permission_id),
+
+    value BOOLEAN DEFAULT FALSE,
+
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE,
+    CONSTRAINT fk_permission FOREIGN KEY (permission_id) REFERENCES permission (id) ON DELETE CASCADE
+);
+
+INSERT INTO permission (name) VALUES('admin'), ('staff');

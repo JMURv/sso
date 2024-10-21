@@ -11,25 +11,44 @@ import (
 	utils "github.com/JMURv/sso/pkg/utils/http"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-func RegisterAuthRoutes(r *mux.Router, h *Handler) {
-	r.HandleFunc("/api/sso/send-login-code", h.sendLoginCode).Methods(http.MethodPost)
-	r.HandleFunc("/api/sso/check-login-code", h.checkLoginCode).Methods(http.MethodPost)
-	r.HandleFunc("/api/sso/check-email", h.checkEmail).Methods(http.MethodPost)
-	r.HandleFunc("/api/sso/logout", middlewareFunc(h.logout, h.authMiddleware)).Methods(http.MethodPost)
-	r.HandleFunc("/api/sso/recovery", h.sendForgotPasswordEmail).Methods(http.MethodPost)
-	r.HandleFunc("/api/sso/recovery", h.checkForgotPasswordEmail).Methods(http.MethodPut)
+func RegisterAuthRoutes(mux *http.ServeMux, h *Handler) {
+	mux.HandleFunc(
+		"/api/sso/recovery", func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodPost:
+				h.sendForgotPasswordEmail(w, r)
+			case http.MethodPut:
+				h.checkForgotPasswordEmail(w, r)
+			default:
+				utils.ErrResponse(w, http.StatusMethodNotAllowed, handler.ErrMethodNotAllowed)
+			}
+		},
+	)
 
-	r.HandleFunc("/api/sso/support", middlewareFunc(h.sendSupportEmail, h.authMiddleware)).Methods(http.MethodPost)
+	mux.HandleFunc(
+		"/api/sso/me", func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				middlewareFunc(h.me, h.authMiddleware)
+			case http.MethodPut:
+				middlewareFunc(h.updateMe, h.authMiddleware)
+			default:
+				utils.ErrResponse(w, http.StatusMethodNotAllowed, handler.ErrMethodNotAllowed)
+			}
+		},
+	)
 
-	r.HandleFunc("/api/sso/me", middlewareFunc(h.me, h.authMiddleware)).Methods(http.MethodGet)
-	r.HandleFunc("/api/sso/me", middlewareFunc(h.updateMe, h.authMiddleware)).Methods(http.MethodPut)
+	mux.HandleFunc("/api/sso/send-login-code", h.sendLoginCode)
+	mux.HandleFunc("/api/sso/check-login-code", h.checkLoginCode)
+	mux.HandleFunc("/api/sso/check-email", h.checkEmail)
+	mux.HandleFunc("/api/sso/logout", middlewareFunc(h.logout, h.authMiddleware))
+	mux.HandleFunc("/api/sso/support", middlewareFunc(h.sendSupportEmail, h.authMiddleware))
 }
 
 type sendSupportEmailRequest struct {
@@ -43,6 +62,12 @@ func (h *Handler) sendSupportEmail(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
+
+	if r.Method != http.MethodPost {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
 
 	uid, err := uuid.Parse(r.Context().Value("uid").(string))
 	if err != nil {
@@ -181,6 +206,12 @@ func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
+	if r.Method != http.MethodPut {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
+
 	uid, err := uuid.Parse(r.Context().Value("uid").(string))
 	if err != nil {
 		zap.L().Debug(
@@ -231,6 +262,12 @@ func (h *Handler) checkEmail(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
+	if r.Method != http.MethodPost {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
+
 	u := &model.User{}
 	if err := json.NewDecoder(r.Body).Decode(u); err != nil {
 		c = http.StatusBadRequest
@@ -255,11 +292,13 @@ func (h *Handler) checkEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SuccessResponse(w, c, struct {
-		IsExist bool `json:"is_exist"`
-	}{
-		IsExist: isExist,
-	})
+	utils.SuccessResponse(
+		w, c, struct {
+			IsExist bool `json:"is_exist"`
+		}{
+			IsExist: isExist,
+		},
+	)
 }
 
 type loginCodeRequest struct {
@@ -273,6 +312,12 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
+
+	if r.Method != http.MethodPost {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
 
 	data := &loginCodeRequest{}
 	err := json.NewDecoder(r.Body).Decode(data)
@@ -325,6 +370,12 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
+	if r.Method != http.MethodPost {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
+
 	data := &checkLoginCodeRequest{}
 	if err := json.NewDecoder(r.Body).Decode(data); err != nil {
 		c = http.StatusBadRequest
@@ -367,25 +418,29 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access",
-		Value:    access,
-		Expires:  time.Now().Add(auth.AccessTokenDuration),
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
-	})
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "access",
+			Value:    access,
+			Expires:  time.Now().Add(auth.AccessTokenDuration),
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		},
+	)
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh",
-		Value:    refresh,
-		Expires:  time.Now().Add(auth.RefreshTokenDuration),
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
-	})
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "refresh",
+			Value:    refresh,
+			Expires:  time.Now().Add(auth.RefreshTokenDuration),
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		},
+	)
 
 	utils.SuccessResponse(w, c, "OK")
 }
@@ -396,6 +451,12 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
+
+	if r.Method != http.MethodGet {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
 
 	uid, err := uuid.Parse(r.Context().Value("uid").(string))
 	if err != nil {
@@ -425,25 +486,35 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access",
-		Value:    "",
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
-	})
+	if r.Method != http.MethodPost {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh",
-		Value:    "",
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
-	})
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "access",
+			Value:    "",
+			MaxAge:   -1,
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		},
+	)
+
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "refresh",
+			Value:    "",
+			MaxAge:   -1,
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		},
+	)
 
 	utils.SuccessResponse(w, c, "OK")
 }

@@ -2,9 +2,7 @@ package redis
 
 import (
 	"context"
-	"fmt"
 	errs "github.com/JMURv/sso/internal/cache"
-	controller "github.com/JMURv/sso/internal/controller"
 	cfg "github.com/JMURv/sso/pkg/config"
 	"github.com/go-redis/redis/v8"
 	"github.com/goccy/go-json"
@@ -18,18 +16,21 @@ type Cache struct {
 	cli *redis.Client
 }
 
-func New(conf *cfg.RedisConfig) controller.CacheRepo {
-	redisCli := redis.NewClient(&redis.Options{
-		Addr:     conf.Addr,
-		Password: conf.Pass,
-		DB:       0,
-	})
-	_, err := redisCli.Ping(context.Background()).Result()
+func New(conf *cfg.RedisConfig) *Cache {
+	cli := redis.NewClient(
+		&redis.Options{
+			Addr:     conf.Addr,
+			Password: conf.Pass,
+			DB:       0,
+		},
+	)
+
+	_, err := cli.Ping(context.Background()).Result()
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
 
-	return &Cache{cli: redisCli}
+	return &Cache{cli: cli}
 }
 
 func (c *Cache) Close() {
@@ -104,20 +105,22 @@ func (c *Cache) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *Cache) InvalidateKeysByPattern(ctx context.Context, pattern string) error {
+func (c *Cache) InvalidateKeysByPattern(ctx context.Context, pattern string) {
 	var cursor uint64
 	for {
-		var keys []string
 		var err error
+		var keys []string
 
 		keys, cursor, err = c.cli.Scan(ctx, cursor, pattern, 100).Result() // 100 keys at a time
 		if err != nil {
-			return fmt.Errorf("failed to scan redis: %w", err)
+			zap.L().Debug("failed to scan redis", zap.Error(err))
+			break
 		}
 
 		if len(keys) > 0 {
 			if err := c.cli.Del(ctx, keys...).Err(); err != nil {
-				return fmt.Errorf("failed to delete keys: %w", err)
+				zap.L().Debug("failed to delete keys", zap.Error(err))
+				break
 			}
 		}
 
@@ -125,6 +128,4 @@ func (c *Cache) InvalidateKeysByPattern(ctx context.Context, pattern string) err
 			break
 		}
 	}
-
-	return nil
 }

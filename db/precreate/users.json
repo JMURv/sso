@@ -9,12 +9,10 @@
     "phone": "",
     "permissions": [
       {
-        "user_id": "16d6ef09-4c97-4bf6-92dc-e4291d75180c",
         "name": "admin",
         "value": true
       },
       {
-        "user_id": "16d6ef09-4c97-4bf6-92dc-e4291d75180c",
         "name": "opt",
         "value": true
       }
@@ -30,12 +28,10 @@
     "phone": "",
     "permissions": [
       {
-        "user_id": "16d6ef09-4c97-4bf6-92dc-e4291d75180c",
         "name": "admin",
         "value": true
       },
       {
-        "user_id": "16d6ef09-4c97-4bf6-92dc-e4291d75180c",
         "name": "opt",
         "value": true
       }

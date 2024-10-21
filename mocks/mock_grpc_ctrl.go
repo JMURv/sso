@@ -149,10 +149,10 @@ func (mr *MockCtrlMockRecorder) IsUserExist(ctx, email any) *gomock.Call {
 }
 
 // ListUsers mocks base method.
-func (m *MockCtrl) ListUsers(ctx context.Context, page, size int) (*utils.PaginatedData, error) {
+func (m *MockCtrl) ListUsers(ctx context.Context, page, size int) (*utils.PaginatedUser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsers", ctx, page, size)
-	ret0, _ := ret[0].(*utils.PaginatedData)
+	ret0, _ := ret[0].(*utils.PaginatedUser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -220,10 +220,10 @@ func (mr *MockCtrlMockRecorder) UpdateUser(ctx, id, req any) *gomock.Call {
 }
 
 // UserSearch mocks base method.
-func (m *MockCtrl) UserSearch(ctx context.Context, query string, page, size int) (*utils.PaginatedData, error) {
+func (m *MockCtrl) UserSearch(ctx context.Context, query string, page, size int) (*utils.PaginatedUser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserSearch", ctx, query, page, size)
-	ret0, _ := ret[0].(*utils.PaginatedData)
+	ret0, _ := ret[0].(*utils.PaginatedUser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

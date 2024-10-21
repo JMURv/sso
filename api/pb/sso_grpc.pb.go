@@ -19,30 +19,288 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	PermissionSvc_ListPermissions_FullMethodName  = "/user.PermissionSvc/ListPermissions"
+	PermissionSvc_GetPermission_FullMethodName    = "/user.PermissionSvc/GetPermission"
+	PermissionSvc_CreatePermission_FullMethodName = "/user.PermissionSvc/CreatePermission"
+	PermissionSvc_UpdatePermission_FullMethodName = "/user.PermissionSvc/UpdatePermission"
+	PermissionSvc_DeletePermission_FullMethodName = "/user.PermissionSvc/DeletePermission"
+)
+
+// PermissionSvcClient is the client API for PermissionSvc service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type PermissionSvcClient interface {
+	ListPermissions(ctx context.Context, in *ListReq, opts ...grpc.CallOption) (*PermissionList, error)
+	GetPermission(ctx context.Context, in *Uint64Msg, opts ...grpc.CallOption) (*Permission, error)
+	CreatePermission(ctx context.Context, in *Permission, opts ...grpc.CallOption) (*Uint64Msg, error)
+	UpdatePermission(ctx context.Context, in *Permission, opts ...grpc.CallOption) (*EmptySSO, error)
+	DeletePermission(ctx context.Context, in *Uint64Msg, opts ...grpc.CallOption) (*EmptySSO, error)
+}
+
+type permissionSvcClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewPermissionSvcClient(cc grpc.ClientConnInterface) PermissionSvcClient {
+	return &permissionSvcClient{cc}
+}
+
+func (c *permissionSvcClient) ListPermissions(ctx context.Context, in *ListReq, opts ...grpc.CallOption) (*PermissionList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PermissionList)
+	err := c.cc.Invoke(ctx, PermissionSvc_ListPermissions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *permissionSvcClient) GetPermission(ctx context.Context, in *Uint64Msg, opts ...grpc.CallOption) (*Permission, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Permission)
+	err := c.cc.Invoke(ctx, PermissionSvc_GetPermission_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *permissionSvcClient) CreatePermission(ctx context.Context, in *Permission, opts ...grpc.CallOption) (*Uint64Msg, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Uint64Msg)
+	err := c.cc.Invoke(ctx, PermissionSvc_CreatePermission_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *permissionSvcClient) UpdatePermission(ctx context.Context, in *Permission, opts ...grpc.CallOption) (*EmptySSO, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptySSO)
+	err := c.cc.Invoke(ctx, PermissionSvc_UpdatePermission_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *permissionSvcClient) DeletePermission(ctx context.Context, in *Uint64Msg, opts ...grpc.CallOption) (*EmptySSO, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptySSO)
+	err := c.cc.Invoke(ctx, PermissionSvc_DeletePermission_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PermissionSvcServer is the server API for PermissionSvc service.
+// All implementations must embed UnimplementedPermissionSvcServer
+// for forward compatibility.
+type PermissionSvcServer interface {
+	ListPermissions(context.Context, *ListReq) (*PermissionList, error)
+	GetPermission(context.Context, *Uint64Msg) (*Permission, error)
+	CreatePermission(context.Context, *Permission) (*Uint64Msg, error)
+	UpdatePermission(context.Context, *Permission) (*EmptySSO, error)
+	DeletePermission(context.Context, *Uint64Msg) (*EmptySSO, error)
+	mustEmbedUnimplementedPermissionSvcServer()
+}
+
+// UnimplementedPermissionSvcServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedPermissionSvcServer struct{}
+
+func (UnimplementedPermissionSvcServer) ListPermissions(context.Context, *ListReq) (*PermissionList, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPermissions not implemented")
+}
+func (UnimplementedPermissionSvcServer) GetPermission(context.Context, *Uint64Msg) (*Permission, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPermission not implemented")
+}
+func (UnimplementedPermissionSvcServer) CreatePermission(context.Context, *Permission) (*Uint64Msg, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreatePermission not implemented")
+}
+func (UnimplementedPermissionSvcServer) UpdatePermission(context.Context, *Permission) (*EmptySSO, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdatePermission not implemented")
+}
+func (UnimplementedPermissionSvcServer) DeletePermission(context.Context, *Uint64Msg) (*EmptySSO, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeletePermission not implemented")
+}
+func (UnimplementedPermissionSvcServer) mustEmbedUnimplementedPermissionSvcServer() {}
+func (UnimplementedPermissionSvcServer) testEmbeddedByValue()                       {}
+
+// UnsafePermissionSvcServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PermissionSvcServer will
+// result in compilation errors.
+type UnsafePermissionSvcServer interface {
+	mustEmbedUnimplementedPermissionSvcServer()
+}
+
+func RegisterPermissionSvcServer(s grpc.ServiceRegistrar, srv PermissionSvcServer) {
+	// If the following call pancis, it indicates UnimplementedPermissionSvcServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&PermissionSvc_ServiceDesc, srv)
+}
+
+func _PermissionSvc_ListPermissions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PermissionSvcServer).ListPermissions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PermissionSvc_ListPermissions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PermissionSvcServer).ListPermissions(ctx, req.(*ListReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PermissionSvc_GetPermission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Uint64Msg)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PermissionSvcServer).GetPermission(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PermissionSvc_GetPermission_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PermissionSvcServer).GetPermission(ctx, req.(*Uint64Msg))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PermissionSvc_CreatePermission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Permission)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PermissionSvcServer).CreatePermission(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PermissionSvc_CreatePermission_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PermissionSvcServer).CreatePermission(ctx, req.(*Permission))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PermissionSvc_UpdatePermission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Permission)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PermissionSvcServer).UpdatePermission(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PermissionSvc_UpdatePermission_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PermissionSvcServer).UpdatePermission(ctx, req.(*Permission))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PermissionSvc_DeletePermission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Uint64Msg)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PermissionSvcServer).DeletePermission(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PermissionSvc_DeletePermission_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PermissionSvcServer).DeletePermission(ctx, req.(*Uint64Msg))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// PermissionSvc_ServiceDesc is the grpc.ServiceDesc for PermissionSvc service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var PermissionSvc_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "user.PermissionSvc",
+	HandlerType: (*PermissionSvcServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ListPermissions",
+			Handler:    _PermissionSvc_ListPermissions_Handler,
+		},
+		{
+			MethodName: "GetPermission",
+			Handler:    _PermissionSvc_GetPermission_Handler,
+		},
+		{
+			MethodName: "CreatePermission",
+			Handler:    _PermissionSvc_CreatePermission_Handler,
+		},
+		{
+			MethodName: "UpdatePermission",
+			Handler:    _PermissionSvc_UpdatePermission_Handler,
+		},
+		{
+			MethodName: "DeletePermission",
+			Handler:    _PermissionSvc_DeletePermission_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "api/pb/sso.proto",
+}
+
+const (
+	SSO_ValidateToken_FullMethodName            = "/user.SSO/ValidateToken"
+	SSO_GetUserByToken_FullMethodName           = "/user.SSO/GetUserByToken"
 	SSO_SendLoginCode_FullMethodName            = "/user.SSO/SendLoginCode"
 	SSO_CheckLoginCode_FullMethodName           = "/user.SSO/CheckLoginCode"
-	SSO_CheckEmail_FullMethodName               = "/user.SSO/CheckEmail"
 	SSO_Logout_FullMethodName                   = "/user.SSO/Logout"
+	SSO_Me_FullMethodName                       = "/user.SSO/Me"
+	SSO_UpdateMe_FullMethodName                 = "/user.SSO/UpdateMe"
+	SSO_CheckEmail_FullMethodName               = "/user.SSO/CheckEmail"
 	SSO_SendForgotPasswordEmail_FullMethodName  = "/user.SSO/SendForgotPasswordEmail"
 	SSO_CheckForgotPasswordEmail_FullMethodName = "/user.SSO/CheckForgotPasswordEmail"
 	SSO_SendSupportEmail_FullMethodName         = "/user.SSO/SendSupportEmail"
-	SSO_Me_FullMethodName                       = "/user.SSO/Me"
-	SSO_UpdateMe_FullMethodName                 = "/user.SSO/UpdateMe"
 )
 
 // SSOClient is the client API for SSO service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SSOClient interface {
-	SendLoginCode(ctx context.Context, in *SendLoginCodeReq, opts ...grpc.CallOption) (*Empty, error)
+	ValidateToken(ctx context.Context, in *StringSSOMsg, opts ...grpc.CallOption) (*BoolSSOMsg, error)
+	GetUserByToken(ctx context.Context, in *StringSSOMsg, opts ...grpc.CallOption) (*User, error)
+	SendLoginCode(ctx context.Context, in *SendLoginCodeReq, opts ...grpc.CallOption) (*EmptySSO, error)
 	CheckLoginCode(ctx context.Context, in *CheckLoginCodeReq, opts ...grpc.CallOption) (*CheckLoginCodeRes, error)
-	CheckEmail(ctx context.Context, in *EmailMsg, opts ...grpc.CallOption) (*CheckEmailRes, error)
-	Logout(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
-	SendForgotPasswordEmail(ctx context.Context, in *EmailMsg, opts ...grpc.CallOption) (*Empty, error)
-	CheckForgotPasswordEmail(ctx context.Context, in *CheckForgotPasswordEmailReq, opts ...grpc.CallOption) (*Empty, error)
-	SendSupportEmail(ctx context.Context, in *SendSupportEmailReq, opts ...grpc.CallOption) (*Empty, error)
-	Me(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*User, error)
+	Logout(ctx context.Context, in *EmptySSO, opts ...grpc.CallOption) (*EmptySSO, error)
+	Me(ctx context.Context, in *EmptySSO, opts ...grpc.CallOption) (*User, error)
 	UpdateMe(ctx context.Context, in *User, opts ...grpc.CallOption) (*User, error)
+	CheckEmail(ctx context.Context, in *EmailMsg, opts ...grpc.CallOption) (*CheckEmailRes, error)
+	SendForgotPasswordEmail(ctx context.Context, in *EmailMsg, opts ...grpc.CallOption) (*EmptySSO, error)
+	CheckForgotPasswordEmail(ctx context.Context, in *CheckForgotPasswordEmailReq, opts ...grpc.CallOption) (*EmptySSO, error)
+	SendSupportEmail(ctx context.Context, in *SendSupportEmailReq, opts ...grpc.CallOption) (*EmptySSO, error)
 }
 
 type sSOClient struct {
@@ -53,9 +311,29 @@ func NewSSOClient(cc grpc.ClientConnInterface) SSOClient {
 	return &sSOClient{cc}
 }
 
-func (c *sSOClient) SendLoginCode(ctx context.Context, in *SendLoginCodeReq, opts ...grpc.CallOption) (*Empty, error) {
+func (c *sSOClient) ValidateToken(ctx context.Context, in *StringSSOMsg, opts ...grpc.CallOption) (*BoolSSOMsg, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
+	out := new(BoolSSOMsg)
+	err := c.cc.Invoke(ctx, SSO_ValidateToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sSOClient) GetUserByToken(ctx context.Context, in *StringSSOMsg, opts ...grpc.CallOption) (*User, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(User)
+	err := c.cc.Invoke(ctx, SSO_GetUserByToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sSOClient) SendLoginCode(ctx context.Context, in *SendLoginCodeReq, opts ...grpc.CallOption) (*EmptySSO, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptySSO)
 	err := c.cc.Invoke(ctx, SSO_SendLoginCode_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -73,19 +351,9 @@ func (c *sSOClient) CheckLoginCode(ctx context.Context, in *CheckLoginCodeReq, o
 	return out, nil
 }
 
-func (c *sSOClient) CheckEmail(ctx context.Context, in *EmailMsg, opts ...grpc.CallOption) (*CheckEmailRes, error) {
+func (c *sSOClient) Logout(ctx context.Context, in *EmptySSO, opts ...grpc.CallOption) (*EmptySSO, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CheckEmailRes)
-	err := c.cc.Invoke(ctx, SSO_CheckEmail_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *sSOClient) Logout(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
+	out := new(EmptySSO)
 	err := c.cc.Invoke(ctx, SSO_Logout_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -93,37 +361,7 @@ func (c *sSOClient) Logout(ctx context.Context, in *Empty, opts ...grpc.CallOpti
 	return out, nil
 }
 
-func (c *sSOClient) SendForgotPasswordEmail(ctx context.Context, in *EmailMsg, opts ...grpc.CallOption) (*Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, SSO_SendForgotPasswordEmail_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *sSOClient) CheckForgotPasswordEmail(ctx context.Context, in *CheckForgotPasswordEmailReq, opts ...grpc.CallOption) (*Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, SSO_CheckForgotPasswordEmail_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *sSOClient) SendSupportEmail(ctx context.Context, in *SendSupportEmailReq, opts ...grpc.CallOption) (*Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, SSO_SendSupportEmail_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *sSOClient) Me(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*User, error) {
+func (c *sSOClient) Me(ctx context.Context, in *EmptySSO, opts ...grpc.CallOption) (*User, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(User)
 	err := c.cc.Invoke(ctx, SSO_Me_FullMethodName, in, out, cOpts...)
@@ -143,19 +381,61 @@ func (c *sSOClient) UpdateMe(ctx context.Context, in *User, opts ...grpc.CallOpt
 	return out, nil
 }
 
+func (c *sSOClient) CheckEmail(ctx context.Context, in *EmailMsg, opts ...grpc.CallOption) (*CheckEmailRes, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckEmailRes)
+	err := c.cc.Invoke(ctx, SSO_CheckEmail_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sSOClient) SendForgotPasswordEmail(ctx context.Context, in *EmailMsg, opts ...grpc.CallOption) (*EmptySSO, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptySSO)
+	err := c.cc.Invoke(ctx, SSO_SendForgotPasswordEmail_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sSOClient) CheckForgotPasswordEmail(ctx context.Context, in *CheckForgotPasswordEmailReq, opts ...grpc.CallOption) (*EmptySSO, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptySSO)
+	err := c.cc.Invoke(ctx, SSO_CheckForgotPasswordEmail_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sSOClient) SendSupportEmail(ctx context.Context, in *SendSupportEmailReq, opts ...grpc.CallOption) (*EmptySSO, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptySSO)
+	err := c.cc.Invoke(ctx, SSO_SendSupportEmail_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SSOServer is the server API for SSO service.
 // All implementations must embed UnimplementedSSOServer
 // for forward compatibility.
 type SSOServer interface {
-	SendLoginCode(context.Context, *SendLoginCodeReq) (*Empty, error)
+	ValidateToken(context.Context, *StringSSOMsg) (*BoolSSOMsg, error)
+	GetUserByToken(context.Context, *StringSSOMsg) (*User, error)
+	SendLoginCode(context.Context, *SendLoginCodeReq) (*EmptySSO, error)
 	CheckLoginCode(context.Context, *CheckLoginCodeReq) (*CheckLoginCodeRes, error)
-	CheckEmail(context.Context, *EmailMsg) (*CheckEmailRes, error)
-	Logout(context.Context, *Empty) (*Empty, error)
-	SendForgotPasswordEmail(context.Context, *EmailMsg) (*Empty, error)
-	CheckForgotPasswordEmail(context.Context, *CheckForgotPasswordEmailReq) (*Empty, error)
-	SendSupportEmail(context.Context, *SendSupportEmailReq) (*Empty, error)
-	Me(context.Context, *Empty) (*User, error)
+	Logout(context.Context, *EmptySSO) (*EmptySSO, error)
+	Me(context.Context, *EmptySSO) (*User, error)
 	UpdateMe(context.Context, *User) (*User, error)
+	CheckEmail(context.Context, *EmailMsg) (*CheckEmailRes, error)
+	SendForgotPasswordEmail(context.Context, *EmailMsg) (*EmptySSO, error)
+	CheckForgotPasswordEmail(context.Context, *CheckForgotPasswordEmailReq) (*EmptySSO, error)
+	SendSupportEmail(context.Context, *SendSupportEmailReq) (*EmptySSO, error)
 	mustEmbedUnimplementedSSOServer()
 }
 
@@ -166,32 +446,38 @@ type SSOServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSSOServer struct{}
 
-func (UnimplementedSSOServer) SendLoginCode(context.Context, *SendLoginCodeReq) (*Empty, error) {
+func (UnimplementedSSOServer) ValidateToken(context.Context, *StringSSOMsg) (*BoolSSOMsg, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ValidateToken not implemented")
+}
+func (UnimplementedSSOServer) GetUserByToken(context.Context, *StringSSOMsg) (*User, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserByToken not implemented")
+}
+func (UnimplementedSSOServer) SendLoginCode(context.Context, *SendLoginCodeReq) (*EmptySSO, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendLoginCode not implemented")
 }
 func (UnimplementedSSOServer) CheckLoginCode(context.Context, *CheckLoginCodeReq) (*CheckLoginCodeRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckLoginCode not implemented")
 }
-func (UnimplementedSSOServer) CheckEmail(context.Context, *EmailMsg) (*CheckEmailRes, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckEmail not implemented")
-}
-func (UnimplementedSSOServer) Logout(context.Context, *Empty) (*Empty, error) {
+func (UnimplementedSSOServer) Logout(context.Context, *EmptySSO) (*EmptySSO, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
-func (UnimplementedSSOServer) SendForgotPasswordEmail(context.Context, *EmailMsg) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendForgotPasswordEmail not implemented")
-}
-func (UnimplementedSSOServer) CheckForgotPasswordEmail(context.Context, *CheckForgotPasswordEmailReq) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckForgotPasswordEmail not implemented")
-}
-func (UnimplementedSSOServer) SendSupportEmail(context.Context, *SendSupportEmailReq) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendSupportEmail not implemented")
-}
-func (UnimplementedSSOServer) Me(context.Context, *Empty) (*User, error) {
+func (UnimplementedSSOServer) Me(context.Context, *EmptySSO) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Me not implemented")
 }
 func (UnimplementedSSOServer) UpdateMe(context.Context, *User) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMe not implemented")
+}
+func (UnimplementedSSOServer) CheckEmail(context.Context, *EmailMsg) (*CheckEmailRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckEmail not implemented")
+}
+func (UnimplementedSSOServer) SendForgotPasswordEmail(context.Context, *EmailMsg) (*EmptySSO, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendForgotPasswordEmail not implemented")
+}
+func (UnimplementedSSOServer) CheckForgotPasswordEmail(context.Context, *CheckForgotPasswordEmailReq) (*EmptySSO, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckForgotPasswordEmail not implemented")
+}
+func (UnimplementedSSOServer) SendSupportEmail(context.Context, *SendSupportEmailReq) (*EmptySSO, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendSupportEmail not implemented")
 }
 func (UnimplementedSSOServer) mustEmbedUnimplementedSSOServer() {}
 func (UnimplementedSSOServer) testEmbeddedByValue()             {}
@@ -212,6 +498,42 @@ func RegisterSSOServer(s grpc.ServiceRegistrar, srv SSOServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&SSO_ServiceDesc, srv)
+}
+
+func _SSO_ValidateToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StringSSOMsg)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).ValidateToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_ValidateToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).ValidateToken(ctx, req.(*StringSSOMsg))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SSO_GetUserByToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StringSSOMsg)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).GetUserByToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_GetUserByToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).GetUserByToken(ctx, req.(*StringSSOMsg))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _SSO_SendLoginCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -250,6 +572,60 @@ func _SSO_CheckLoginCode_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SSO_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EmptySSO)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).Logout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_Logout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).Logout(ctx, req.(*EmptySSO))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SSO_Me_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EmptySSO)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).Me(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_Me_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).Me(ctx, req.(*EmptySSO))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SSO_UpdateMe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(User)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).UpdateMe(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_UpdateMe_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).UpdateMe(ctx, req.(*User))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SSO_CheckEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EmailMsg)
 	if err := dec(in); err != nil {
@@ -264,24 +640,6 @@ func _SSO_CheckEmail_Handler(srv interface{}, ctx context.Context, dec func(inte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SSOServer).CheckEmail(ctx, req.(*EmailMsg))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SSO_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SSOServer).Logout(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SSO_Logout_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SSOServer).Logout(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -340,42 +698,6 @@ func _SSO_SendSupportEmail_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SSO_Me_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SSOServer).Me(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SSO_Me_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SSOServer).Me(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SSO_UpdateMe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(User)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SSOServer).UpdateMe(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SSO_UpdateMe_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SSOServer).UpdateMe(ctx, req.(*User))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // SSO_ServiceDesc is the grpc.ServiceDesc for SSO service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -383,6 +705,14 @@ var SSO_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "user.SSO",
 	HandlerType: (*SSOServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ValidateToken",
+			Handler:    _SSO_ValidateToken_Handler,
+		},
+		{
+			MethodName: "GetUserByToken",
+			Handler:    _SSO_GetUserByToken_Handler,
+		},
 		{
 			MethodName: "SendLoginCode",
 			Handler:    _SSO_SendLoginCode_Handler,
@@ -392,12 +722,20 @@ var SSO_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SSO_CheckLoginCode_Handler,
 		},
 		{
-			MethodName: "CheckEmail",
-			Handler:    _SSO_CheckEmail_Handler,
-		},
-		{
 			MethodName: "Logout",
 			Handler:    _SSO_Logout_Handler,
+		},
+		{
+			MethodName: "Me",
+			Handler:    _SSO_Me_Handler,
+		},
+		{
+			MethodName: "UpdateMe",
+			Handler:    _SSO_UpdateMe_Handler,
+		},
+		{
+			MethodName: "CheckEmail",
+			Handler:    _SSO_CheckEmail_Handler,
 		},
 		{
 			MethodName: "SendForgotPasswordEmail",
@@ -411,24 +749,16 @@ var SSO_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "SendSupportEmail",
 			Handler:    _SSO_SendSupportEmail_Handler,
 		},
-		{
-			MethodName: "Me",
-			Handler:    _SSO_Me_Handler,
-		},
-		{
-			MethodName: "UpdateMe",
-			Handler:    _SSO_UpdateMe_Handler,
-		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "api/pb/sso.proto",
 }
 
 const (
-	Users_UserSearch_FullMethodName = "/user.Users/UserSearch"
+	Users_SearchUser_FullMethodName = "/user.Users/SearchUser"
 	Users_ListUsers_FullMethodName  = "/user.Users/ListUsers"
-	Users_Register_FullMethodName   = "/user.Users/Register"
 	Users_GetUser_FullMethodName    = "/user.Users/GetUser"
+	Users_CreateUser_FullMethodName = "/user.Users/CreateUser"
 	Users_UpdateUser_FullMethodName = "/user.Users/UpdateUser"
 	Users_DeleteUser_FullMethodName = "/user.Users/DeleteUser"
 )
@@ -437,12 +767,12 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UsersClient interface {
-	UserSearch(ctx context.Context, in *UserSearchReq, opts ...grpc.CallOption) (*PaginatedUsersRes, error)
-	ListUsers(ctx context.Context, in *ListUsersReq, opts ...grpc.CallOption) (*PaginatedUsersRes, error)
-	Register(ctx context.Context, in *RegisterReq, opts ...grpc.CallOption) (*RegisterRes, error)
+	SearchUser(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*PaginatedUsersRes, error)
+	ListUsers(ctx context.Context, in *ListReq, opts ...grpc.CallOption) (*PaginatedUsersRes, error)
 	GetUser(ctx context.Context, in *UuidMsg, opts ...grpc.CallOption) (*User, error)
+	CreateUser(ctx context.Context, in *CreateUserReq, opts ...grpc.CallOption) (*CreateUserRes, error)
 	UpdateUser(ctx context.Context, in *UserWithUid, opts ...grpc.CallOption) (*UuidMsg, error)
-	DeleteUser(ctx context.Context, in *UuidMsg, opts ...grpc.CallOption) (*Empty, error)
+	DeleteUser(ctx context.Context, in *UuidMsg, opts ...grpc.CallOption) (*EmptySSO, error)
 }
 
 type usersClient struct {
@@ -453,30 +783,20 @@ func NewUsersClient(cc grpc.ClientConnInterface) UsersClient {
 	return &usersClient{cc}
 }
 
-func (c *usersClient) UserSearch(ctx context.Context, in *UserSearchReq, opts ...grpc.CallOption) (*PaginatedUsersRes, error) {
+func (c *usersClient) SearchUser(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*PaginatedUsersRes, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PaginatedUsersRes)
-	err := c.cc.Invoke(ctx, Users_UserSearch_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Users_SearchUser_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *usersClient) ListUsers(ctx context.Context, in *ListUsersReq, opts ...grpc.CallOption) (*PaginatedUsersRes, error) {
+func (c *usersClient) ListUsers(ctx context.Context, in *ListReq, opts ...grpc.CallOption) (*PaginatedUsersRes, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PaginatedUsersRes)
 	err := c.cc.Invoke(ctx, Users_ListUsers_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *usersClient) Register(ctx context.Context, in *RegisterReq, opts ...grpc.CallOption) (*RegisterRes, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RegisterRes)
-	err := c.cc.Invoke(ctx, Users_Register_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -493,6 +813,16 @@ func (c *usersClient) GetUser(ctx context.Context, in *UuidMsg, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *usersClient) CreateUser(ctx context.Context, in *CreateUserReq, opts ...grpc.CallOption) (*CreateUserRes, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateUserRes)
+	err := c.cc.Invoke(ctx, Users_CreateUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *usersClient) UpdateUser(ctx context.Context, in *UserWithUid, opts ...grpc.CallOption) (*UuidMsg, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UuidMsg)
@@ -503,9 +833,9 @@ func (c *usersClient) UpdateUser(ctx context.Context, in *UserWithUid, opts ...g
 	return out, nil
 }
 
-func (c *usersClient) DeleteUser(ctx context.Context, in *UuidMsg, opts ...grpc.CallOption) (*Empty, error) {
+func (c *usersClient) DeleteUser(ctx context.Context, in *UuidMsg, opts ...grpc.CallOption) (*EmptySSO, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
+	out := new(EmptySSO)
 	err := c.cc.Invoke(ctx, Users_DeleteUser_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -517,12 +847,12 @@ func (c *usersClient) DeleteUser(ctx context.Context, in *UuidMsg, opts ...grpc.
 // All implementations must embed UnimplementedUsersServer
 // for forward compatibility.
 type UsersServer interface {
-	UserSearch(context.Context, *UserSearchReq) (*PaginatedUsersRes, error)
-	ListUsers(context.Context, *ListUsersReq) (*PaginatedUsersRes, error)
-	Register(context.Context, *RegisterReq) (*RegisterRes, error)
+	SearchUser(context.Context, *SearchReq) (*PaginatedUsersRes, error)
+	ListUsers(context.Context, *ListReq) (*PaginatedUsersRes, error)
 	GetUser(context.Context, *UuidMsg) (*User, error)
+	CreateUser(context.Context, *CreateUserReq) (*CreateUserRes, error)
 	UpdateUser(context.Context, *UserWithUid) (*UuidMsg, error)
-	DeleteUser(context.Context, *UuidMsg) (*Empty, error)
+	DeleteUser(context.Context, *UuidMsg) (*EmptySSO, error)
 	mustEmbedUnimplementedUsersServer()
 }
 
@@ -533,22 +863,22 @@ type UsersServer interface {
 // pointer dereference when methods are called.
 type UnimplementedUsersServer struct{}
 
-func (UnimplementedUsersServer) UserSearch(context.Context, *UserSearchReq) (*PaginatedUsersRes, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UserSearch not implemented")
+func (UnimplementedUsersServer) SearchUser(context.Context, *SearchReq) (*PaginatedUsersRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchUser not implemented")
 }
-func (UnimplementedUsersServer) ListUsers(context.Context, *ListUsersReq) (*PaginatedUsersRes, error) {
+func (UnimplementedUsersServer) ListUsers(context.Context, *ListReq) (*PaginatedUsersRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUsers not implemented")
-}
-func (UnimplementedUsersServer) Register(context.Context, *RegisterReq) (*RegisterRes, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
 }
 func (UnimplementedUsersServer) GetUser(context.Context, *UuidMsg) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUser not implemented")
 }
+func (UnimplementedUsersServer) CreateUser(context.Context, *CreateUserReq) (*CreateUserRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateUser not implemented")
+}
 func (UnimplementedUsersServer) UpdateUser(context.Context, *UserWithUid) (*UuidMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
 }
-func (UnimplementedUsersServer) DeleteUser(context.Context, *UuidMsg) (*Empty, error) {
+func (UnimplementedUsersServer) DeleteUser(context.Context, *UuidMsg) (*EmptySSO, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteUser not implemented")
 }
 func (UnimplementedUsersServer) mustEmbedUnimplementedUsersServer() {}
@@ -572,26 +902,26 @@ func RegisterUsersServer(s grpc.ServiceRegistrar, srv UsersServer) {
 	s.RegisterService(&Users_ServiceDesc, srv)
 }
 
-func _Users_UserSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UserSearchReq)
+func _Users_SearchUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UsersServer).UserSearch(ctx, in)
+		return srv.(UsersServer).SearchUser(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Users_UserSearch_FullMethodName,
+		FullMethod: Users_SearchUser_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UsersServer).UserSearch(ctx, req.(*UserSearchReq))
+		return srv.(UsersServer).SearchUser(ctx, req.(*SearchReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Users_ListUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListUsersReq)
+	in := new(ListReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -603,25 +933,7 @@ func _Users_ListUsers_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Users_ListUsers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UsersServer).ListUsers(ctx, req.(*ListUsersReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Users_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UsersServer).Register(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Users_Register_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UsersServer).Register(ctx, req.(*RegisterReq))
+		return srv.(UsersServer).ListUsers(ctx, req.(*ListReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -640,6 +952,24 @@ func _Users_GetUser_Handler(srv interface{}, ctx context.Context, dec func(inter
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UsersServer).GetUser(ctx, req.(*UuidMsg))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Users_CreateUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateUserReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UsersServer).CreateUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Users_CreateUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UsersServer).CreateUser(ctx, req.(*CreateUserReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -688,20 +1018,20 @@ var Users_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*UsersServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "UserSearch",
-			Handler:    _Users_UserSearch_Handler,
+			MethodName: "SearchUser",
+			Handler:    _Users_SearchUser_Handler,
 		},
 		{
 			MethodName: "ListUsers",
 			Handler:    _Users_ListUsers_Handler,
 		},
 		{
-			MethodName: "Register",
-			Handler:    _Users_Register_Handler,
-		},
-		{
 			MethodName: "GetUser",
 			Handler:    _Users_GetUser_Handler,
+		},
+		{
+			MethodName: "CreateUser",
+			Handler:    _Users_CreateUser_Handler,
 		},
 		{
 			MethodName: "UpdateUser",

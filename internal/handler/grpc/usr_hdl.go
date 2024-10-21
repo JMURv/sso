@@ -17,9 +17,9 @@ import (
 	"time"
 )
 
-func (h *Handler) UserSearch(ctx context.Context, req *pb.UserSearchReq) (*pb.PaginatedUsersRes, error) {
+func (h *Handler) SearchUser(ctx context.Context, req *pb.SearchReq) (*pb.PaginatedUsersRes, error) {
 	s, c := time.Now(), codes.OK
-	const op = "sso.UserSearch.handler"
+	const op = "sso.SearchUser.hdl"
 
 	span := opentracing.GlobalTracer().StartSpan(op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -35,7 +35,7 @@ func (h *Handler) UserSearch(ctx context.Context, req *pb.UserSearchReq) (*pb.Pa
 		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
 	}
 
-	u, err := h.ctrl.UserSearch(ctx, q, int(page), int(size))
+	u, err := h.ctrl.SearchUser(ctx, q, int(page), int(size))
 	if err != nil {
 		c = codes.Internal
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
@@ -50,9 +50,9 @@ func (h *Handler) UserSearch(ctx context.Context, req *pb.UserSearchReq) (*pb.Pa
 	}, nil
 }
 
-func (h *Handler) ListUsers(ctx context.Context, req *pb.ListUsersReq) (*pb.PaginatedUsersRes, error) {
+func (h *Handler) ListUsers(ctx context.Context, req *pb.ListReq) (*pb.PaginatedUsersRes, error) {
 	s, c := time.Now(), codes.OK
-	const op = "sso.ListUsers.handler"
+	const op = "sso.ListUsers.hdl"
 
 	span := opentracing.GlobalTracer().StartSpan(op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -83,9 +83,9 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.ListUsersReq) (*pb.Pagi
 	}, nil
 }
 
-func (h *Handler) Register(ctx context.Context, req *pb.RegisterReq) (*pb.RegisterRes, error) {
+func (h *Handler) CreateUser(ctx context.Context, req *pb.CreateUserReq) (*pb.CreateUserRes, error) {
 	s, c := time.Now(), codes.OK
-	const op = "sso.Register.handler"
+	const op = "sso.CreateUser.hdl"
 
 	span := opentracing.GlobalTracer().StartSpan(op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -115,7 +115,7 @@ func (h *Handler) Register(ctx context.Context, req *pb.RegisterReq) (*pb.Regist
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.RegisterRes{
+	return &pb.CreateUserRes{
 		Uid:     uid.String(),
 		Access:  access,
 		Refresh: refresh,
@@ -124,7 +124,7 @@ func (h *Handler) Register(ctx context.Context, req *pb.RegisterReq) (*pb.Regist
 
 func (h *Handler) GetUser(ctx context.Context, req *pb.UuidMsg) (*pb.User, error) {
 	s, c := time.Now(), codes.OK
-	const op = "sso.GetUser.handler"
+	const op = "sso.GetUser.hdl"
 
 	span := opentracing.GlobalTracer().StartSpan(op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -154,7 +154,7 @@ func (h *Handler) GetUser(ctx context.Context, req *pb.UuidMsg) (*pb.User, error
 
 func (h *Handler) UpdateUser(ctx context.Context, req *pb.UserWithUid) (*pb.UuidMsg, error) {
 	s, c := time.Now(), codes.OK
-	const op = "sso.UpdateUser.handler"
+	const op = "sso.UpdateUser.hdl"
 
 	span := opentracing.GlobalTracer().StartSpan(op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -196,9 +196,9 @@ func (h *Handler) UpdateUser(ctx context.Context, req *pb.UserWithUid) (*pb.Uuid
 	return &pb.UuidMsg{Uuid: uid.String()}, nil
 }
 
-func (h *Handler) DeleteUser(ctx context.Context, req *pb.UuidMsg) (*pb.Empty, error) {
+func (h *Handler) DeleteUser(ctx context.Context, req *pb.UuidMsg) (*pb.EmptySSO, error) {
 	s, c := time.Now(), codes.OK
-	const op = "sso.DeleteUser.handler"
+	const op = "sso.DeleteUser.hdl"
 
 	span := opentracing.GlobalTracer().StartSpan(op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -227,5 +227,5 @@ func (h *Handler) DeleteUser(ctx context.Context, req *pb.UuidMsg) (*pb.Empty, e
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.Empty{}, nil
+	return &pb.EmptySSO{}, nil
 }

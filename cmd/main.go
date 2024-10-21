@@ -6,6 +6,8 @@ import (
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/cache/redis"
 	ctrl "github.com/JMURv/sso/internal/controller"
+	"github.com/JMURv/sso/internal/discovery"
+
 	//handler "github.com/JMURv/sso/internal/handler/http"
 	handler "github.com/JMURv/sso/internal/handler/grpc"
 	tracing "github.com/JMURv/sso/internal/metrics/jaeger"
@@ -47,6 +49,16 @@ func main() {
 	go metrics.New(conf.Server.Port + 5).Start(ctx)
 	go tracing.Start(ctx, conf.ServiceName, conf.Jaeger)
 
+	dscvry := discovery.New(
+		conf.SrvDiscovery.URL,
+		conf.ServiceName,
+		fmt.Sprintf("%v://%v:%v", conf.Server.Scheme, conf.Server.Domain, conf.Server.Port),
+	)
+
+	if err := dscvry.Register(); err != nil {
+		zap.L().Warn("Error registering service", zap.Error(err))
+	}
+
 	// Setting up main app
 	cache := redis.New(conf.Redis)
 	repo := db.New(conf.DB)
@@ -66,8 +78,13 @@ func main() {
 
 		cancel()
 		cache.Close()
+
+		if err := dscvry.Deregister(); err != nil {
+			zap.L().Warn("Error deregistering from discovery", zap.Error(err))
+		}
+
 		if err := h.Close(); err != nil {
-			zap.L().Debug("Error closing handler", zap.Error(err))
+			zap.L().Warn("Error closing handler", zap.Error(err))
 		}
 
 		os.Exit(0)

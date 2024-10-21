@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/JMURv/sso/internal/auth"
 	controller "github.com/JMURv/sso/internal/controller"
+	"github.com/JMURv/sso/internal/handler"
 	metrics "github.com/JMURv/sso/internal/metrics/prometheus"
 	"github.com/JMURv/sso/internal/validation"
 	"github.com/JMURv/sso/pkg/consts"
@@ -11,26 +12,49 @@ import (
 	utils "github.com/JMURv/sso/pkg/utils/http"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
-func RegisterUserRoutes(r *mux.Router, h *Handler) {
-	r.HandleFunc("/api/users/search", h.userSearch).Methods(http.MethodGet)
-	r.HandleFunc("/api/users", h.listUsers).Methods(http.MethodGet)
-	r.HandleFunc("/api/users", h.register).Methods(http.MethodPost)
-	r.HandleFunc("/api/users/{id}", h.getUser).Methods(http.MethodGet)
-	r.HandleFunc("/api/users/{id}", middlewareFunc(h.updateUser, h.authMiddleware)).Methods(http.MethodPut)
-	r.HandleFunc("/api/users/{id}", middlewareFunc(h.deleteUser, h.authMiddleware)).Methods(http.MethodDelete)
+func RegisterUserRoutes(mux *http.ServeMux, h *Handler) {
+	mux.HandleFunc("/api/users/search", h.searchUser)
+
+	mux.HandleFunc(
+		"/api/users", func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				h.listUsers(w, r)
+			case http.MethodPost:
+				h.createUser(w, r)
+			default:
+				utils.ErrResponse(w, http.StatusMethodNotAllowed, handler.ErrMethodNotAllowed)
+			}
+		},
+	)
+
+	mux.HandleFunc(
+		"/api/users/", func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				h.getUser(w, r)
+			case http.MethodPut:
+				middlewareFunc(h.updateUser, h.authMiddleware)
+			case http.MethodDelete:
+				middlewareFunc(h.deleteUser, h.authMiddleware)
+			default:
+				utils.ErrResponse(w, http.StatusMethodNotAllowed, handler.ErrMethodNotAllowed)
+			}
+		},
+	)
 }
 
-func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusCreated
-	const op = "sso.register.handler"
+	const op = "sso.createUser.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
@@ -88,35 +112,45 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access",
-		Value:    access,
-		Expires:  time.Now().Add(auth.AccessTokenDuration),
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
-	})
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "access",
+			Value:    access,
+			Expires:  time.Now().Add(auth.AccessTokenDuration),
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		},
+	)
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh",
-		Value:    refresh,
-		Expires:  time.Now().Add(auth.RefreshTokenDuration),
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-		SameSite: http.SameSiteStrictMode,
-	})
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "refresh",
+			Value:    refresh,
+			Expires:  time.Now().Add(auth.RefreshTokenDuration),
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		},
+	)
 
 	utils.SuccessResponse(w, c, uid)
 }
 
-func (h *Handler) userSearch(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) searchUser(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
-	const op = "sso.search.handler"
+	const op = "sso.search.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
+
+	if r.Method != http.MethodGet {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
 
 	query := r.URL.Query().Get("q")
 	if len(query) < 3 {
@@ -133,7 +167,7 @@ func (h *Handler) userSearch(w http.ResponseWriter, r *http.Request) {
 		size = 10
 	}
 
-	res, err := h.ctrl.UserSearch(r.Context(), query, page, size)
+	res, err := h.ctrl.SearchUser(r.Context(), query, page, size)
 	if err != nil {
 		c = http.StatusInternalServerError
 		utils.ErrResponse(w, c, err)
@@ -145,7 +179,7 @@ func (h *Handler) userSearch(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
-	const op = "sso.listUsers.handler"
+	const op = "sso.listUsers.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
@@ -172,12 +206,12 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
-	const op = "sso.getUser.handler"
+	const op = "sso.getUser.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	uid, err := uuid.Parse(mux.Vars(r)["id"])
+	uid, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/users/"))
 	if uid == uuid.Nil || err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
@@ -204,12 +238,12 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
-	const op = "sso.updateUser.handler"
+	const op = "sso.updateUser.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	uid, err := uuid.Parse(mux.Vars(r)["id"])
+	uid, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/users/"))
 	if err != nil || uid == uuid.Nil {
 		c = http.StatusUnauthorized
 		zap.L().Debug(
@@ -257,12 +291,12 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusNoContent
-	const op = "sso.deleteUser.handler"
+	const op = "sso.deleteUser.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	uid, err := uuid.Parse(mux.Vars(r)["id"])
+	uid, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/users/"))
 	if err != nil {
 		c = http.StatusUnauthorized
 		zap.L().Debug(

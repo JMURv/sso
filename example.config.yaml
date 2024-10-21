@@ -1,4 +1,6 @@
-serviceName: "backend"
+serviceName: "sso"
+srv_discovery:
+  url: "http://localhost:50030"
 
 server:
   mode: "dev"

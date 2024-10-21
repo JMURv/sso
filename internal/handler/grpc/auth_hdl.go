@@ -17,7 +17,58 @@ import (
 	"time"
 )
 
-func (h *Handler) SendLoginCode(ctx context.Context, req *pb.SendLoginCodeReq) (*pb.Empty, error) {
+func (h *Handler) GetUserByToken(ctx context.Context, req *pb.StringSSOMsg) (*pb.User, error) {
+	s, c := time.Now(), codes.OK
+	const op = "sso.GetUserByToken.hdl"
+
+	span := opentracing.GlobalTracer().StartSpan(op)
+	ctx = opentracing.ContextWithSpan(ctx, span)
+	defer func() {
+		span.Finish()
+		metrics.ObserveRequest(time.Since(s), int(c), op)
+	}()
+
+	token := req.GetString_()
+	if req == nil || token == "" {
+		c = codes.InvalidArgument
+		zap.L().Debug("failed to decode request", zap.String("op", op))
+		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+	}
+
+	u, err := h.ctrl.GetUserByToken(ctx, token)
+	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
+		c = codes.NotFound
+		return nil, status.Errorf(c, err.Error())
+	} else if err != nil {
+		c = codes.Internal
+		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	}
+
+	return utils.ModelToProto(u), nil
+}
+
+func (h *Handler) ValidateToken(ctx context.Context, req *pb.StringSSOMsg) (*pb.BoolSSOMsg, error) {
+	s, c := time.Now(), codes.OK
+	const op = "sso.ValidateToken.hdl"
+
+	span := opentracing.GlobalTracer().StartSpan(op)
+	ctx = opentracing.ContextWithSpan(ctx, span)
+	defer func() {
+		span.Finish()
+		metrics.ObserveRequest(time.Since(s), int(c), op)
+	}()
+
+	token := req.GetString_()
+	if req == nil || token == "" {
+		c = codes.InvalidArgument
+		zap.L().Debug("failed to decode request", zap.String("op", op))
+		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+	}
+
+	return &pb.BoolSSOMsg{Bool: h.ctrl.ValidateToken(ctx, token)}, nil
+}
+
+func (h *Handler) SendLoginCode(ctx context.Context, req *pb.SendLoginCodeReq) (*pb.EmptySSO, error) {
 	const op = "sso.SendLoginCode.hdl"
 	s, c := time.Now(), codes.OK
 
@@ -49,7 +100,7 @@ func (h *Handler) SendLoginCode(ctx context.Context, req *pb.SendLoginCodeReq) (
 		zap.L().Error("failed to send login code", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
-	return &pb.Empty{}, nil
+	return &pb.EmptySSO{}, nil
 }
 
 func (h *Handler) CheckLoginCode(ctx context.Context, req *pb.CheckLoginCodeReq) (*pb.CheckLoginCodeRes, error) {
@@ -126,7 +177,7 @@ func (h *Handler) CheckEmail(ctx context.Context, req *pb.EmailMsg) (*pb.CheckEm
 	}, nil
 }
 
-func (h *Handler) Logout(ctx context.Context, _ *pb.Empty) (*pb.Empty, error) {
+func (h *Handler) Logout(ctx context.Context, _ *pb.EmptySSO) (*pb.EmptySSO, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.Logout.handler"
 
@@ -151,10 +202,10 @@ func (h *Handler) Logout(ctx context.Context, _ *pb.Empty) (*pb.Empty, error) {
 		return nil, status.Errorf(c, ctrl.ErrParseUUID.Error())
 	}
 
-	return &pb.Empty{}, nil
+	return &pb.EmptySSO{}, nil
 }
 
-func (h *Handler) SendForgotPasswordEmail(ctx context.Context, req *pb.EmailMsg) (*pb.Empty, error) {
+func (h *Handler) SendForgotPasswordEmail(ctx context.Context, req *pb.EmailMsg) (*pb.EmptySSO, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.SendForgotPasswordEmail.handler"
 	span := opentracing.GlobalTracer().StartSpan(op)
@@ -181,10 +232,10 @@ func (h *Handler) SendForgotPasswordEmail(ctx context.Context, req *pb.EmailMsg)
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.Empty{}, nil
+	return &pb.EmptySSO{}, nil
 }
 
-func (h *Handler) CheckForgotPasswordEmail(ctx context.Context, req *pb.CheckForgotPasswordEmailReq) (*pb.Empty, error) {
+func (h *Handler) CheckForgotPasswordEmail(ctx context.Context, req *pb.CheckForgotPasswordEmailReq) (*pb.EmptySSO, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.CheckForgotPasswordEmail.handler"
 	span := opentracing.GlobalTracer().StartSpan(op)
@@ -228,10 +279,10 @@ func (h *Handler) CheckForgotPasswordEmail(ctx context.Context, req *pb.CheckFor
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.Empty{}, nil
+	return &pb.EmptySSO{}, nil
 }
 
-func (h *Handler) SendSupportEmail(ctx context.Context, req *pb.SendSupportEmailReq) (*pb.Empty, error) {
+func (h *Handler) SendSupportEmail(ctx context.Context, req *pb.SendSupportEmailReq) (*pb.EmptySSO, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.SendSupportEmail.handler"
 
@@ -273,10 +324,10 @@ func (h *Handler) SendSupportEmail(ctx context.Context, req *pb.SendSupportEmail
 		return nil, status.Errorf(c, "failed to send email")
 	}
 
-	return &pb.Empty{}, nil
+	return &pb.EmptySSO{}, nil
 }
 
-func (h *Handler) Me(ctx context.Context, _ *pb.Empty) (*pb.User, error) {
+func (h *Handler) Me(ctx context.Context, _ *pb.EmptySSO) (*pb.User, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.Me.handler"
 

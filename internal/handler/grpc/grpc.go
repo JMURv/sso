@@ -7,7 +7,6 @@ import (
 	ctrl "github.com/JMURv/sso/internal/controller"
 	metrics "github.com/JMURv/sso/internal/metrics/prometheus"
 	md "github.com/JMURv/sso/pkg/model"
-	utils "github.com/JMURv/sso/pkg/utils/http"
 	"github.com/google/uuid"
 	pm "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"go.uber.org/zap"
@@ -19,29 +18,39 @@ import (
 )
 
 type Ctrl interface {
+	ValidateToken(ctx context.Context, token string) bool
+	GetUserByToken(ctx context.Context, token string) (*md.User, error)
+	SendSupportEmail(ctx context.Context, uid uuid.UUID, theme, text string) error
+	CheckForgotPasswordEmail(ctx context.Context, password string, uid uuid.UUID, code int) error
+	SendForgotPasswordEmail(ctx context.Context, email string) error
+	SendLoginCode(ctx context.Context, email, password string) error
+	CheckLoginCode(ctx context.Context, email string, code int) (string, string, error)
+
 	IsUserExist(ctx context.Context, email string) (isExist bool, err error)
-	UserSearch(ctx context.Context, query string, page int, size int) (*utils.PaginatedData, error)
-	ListUsers(ctx context.Context, page int, size int) (*utils.PaginatedData, error)
+	SearchUser(ctx context.Context, query string, page, size int) (*md.PaginatedUser, error)
+	ListUsers(ctx context.Context, page, size int) (*md.PaginatedUser, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
 	CreateUser(ctx context.Context, u *md.User, fileName string, bytes []byte) (uuid.UUID, string, string, error)
 	UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
-	SendSupportEmail(ctx context.Context, uid uuid.UUID, theme string, text string) error
-	CheckForgotPasswordEmail(ctx context.Context, password string, uid uuid.UUID, code int) error
-	SendForgotPasswordEmail(ctx context.Context, email string) error
-	SendLoginCode(ctx context.Context, email string, password string) error
-	CheckLoginCode(ctx context.Context, email string, code int) (string, string, error)
+
+	ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error)
+	GetPermission(ctx context.Context, id uint64) (*md.Permission, error)
+	CreatePerm(ctx context.Context, req *md.Permission) (uint64, error)
+	UpdatePerm(ctx context.Context, id uint64, req *md.Permission) error
+	DeletePerm(ctx context.Context, id uint64) error
 }
 
 type Handler struct {
 	pb.SSOServer
 	pb.UsersServer
+	pb.PermissionSvcServer
 	srv  *grpc.Server
 	ctrl Ctrl
 }
 
-func New(auth ctrl.Auth, ctrl Ctrl) *Handler {
+func New(auth ctrl.AuthService, ctrl Ctrl) *Handler {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			AuthUnaryInterceptor(auth),
@@ -62,6 +71,7 @@ func New(auth ctrl.Auth, ctrl Ctrl) *Handler {
 func (h *Handler) Start(port int) {
 	pb.RegisterSSOServer(h.srv, h)
 	pb.RegisterUsersServer(h.srv, h)
+	pb.RegisterPermissionSvcServer(h.srv, h)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
 	if err != nil {
@@ -76,7 +86,7 @@ func (h *Handler) Close() error {
 	return nil
 }
 
-func AuthUnaryInterceptor(auth ctrl.Auth) grpc.UnaryServerInterceptor {
+func AuthUnaryInterceptor(auth ctrl.AuthService) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {

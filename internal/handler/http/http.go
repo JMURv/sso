@@ -7,7 +7,6 @@ import (
 	"github.com/JMURv/sso/internal/auth"
 	controller "github.com/JMURv/sso/internal/controller"
 	utils "github.com/JMURv/sso/pkg/utils/http"
-	"github.com/gorilla/mux"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"net/http"
@@ -29,16 +28,19 @@ func New(auth *auth.Auth, ctrl *controller.Controller) *Handler {
 }
 
 func (h *Handler) Start(port int) {
-	r := mux.NewRouter()
-	r.Use(h.tracingMiddleware)
-
-	r.HandleFunc("/api/health-check", h.healthCheck).Methods(http.MethodGet)
-
-	RegisterAuthRoutes(r, h)
-	RegisterUserRoutes(r, h)
+	mux := http.NewServeMux()
+	//r.Use(h.tracingMiddleware)
+	RegisterAuthRoutes(mux, h)
+	RegisterUserRoutes(mux, h)
+	RegisterPermRoutes(mux, h)
+	mux.HandleFunc(
+		"/api/health-check", func(w http.ResponseWriter, r *http.Request) {
+			utils.SuccessResponse(w, http.StatusOK, "OK")
+		},
+	)
 
 	h.srv = &http.Server{
-		Handler:      r,
+		Handler:      mux,
 		Addr:         fmt.Sprintf(":%v", port),
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
@@ -69,42 +71,42 @@ func middlewareFunc(h http.HandlerFunc, middleware ...func(http.Handler) http.Ha
 }
 
 func (h *Handler) authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			utils.ErrResponse(w, http.StatusUnauthorized, errors.New("authorization header is missing"))
-			return
-		}
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				utils.ErrResponse(w, http.StatusUnauthorized, errors.New("authorization header is missing"))
+				return
+			}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenStr == authHeader {
-			utils.ErrResponse(w, http.StatusUnauthorized, errors.New("invalid token format"))
-			return
-		}
+			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+			if tokenStr == authHeader {
+				utils.ErrResponse(w, http.StatusUnauthorized, errors.New("invalid token format"))
+				return
+			}
 
-		claims, err := h.auth.VerifyToken(tokenStr)
-		if err != nil {
-			utils.ErrResponse(w, http.StatusUnauthorized, err)
-			return
-		}
+			claims, err := h.auth.VerifyToken(tokenStr)
+			if err != nil {
+				utils.ErrResponse(w, http.StatusUnauthorized, err)
+				return
+			}
 
-		ctx := context.WithValue(r.Context(), "uid", claims["uid"])
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+			ctx := context.WithValue(r.Context(), "uid", claims["uid"])
+			next.ServeHTTP(w, r.WithContext(ctx))
+		},
+	)
 }
 
 func (h *Handler) tracingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		span := opentracing.GlobalTracer().StartSpan(
-			fmt.Sprintf("%s %s", r.Method, r.URL),
-		)
-		defer span.Finish()
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			span := opentracing.GlobalTracer().StartSpan(
+				fmt.Sprintf("%s %s", r.Method, r.URL),
+			)
+			defer span.Finish()
 
-		zap.L().Info("Request", zap.String("method", r.Method), zap.String("uri", r.RequestURI))
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
-	utils.SuccessResponse(w, http.StatusOK, "OK")
+			zap.L().Info("Request", zap.String("method", r.Method), zap.String("uri", r.RequestURI))
+			next.ServeHTTP(w, r)
+		},
+	)
 }

@@ -135,7 +135,7 @@ func (h *Handler) UpdatePermission(ctx context.Context, req *pb.Permission) (*pb
 		return nil, status.Errorf(c, ctrl.ErrUnauthorized.Error())
 	}
 
-	if req == nil || req.Id == 0 || req.Name == "" {
+	if req == nil || req.Id == 0 {
 		c = codes.InvalidArgument
 		zap.L().Debug("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())

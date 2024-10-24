@@ -28,7 +28,7 @@ func (h *Handler) GetUserByToken(ctx context.Context, req *pb.StringSSOMsg) (*pb
 		metrics.ObserveRequest(time.Since(s), int(c), op)
 	}()
 
-	token := req.GetString_()
+	token := req.String_
 	if req == nil || token == "" {
 		c = codes.InvalidArgument
 		zap.L().Debug("failed to decode request", zap.String("op", op))

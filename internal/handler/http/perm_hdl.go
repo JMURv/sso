@@ -19,7 +19,7 @@ import (
 
 func RegisterPermRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc(
-		"/api/perms", func(w http.ResponseWriter, r *http.Request) {
+		"/api/perm", func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				h.listPerms(w, r)
@@ -32,7 +32,7 @@ func RegisterPermRoutes(mux *http.ServeMux, h *Handler) {
 	)
 
 	mux.HandleFunc(
-		"/api/perms/", func(w http.ResponseWriter, r *http.Request) {
+		"/api/perm/", func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				h.getPerm(w, r)
@@ -55,19 +55,19 @@ func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
-	if err != nil {
+	if err != nil || page < 1 {
 		page = 1
 	}
 
 	size, err := strconv.Atoi(r.URL.Query().Get("size"))
-	if err != nil {
+	if err != nil || size < 1 {
 		size = consts.DefaultPageSize
 	}
 
 	res, err := h.ctrl.ListPermissions(r.Context(), page, size)
 	if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *Handler) createPerm(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -120,14 +120,14 @@ func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perms/"), 10, 64)
+	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
 	if err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
 			"failed to parse id",
 			zap.String("op", op),
 		)
-		utils.ErrResponse(w, c, controller.ErrParseUUID)
+		utils.ErrResponse(w, c, handler.ErrRetrievePathVars)
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -152,14 +152,14 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perms/"), 10, 64)
+	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
 	if err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
 			"failed to parse id",
 			zap.String("op", op),
 		)
-		utils.ErrResponse(w, c, controller.ErrParseUUID)
+		utils.ErrResponse(w, c, handler.ErrRetrievePathVars)
 		return
 	}
 
@@ -191,7 +191,7 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -205,14 +205,14 @@ func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perms/"), 10, 64)
+	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
 	if err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
 			"failed to parse id",
 			zap.String("op", op),
 		)
-		utils.ErrResponse(w, c, controller.ErrParseUUID)
+		utils.ErrResponse(w, c, handler.ErrRetrievePathVars)
 		return
 	}
 
@@ -223,7 +223,7 @@ func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 

@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	pb "github.com/JMURv/sso/api/pb"
 	ctrl "github.com/JMURv/sso/internal/controller"
@@ -11,6 +12,8 @@ import (
 	pm "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"log"
@@ -47,6 +50,7 @@ type Handler struct {
 	pb.UsersServer
 	pb.PermissionSvcServer
 	srv  *grpc.Server
+	hsrv *health.Server
 	ctrl Ctrl
 }
 
@@ -61,10 +65,14 @@ func New(auth ctrl.AuthService, ctrl Ctrl) *Handler {
 		),
 	)
 
+	hsrv := health.NewServer()
+	hsrv.SetServingStatus("sso", grpc_health_v1.HealthCheckResponse_SERVING)
+
 	reflection.Register(srv)
 	return &Handler{
 		ctrl: ctrl,
 		srv:  srv,
+		hsrv: hsrv,
 	}
 }
 
@@ -72,13 +80,16 @@ func (h *Handler) Start(port int) {
 	pb.RegisterSSOServer(h.srv, h)
 	pb.RegisterUsersServer(h.srv, h)
 	pb.RegisterPermissionSvcServer(h.srv, h)
+	grpc_health_v1.RegisterHealthServer(h.srv, h.hsrv)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	log.Fatal(h.srv.Serve(lis))
+	if err := h.srv.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+		log.Fatal(err)
+	}
 }
 
 func (h *Handler) Close() error {

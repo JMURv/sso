@@ -13,11 +13,13 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"net/http"
-	"strconv"
 	"time"
 )
 
 func RegisterAuthRoutes(mux *http.ServeMux, h *Handler) {
+	mux.HandleFunc("/api/sso/validate-token", h.validateToken)
+	mux.HandleFunc("/api/sso/get-user-by-token", h.getUserByToken)
+
 	mux.HandleFunc(
 		"/api/sso/recovery", func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -51,6 +53,98 @@ func RegisterAuthRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("/api/sso/support", middlewareFunc(h.sendSupportEmail, h.authMiddleware))
 }
 
+type TokenReq struct {
+	Token string `json:"token"`
+}
+
+func (h *Handler) validateToken(w http.ResponseWriter, r *http.Request) {
+	s, c := time.Now(), http.StatusOK
+	const op = "sso.validateToken.hdl"
+
+	defer func() {
+		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
+	}()
+
+	if r.Method != http.MethodPost {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
+
+	req := &TokenReq{}
+	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
+		return
+	}
+
+	if req.Token == "" {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
+		return
+	}
+
+	utils.SuccessResponse(w, c, h.ctrl.ValidateToken(r.Context(), req.Token))
+
+}
+
+func (h *Handler) getUserByToken(w http.ResponseWriter, r *http.Request) {
+	s, c := time.Now(), http.StatusOK
+	const op = "sso.getUserByToken.hdl"
+
+	defer func() {
+		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
+	}()
+
+	if r.Method != http.MethodPost {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
+
+	req := &TokenReq{}
+	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
+		return
+	}
+
+	if req.Token == "" {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
+		return
+	}
+
+	res, err := h.ctrl.GetUserByToken(r.Context(), req.Token)
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
+		c = http.StatusInternalServerError
+		utils.ErrResponse(w, c, controller.ErrInternalError)
+		return
+	}
+
+	utils.SuccessResponse(w, c, res)
+}
+
 type sendSupportEmailRequest struct {
 	Theme string `json:"theme"`
 	Text  string `json:"text"`
@@ -59,8 +153,17 @@ type sendSupportEmailRequest struct {
 func (h *Handler) sendSupportEmail(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
 	const op = "sso.sendSupportEmail.handler"
+
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	if r.Method != http.MethodPost {
@@ -98,7 +201,7 @@ func (h *Handler) sendSupportEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -106,17 +209,32 @@ func (h *Handler) sendSupportEmail(w http.ResponseWriter, r *http.Request) {
 }
 
 type checkForgotPasswordEmailRequest struct {
-	Password string `json:"password"`
-	Uidb64   string `json:"uidb64"`
-	Token    string `json:"token"`
+	Password string    `json:"password"`
+	Uidb64   uuid.UUID `json:"uidb64"`
+	Token    int       `json:"token"`
 }
 
 func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
 	const op = "sso.checkForgotPasswordEmail.handler"
+
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
+	}()
+
+	if r.Method != http.MethodPut {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
 
 	req := &checkForgotPasswordEmailRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
@@ -129,38 +247,14 @@ func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	uidb64, err := uuid.Parse(req.Uidb64)
-	if err != nil {
-		zap.L().Debug(
-			"failed to parse uidb64",
-			zap.String("op", op), zap.Error(err),
-			zap.String("uidb64", req.Uidb64),
-		)
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, controller.ErrParseUUID)
-		return
-	}
-
-	intToken, err := strconv.Atoi(req.Token)
-	if err != nil {
-		zap.L().Debug(
-			"failed to parse token",
-			zap.String("op", op), zap.Error(err),
-			zap.String("token", req.Token),
-		)
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
-		return
-	}
-
-	err = h.ctrl.CheckForgotPasswordEmail(r.Context(), req.Password, uidb64, intToken)
+	err := h.ctrl.CheckForgotPasswordEmail(r.Context(), req.Password, req.Uidb64, req.Token)
 	if err != nil && errors.Is(err, controller.ErrNotFound) {
 		c = http.StatusNotFound
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -170,9 +264,24 @@ func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Reques
 func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
 	const op = "sso.sendForgotPasswordEmail.handler"
+
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
+	}()
+
+	if r.Method != http.MethodPost {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
 
 	req := &model.User{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
@@ -192,7 +301,7 @@ func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -202,8 +311,17 @@ func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request
 func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
 	const op = "sso.updateMe.handler"
+
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	if r.Method != http.MethodPut {
@@ -212,7 +330,18 @@ func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uid, err := uuid.Parse(r.Context().Value("uid").(string))
+	str, ok := r.Context().Value("uid").(string)
+	if !ok {
+		zap.L().Debug(
+			"failed to get uid from context",
+			zap.String("op", op),
+		)
+		c = http.StatusUnauthorized
+		utils.ErrResponse(w, c, controller.ErrUnauthorized)
+		return
+	}
+
+	uid, err := uuid.Parse(str)
 	if err != nil {
 		zap.L().Debug(
 			"failed to parse uid",
@@ -248,7 +377,7 @@ func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -258,8 +387,17 @@ func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) checkEmail(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
 	const op = "sso.checkEmail.handler"
+
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	if r.Method != http.MethodPost {
@@ -286,13 +424,17 @@ func (h *Handler) checkEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isExist, err := h.ctrl.IsUserExist(r.Context(), u.Email)
-	if err != nil {
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
 		c = http.StatusInternalServerError
 		utils.ErrResponse(w, c, err)
 		return
 	}
 
-	utils.SuccessResponse(
+	utils.SuccessPaginatedResponse(
 		w, c, struct {
 			IsExist bool `json:"is_exist"`
 		}{
@@ -309,8 +451,17 @@ type loginCodeRequest struct {
 func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
 	const op = "sso.sendLoginCode.handler"
+
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	if r.Method != http.MethodPost {
@@ -345,7 +496,7 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.ctrl.SendLoginCode(r.Context(), email, pass)
-	if err != nil && err == controller.ErrInvalidCredentials {
+	if err != nil && errors.Is(err, controller.ErrInvalidCredentials) {
 		c = http.StatusNotFound
 		utils.ErrResponse(w, c, err)
 		return
@@ -360,14 +511,23 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 
 type checkLoginCodeRequest struct {
 	Email string `json:"email"`
-	Code  string `json:"code"`
+	Code  int    `json:"code"`
 }
 
 func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
 	const op = "sso.checkLoginCode.handler"
+
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	if r.Method != http.MethodPost {
@@ -388,7 +548,7 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email, code := data.Email, data.Code
-	if email == "" || code == "" {
+	if email == "" || code == 0 {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, handler.ErrEmailAndCodeRequired)
 		return
@@ -400,21 +560,14 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	loginCode, err := strconv.Atoi(code)
-	if err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
-		return
-	}
-
-	access, refresh, err := h.ctrl.CheckLoginCode(r.Context(), email, loginCode)
+	access, refresh, err := h.ctrl.CheckLoginCode(r.Context(), email, code)
 	if err != nil && errors.Is(err, controller.ErrNotFound) {
 		c = http.StatusNotFound
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -448,8 +601,17 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
 	const op = "sso.me.handler"
+
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	if r.Method != http.MethodGet {
@@ -458,10 +620,17 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uid, err := uuid.Parse(r.Context().Value("uid").(string))
+	str, ok := r.Context().Value("uid").(string)
+	if !ok {
+		c = http.StatusUnauthorized
+		utils.ErrResponse(w, c, controller.ErrParseUUID)
+		return
+	}
+
+	uid, err := uuid.Parse(str)
 	if err != nil {
 		c = http.StatusUnauthorized
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrParseUUID)
 		return
 	}
 
@@ -472,7 +641,7 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 

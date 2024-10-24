@@ -7,6 +7,7 @@ import (
 	ctrl "github.com/JMURv/sso/internal/controller"
 	"github.com/JMURv/sso/mocks"
 	md "github.com/JMURv/sso/pkg/model"
+	utils "github.com/JMURv/sso/pkg/utils/grpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -15,594 +16,796 @@ import (
 	"testing"
 )
 
-func TestSendLoginCode(t *testing.T) {
-	ctrlMock := gomock.NewController(t)
-	defer ctrlMock.Finish()
+func TestHandler_GetUserByToken(t *testing.T) {
+	mock := gomock.NewController(t)
+	defer mock.Finish()
 
-	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
-	h := New(auth, mockCtrl)
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
+
+	ctx := context.Background()
+	expRes := &md.User{}
+
+	t.Run(
+		"Invalid request", func(t *testing.T) {
+			invalidReq := &pb.StringSSOMsg{String_: ""}
+			res, err := h.GetUserByToken(ctx, invalidReq)
+
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
+
+	t.Run(
+		"Success", func(t *testing.T) {
+			mctrl.EXPECT().GetUserByToken(gomock.Any(), "test").Return(expRes, nil).Times(1)
+			res, err := h.GetUserByToken(ctx, &pb.StringSSOMsg{String_: "test"})
+
+			assert.Equal(t, utils.ModelToProto(expRes), res)
+			assert.Equal(t, codes.OK, status.Code(err))
+		},
+	)
+
+	t.Run(
+		"Not Found", func(t *testing.T) {
+			mctrl.EXPECT().GetUserByToken(gomock.Any(), "test").Return(nil, ctrl.ErrNotFound).Times(1)
+			_, err := h.GetUserByToken(ctx, &pb.StringSSOMsg{String_: "test"})
+
+			assert.Equal(t, codes.NotFound, status.Code(err))
+		},
+	)
+
+	t.Run(
+		"Internal Error", func(t *testing.T) {
+			newErr := errors.New("internal error")
+			mctrl.EXPECT().GetUserByToken(gomock.Any(), "test").Return(nil, newErr).Times(1)
+			_, err := h.GetUserByToken(ctx, &pb.StringSSOMsg{String_: "test"})
+
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
+}
+
+func TestHandler_ValidateToken(t *testing.T) {
+	mock := gomock.NewController(t)
+	defer mock.Finish()
+
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
+
+	ctx := context.Background()
+	expSuccess := &pb.BoolSSOMsg{Bool: true}
+
+	t.Run(
+		"Invalid request", func(t *testing.T) {
+			invalidReq := &pb.StringSSOMsg{String_: ""}
+			res, err := h.ValidateToken(ctx, invalidReq)
+
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
+
+	t.Run(
+		"Success", func(t *testing.T) {
+			mctrl.EXPECT().ValidateToken(gomock.Any(), "test").Return(true).Times(1)
+			res, err := h.ValidateToken(ctx, &pb.StringSSOMsg{String_: "test"})
+
+			assert.Equal(t, expSuccess, res)
+			assert.Equal(t, codes.OK, status.Code(err))
+		},
+	)
+}
+
+func TestSendLoginCode(t *testing.T) {
+	mock := gomock.NewController(t)
+	defer mock.Finish()
+
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
 
 	ctx := context.Background()
 
-	// Case 1: Request is nil or missing fields
-	t.Run("Invalid request", func(t *testing.T) {
-		invalidReq := &pb.SendLoginCodeReq{Email: "", Password: ""}
-		res, err := h.SendLoginCode(ctx, invalidReq)
+	t.Run(
+		"Invalid request", func(t *testing.T) {
+			invalidReq := &pb.SendLoginCodeReq{Email: "", Password: ""}
+			res, err := h.SendLoginCode(ctx, invalidReq)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
-	// Case 2: Invalid email format
-	t.Run("Invalid email", func(t *testing.T) {
-		invalidReq := &pb.SendLoginCodeReq{Email: "invalid-email", Password: "test123"}
-		res, err := h.SendLoginCode(ctx, invalidReq)
+	t.Run(
+		"Invalid email", func(t *testing.T) {
+			invalidReq := &pb.SendLoginCodeReq{Email: "invalid-email", Password: "test123"}
+			res, err := h.SendLoginCode(ctx, invalidReq)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
-	// Case 3: Invalid credentials (Ctrl returns ErrInvalidCredentials)
-	t.Run("Invalid credentials", func(t *testing.T) {
-		req := &pb.SendLoginCodeReq{Email: "test@example.com", Password: "wrong-pass"}
-		mockCtrl.EXPECT().SendLoginCode(gomock.Any(), req.Email, req.Password).Return(ctrl.ErrInvalidCredentials)
+	t.Run(
+		"Invalid credentials", func(t *testing.T) {
+			req := &pb.SendLoginCodeReq{Email: "test@example.com", Password: "wrong-pass"}
+			mctrl.EXPECT().SendLoginCode(gomock.Any(), req.Email, req.Password).Return(ctrl.ErrInvalidCredentials)
 
-		res, err := h.SendLoginCode(ctx, req)
+			res, err := h.SendLoginCode(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
-	// Case 4: Internal error from controller
-	t.Run("Internal error", func(t *testing.T) {
-		req := &pb.SendLoginCodeReq{Email: "test@example.com", Password: "test123"}
-		mockCtrl.EXPECT().SendLoginCode(gomock.Any(), req.Email, req.Password).Return(errors.New("internal error"))
+	t.Run(
+		"Internal error", func(t *testing.T) {
+			req := &pb.SendLoginCodeReq{Email: "test@example.com", Password: "test123"}
+			mctrl.EXPECT().SendLoginCode(gomock.Any(), req.Email, req.Password).Return(errors.New("internal error"))
 
-		res, err := h.SendLoginCode(ctx, req)
+			res, err := h.SendLoginCode(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Internal, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
 
-	// Case 5: Success case
-	t.Run("Success", func(t *testing.T) {
-		req := &pb.SendLoginCodeReq{Email: "test@example.com", Password: "test123"}
-		mockCtrl.EXPECT().SendLoginCode(gomock.Any(), req.Email, req.Password).Return(nil)
+	t.Run(
+		"Success", func(t *testing.T) {
+			req := &pb.SendLoginCodeReq{Email: "test@example.com", Password: "test123"}
+			mctrl.EXPECT().SendLoginCode(gomock.Any(), req.Email, req.Password).Return(nil)
 
-		res, err := h.SendLoginCode(ctx, req)
+			res, err := h.SendLoginCode(ctx, req)
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-	})
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+		},
+	)
 }
 
 func TestCheckLoginCode(t *testing.T) {
-	ctrlMock := gomock.NewController(t)
-	defer ctrlMock.Finish()
+	mock := gomock.NewController(t)
+	defer mock.Finish()
 
-	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
-	h := New(auth, mockCtrl)
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
 
 	ctx := context.Background()
 
 	// Case 1: Invalid request (missing email or code)
-	t.Run("Invalid request", func(t *testing.T) {
-		invalidReq := &pb.CheckLoginCodeReq{Email: "", Code: 0}
-		res, err := h.CheckLoginCode(ctx, invalidReq)
+	t.Run(
+		"Invalid request", func(t *testing.T) {
+			invalidReq := &pb.CheckLoginCodeReq{Email: "", Code: 0}
+			res, err := h.CheckLoginCode(ctx, invalidReq)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
 	// Case 2: Invalid email format
-	t.Run("Invalid email", func(t *testing.T) {
-		invalidReq := &pb.CheckLoginCodeReq{Email: "invalid-email", Code: 1234}
-		res, err := h.CheckLoginCode(ctx, invalidReq)
+	t.Run(
+		"Invalid email", func(t *testing.T) {
+			invalidReq := &pb.CheckLoginCodeReq{Email: "invalid-email", Code: 1234}
+			res, err := h.CheckLoginCode(ctx, invalidReq)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
 	// Case 3: User not found (Ctrl returns ErrNotFound)
-	t.Run("User not found", func(t *testing.T) {
-		req := &pb.CheckLoginCodeReq{Email: "test@example.com", Code: 1234}
-		mockCtrl.EXPECT().CheckLoginCode(gomock.Any(), req.Email, int(req.Code)).Return("", "", ctrl.ErrNotFound)
+	t.Run(
+		"User not found", func(t *testing.T) {
+			req := &pb.CheckLoginCodeReq{Email: "test@example.com", Code: 1234}
+			mctrl.EXPECT().CheckLoginCode(gomock.Any(), req.Email, int(req.Code)).Return("", "", ctrl.ErrNotFound)
 
-		res, err := h.CheckLoginCode(ctx, req)
+			res, err := h.CheckLoginCode(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.NotFound, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.NotFound, status.Code(err))
+		},
+	)
 
 	// Case 4: Internal error from controller
-	t.Run("Internal error", func(t *testing.T) {
-		req := &pb.CheckLoginCodeReq{Email: "test@example.com", Code: 1234}
-		mockCtrl.EXPECT().CheckLoginCode(gomock.Any(), req.Email, int(req.Code)).Return("", "", errors.New("internal error"))
+	t.Run(
+		"Internal error", func(t *testing.T) {
+			req := &pb.CheckLoginCodeReq{Email: "test@example.com", Code: 1234}
+			mctrl.EXPECT().CheckLoginCode(gomock.Any(), req.Email, int(req.Code)).Return(
+				"",
+				"",
+				errors.New("internal error"),
+			)
 
-		res, err := h.CheckLoginCode(ctx, req)
+			res, err := h.CheckLoginCode(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Internal, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
 
 	// Case 5: Success case
-	t.Run("Success", func(t *testing.T) {
-		req := &pb.CheckLoginCodeReq{Email: "test@example.com", Code: 1234}
-		accessToken := "access-token"
-		refreshToken := "refresh-token"
-		mockCtrl.EXPECT().CheckLoginCode(gomock.Any(), req.Email, int(req.Code)).Return(accessToken, refreshToken, nil)
+	t.Run(
+		"Success", func(t *testing.T) {
+			req := &pb.CheckLoginCodeReq{Email: "test@example.com", Code: 1234}
+			accessToken := "access-token"
+			refreshToken := "refresh-token"
+			mctrl.EXPECT().CheckLoginCode(gomock.Any(), req.Email, int(req.Code)).Return(
+				accessToken,
+				refreshToken,
+				nil,
+			)
 
-		res, err := h.CheckLoginCode(ctx, req)
+			res, err := h.CheckLoginCode(ctx, req)
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-		assert.Equal(t, accessToken, res.Access)
-		assert.Equal(t, refreshToken, res.Refresh)
-	})
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+			assert.Equal(t, accessToken, res.Access)
+			assert.Equal(t, refreshToken, res.Refresh)
+		},
+	)
 }
 
 func TestCheckEmail(t *testing.T) {
-	ctrlMock := gomock.NewController(t)
-	defer ctrlMock.Finish()
+	mock := gomock.NewController(t)
+	defer mock.Finish()
 
-	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
-	h := New(auth, mockCtrl)
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
 
 	ctx := context.Background()
 
 	// Case 1: Invalid request (missing email)
-	t.Run("Invalid request", func(t *testing.T) {
-		req := &pb.EmailMsg{Email: ""}
-		res, err := h.CheckEmail(ctx, req)
+	t.Run(
+		"Invalid request", func(t *testing.T) {
+			req := &pb.EmailMsg{Email: ""}
+			res, err := h.CheckEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
 	// Case 2: User not found
-	t.Run("User not found", func(t *testing.T) {
-		req := &pb.EmailMsg{Email: "test@example.com"}
-		mockCtrl.EXPECT().IsUserExist(gomock.Any(), req.Email).Return(false, ctrl.ErrNotFound)
+	t.Run(
+		"User not found", func(t *testing.T) {
+			req := &pb.EmailMsg{Email: "test@example.com"}
+			mctrl.EXPECT().IsUserExist(gomock.Any(), req.Email).Return(false, ctrl.ErrNotFound)
 
-		res, err := h.CheckEmail(ctx, req)
+			res, err := h.CheckEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.NotFound, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.NotFound, status.Code(err))
+		},
+	)
 
 	// Case 3: Internal error from controller
-	t.Run("Internal error", func(t *testing.T) {
-		req := &pb.EmailMsg{Email: "test@example.com"}
-		mockCtrl.EXPECT().IsUserExist(gomock.Any(), req.Email).Return(false, errors.New("internal error"))
+	t.Run(
+		"Internal error", func(t *testing.T) {
+			req := &pb.EmailMsg{Email: "test@example.com"}
+			mctrl.EXPECT().IsUserExist(gomock.Any(), req.Email).Return(false, errors.New("internal error"))
 
-		res, err := h.CheckEmail(ctx, req)
+			res, err := h.CheckEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Internal, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
 
 	// Case 4: Success - email exists
-	t.Run("Success email exists", func(t *testing.T) {
-		req := &pb.EmailMsg{Email: "test@example.com"}
-		mockCtrl.EXPECT().IsUserExist(gomock.Any(), req.Email).Return(true, nil)
+	t.Run(
+		"Success email exists", func(t *testing.T) {
+			req := &pb.EmailMsg{Email: "test@example.com"}
+			mctrl.EXPECT().IsUserExist(gomock.Any(), req.Email).Return(true, nil)
 
-		res, err := h.CheckEmail(ctx, req)
+			res, err := h.CheckEmail(ctx, req)
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-		assert.Equal(t, true, res.IsExist)
-	})
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+			assert.Equal(t, true, res.IsExist)
+		},
+	)
 
 	// Case 5: Success - email does not exist
-	t.Run("Success email does not exist", func(t *testing.T) {
-		req := &pb.EmailMsg{Email: "nonexistent@example.com"}
-		mockCtrl.EXPECT().IsUserExist(gomock.Any(), req.Email).Return(false, nil)
+	t.Run(
+		"Success email does not exist", func(t *testing.T) {
+			req := &pb.EmailMsg{Email: "nonexistent@example.com"}
+			mctrl.EXPECT().IsUserExist(gomock.Any(), req.Email).Return(false, nil)
 
-		res, err := h.CheckEmail(ctx, req)
+			res, err := h.CheckEmail(ctx, req)
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-		assert.Equal(t, false, res.IsExist)
-	})
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+			assert.Equal(t, false, res.IsExist)
+		},
+	)
 }
 
 func TestLogout(t *testing.T) {
-	ctrlMock := gomock.NewController(t)
-	defer ctrlMock.Finish()
+	mock := gomock.NewController(t)
+	defer mock.Finish()
 
-	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
-	h := New(auth, mockCtrl)
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
 
 	// Case 1: Missing UID in context (Unauthenticated)
-	t.Run("Missing UID in context", func(t *testing.T) {
-		ctx := context.Background()
-		res, err := h.Logout(ctx, &pb.Empty{})
+	t.Run(
+		"Missing UID in context", func(t *testing.T) {
+			ctx := context.Background()
+			res, err := h.Logout(ctx, &pb.EmptySSO{})
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Unauthenticated, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		},
+	)
 
 	// Case 2: Invalid UUID in context
-	t.Run("Invalid UUID in context", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), "uid", "invalid-uuid")
-		res, err := h.Logout(ctx, &pb.Empty{})
+	t.Run(
+		"Invalid UUID in context", func(t *testing.T) {
+			ctx := context.WithValue(context.Background(), "uid", "invalid-uuid")
+			res, err := h.Logout(ctx, &pb.EmptySSO{})
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
 	// Case 3: Success case - valid UID
-	t.Run("Success", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), "uid", uuid.New().String())
+	t.Run(
+		"Success", func(t *testing.T) {
+			ctx := context.WithValue(context.Background(), "uid", uuid.New().String())
 
-		res, err := h.Logout(ctx, &pb.Empty{})
+			res, err := h.Logout(ctx, &pb.EmptySSO{})
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-	})
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+		},
+	)
 }
 
 func TestSendForgotPasswordEmail(t *testing.T) {
-	ctrlMock := gomock.NewController(t)
-	defer ctrlMock.Finish()
+	mock := gomock.NewController(t)
+	defer mock.Finish()
 
-	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
-	h := New(auth, mockCtrl)
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
 
 	ctx := context.Background()
 
 	// Case 1: Invalid request (missing email)
-	t.Run("Invalid request", func(t *testing.T) {
-		req := &pb.EmailMsg{Email: ""}
-		res, err := h.SendForgotPasswordEmail(ctx, req)
+	t.Run(
+		"Invalid request", func(t *testing.T) {
+			req := &pb.EmailMsg{Email: ""}
+			res, err := h.SendForgotPasswordEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
 	// Case 2: Invalid credentials
-	t.Run("Invalid credentials", func(t *testing.T) {
-		req := &pb.EmailMsg{Email: "test@example.com"}
-		mockCtrl.EXPECT().SendForgotPasswordEmail(gomock.Any(), req.Email).Return(ctrl.ErrInvalidCredentials)
+	t.Run(
+		"Invalid credentials", func(t *testing.T) {
+			req := &pb.EmailMsg{Email: "test@example.com"}
+			mctrl.EXPECT().SendForgotPasswordEmail(gomock.Any(), req.Email).Return(ctrl.ErrInvalidCredentials)
 
-		res, err := h.SendForgotPasswordEmail(ctx, req)
+			res, err := h.SendForgotPasswordEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
 	// Case 3: Internal error from controller
-	t.Run("Internal error", func(t *testing.T) {
-		req := &pb.EmailMsg{Email: "test@example.com"}
-		mockCtrl.EXPECT().SendForgotPasswordEmail(gomock.Any(), req.Email).Return(errors.New("internal error"))
+	t.Run(
+		"Internal error", func(t *testing.T) {
+			req := &pb.EmailMsg{Email: "test@example.com"}
+			mctrl.EXPECT().SendForgotPasswordEmail(gomock.Any(), req.Email).Return(errors.New("internal error"))
 
-		res, err := h.SendForgotPasswordEmail(ctx, req)
+			res, err := h.SendForgotPasswordEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Internal, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
 
 	// Case 4: Success - email sent
-	t.Run("Success", func(t *testing.T) {
-		req := &pb.EmailMsg{Email: "test@example.com"}
-		mockCtrl.EXPECT().SendForgotPasswordEmail(gomock.Any(), req.Email).Return(nil)
+	t.Run(
+		"Success", func(t *testing.T) {
+			req := &pb.EmailMsg{Email: "test@example.com"}
+			mctrl.EXPECT().SendForgotPasswordEmail(gomock.Any(), req.Email).Return(nil)
 
-		res, err := h.SendForgotPasswordEmail(ctx, req)
+			res, err := h.SendForgotPasswordEmail(ctx, req)
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-	})
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+		},
+	)
 }
 
 func TestCheckForgotPasswordEmail(t *testing.T) {
-	ctrlMock := gomock.NewController(t)
-	defer ctrlMock.Finish()
+	mock := gomock.NewController(t)
+	defer mock.Finish()
 
-	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
-	h := New(auth, mockCtrl)
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
 
 	ctx := context.Background()
 
 	// Case 1: Invalid request (missing password, uid, or token)
-	t.Run("Invalid request", func(t *testing.T) {
-		req := &pb.CheckForgotPasswordEmailReq{Password: "", Uidb64: "", Token: ""}
-		res, err := h.CheckForgotPasswordEmail(ctx, req)
+	t.Run(
+		"Invalid request", func(t *testing.T) {
+			req := &pb.CheckForgotPasswordEmailReq{Password: "", Uidb64: "", Token: ""}
+			res, err := h.CheckForgotPasswordEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
 	// Case 2: Invalid UID
-	t.Run("Invalid UID", func(t *testing.T) {
-		req := &pb.CheckForgotPasswordEmailReq{Password: "password", Uidb64: "invalid-uuid", Token: "123456"}
-		res, err := h.CheckForgotPasswordEmail(ctx, req)
+	t.Run(
+		"Invalid UID", func(t *testing.T) {
+			req := &pb.CheckForgotPasswordEmailReq{Password: "password", Uidb64: "invalid-uuid", Token: "123456"}
+			res, err := h.CheckForgotPasswordEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
 	// Case 3: Invalid token
-	t.Run("Invalid token", func(t *testing.T) {
-		req := &pb.CheckForgotPasswordEmailReq{Password: "password", Uidb64: uuid.New().String(), Token: "invalid-token"}
-		res, err := h.CheckForgotPasswordEmail(ctx, req)
+	t.Run(
+		"Invalid token", func(t *testing.T) {
+			req := &pb.CheckForgotPasswordEmailReq{
+				Password: "password",
+				Uidb64:   uuid.New().String(),
+				Token:    "invalid-token",
+			}
+			res, err := h.CheckForgotPasswordEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Internal, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
 
 	// Case 4: Invalid code error from controller
-	t.Run("Invalid code", func(t *testing.T) {
-		req := &pb.CheckForgotPasswordEmailReq{
-			Password: "password",
-			Uidb64:   uuid.New().String(),
-			Token:    "123456",
-		}
-		mockCtrl.EXPECT().CheckForgotPasswordEmail(gomock.Any(), req.Password, gomock.Any(), 123456).Return(ctrl.ErrCodeIsNotValid)
+	t.Run(
+		"Invalid code", func(t *testing.T) {
+			req := &pb.CheckForgotPasswordEmailReq{
+				Password: "password",
+				Uidb64:   uuid.New().String(),
+				Token:    "123456",
+			}
+			mctrl.EXPECT().CheckForgotPasswordEmail(
+				gomock.Any(),
+				req.Password,
+				gomock.Any(),
+				123456,
+			).Return(ctrl.ErrCodeIsNotValid)
 
-		res, err := h.CheckForgotPasswordEmail(ctx, req)
+			res, err := h.CheckForgotPasswordEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
 	// Case 5: User not found error from controller
-	t.Run("User not found", func(t *testing.T) {
-		req := &pb.CheckForgotPasswordEmailReq{
-			Password: "password",
-			Uidb64:   uuid.New().String(),
-			Token:    "123456",
-		}
-		mockCtrl.EXPECT().CheckForgotPasswordEmail(gomock.Any(), req.Password, gomock.Any(), 123456).Return(ctrl.ErrNotFound)
+	t.Run(
+		"User not found", func(t *testing.T) {
+			req := &pb.CheckForgotPasswordEmailReq{
+				Password: "password",
+				Uidb64:   uuid.New().String(),
+				Token:    "123456",
+			}
+			mctrl.EXPECT().CheckForgotPasswordEmail(
+				gomock.Any(),
+				req.Password,
+				gomock.Any(),
+				123456,
+			).Return(ctrl.ErrNotFound)
 
-		res, err := h.CheckForgotPasswordEmail(ctx, req)
+			res, err := h.CheckForgotPasswordEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.NotFound, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.NotFound, status.Code(err))
+		},
+	)
 
 	// Case 6: Internal error from controller
-	t.Run("Internal error", func(t *testing.T) {
-		req := &pb.CheckForgotPasswordEmailReq{
-			Password: "password",
-			Uidb64:   uuid.New().String(),
-			Token:    "123456",
-		}
-		mockCtrl.EXPECT().CheckForgotPasswordEmail(gomock.Any(), req.Password, gomock.Any(), 123456).Return(errors.New("internal error"))
+	t.Run(
+		"Internal error", func(t *testing.T) {
+			req := &pb.CheckForgotPasswordEmailReq{
+				Password: "password",
+				Uidb64:   uuid.New().String(),
+				Token:    "123456",
+			}
+			mctrl.EXPECT().CheckForgotPasswordEmail(
+				gomock.Any(),
+				req.Password,
+				gomock.Any(),
+				123456,
+			).Return(errors.New("internal error"))
 
-		res, err := h.CheckForgotPasswordEmail(ctx, req)
+			res, err := h.CheckForgotPasswordEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Internal, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
 
 	// Case 7: Success - password reset confirmed
-	t.Run("Success", func(t *testing.T) {
-		req := &pb.CheckForgotPasswordEmailReq{
-			Password: "password",
-			Uidb64:   uuid.New().String(),
-			Token:    "123456",
-		}
-		mockCtrl.EXPECT().CheckForgotPasswordEmail(gomock.Any(), req.Password, gomock.Any(), 123456).Return(nil)
+	t.Run(
+		"Success", func(t *testing.T) {
+			req := &pb.CheckForgotPasswordEmailReq{
+				Password: "password",
+				Uidb64:   uuid.New().String(),
+				Token:    "123456",
+			}
+			mctrl.EXPECT().CheckForgotPasswordEmail(gomock.Any(), req.Password, gomock.Any(), 123456).Return(nil)
 
-		res, err := h.CheckForgotPasswordEmail(ctx, req)
+			res, err := h.CheckForgotPasswordEmail(ctx, req)
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-	})
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+		},
+	)
 }
 
 func TestSendSupportEmail(t *testing.T) {
-	ctrlMock := gomock.NewController(t)
-	defer ctrlMock.Finish()
+	mock := gomock.NewController(t)
+	defer mock.Finish()
 
-	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
-	h := New(auth, mockCtrl)
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
 
 	ctx := context.Background()
 
-	// Adding a valid UID to the context
 	uid := uuid.New().String()
 	ctx = context.WithValue(ctx, "uid", uid)
 
-	// Case 1: Invalid request (missing theme or text)
-	t.Run("Invalid request", func(t *testing.T) {
-		req := &pb.SendSupportEmailReq{Theme: "", Text: ""}
-		res, err := h.SendSupportEmail(ctx, req)
+	t.Run(
+		"Invalid request", func(t *testing.T) {
+			req := &pb.SendSupportEmailReq{Theme: "", Text: ""}
+			res, err := h.SendSupportEmail(ctx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
-	// Case 2: Invalid UID
-	t.Run("Invalid UID", func(t *testing.T) {
-		invalidCtx := context.WithValue(ctx, "uid", "invalid-uuid")
-		req := &pb.SendSupportEmailReq{Theme: "Support Request", Text: "Need help with..."}
-		res, err := h.SendSupportEmail(invalidCtx, req)
+	t.Run(
+		"Unauthorized", func(t *testing.T) {
+			invalidCtx := context.Background()
+			req := &pb.SendSupportEmailReq{Theme: "", Text: ""}
+			res, err := h.SendSupportEmail(invalidCtx, req)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		},
+	)
 
-	// Case 3: User not found error from controller
-	t.Run("User not found", func(t *testing.T) {
-		req := &pb.SendSupportEmailReq{Theme: "Support Request", Text: "Need help with..."}
-		mockCtrl.EXPECT().SendSupportEmail(gomock.Any(), gomock.Any(), req.Theme, req.Text).Return(ctrl.ErrNotFound)
+	t.Run(
+		"Invalid ID", func(t *testing.T) {
+			invalidCtx := context.WithValue(ctx, "uid", "invalid-uuid")
+			req := &pb.SendSupportEmailReq{Theme: "Support Request", Text: "Need help with..."}
+			res, err := h.SendSupportEmail(invalidCtx, req)
 
-		res, err := h.SendSupportEmail(ctx, req)
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.NotFound, status.Code(err))
-	})
+	t.Run(
+		"Not found", func(t *testing.T) {
+			req := &pb.SendSupportEmailReq{Theme: "Support Request", Text: "Need help with..."}
+			mctrl.EXPECT().SendSupportEmail(gomock.Any(), gomock.Any(), req.Theme, req.Text).Return(ctrl.ErrNotFound)
 
-	// Case 4: Internal error from controller
-	t.Run("Internal error", func(t *testing.T) {
-		req := &pb.SendSupportEmailReq{Theme: "Support Request", Text: "Need help with..."}
-		mockCtrl.EXPECT().SendSupportEmail(gomock.Any(), gomock.Any(), req.Theme, req.Text).Return(errors.New("internal error"))
+			res, err := h.SendSupportEmail(ctx, req)
 
-		res, err := h.SendSupportEmail(ctx, req)
+			assert.Nil(t, res)
+			assert.Equal(t, codes.NotFound, status.Code(err))
+		},
+	)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Internal, status.Code(err))
-	})
+	t.Run(
+		"Internal Error", func(t *testing.T) {
+			req := &pb.SendSupportEmailReq{Theme: "Support Request", Text: "Need help with..."}
+			mctrl.EXPECT().SendSupportEmail(
+				gomock.Any(),
+				gomock.Any(),
+				req.Theme,
+				req.Text,
+			).Return(errors.New("internal error"))
 
-	// Case 5: Success - email sent
-	t.Run("Success", func(t *testing.T) {
-		req := &pb.SendSupportEmailReq{Theme: "Support Request", Text: "Need help with..."}
-		mockCtrl.EXPECT().SendSupportEmail(gomock.Any(), gomock.Any(), req.Theme, req.Text).Return(nil)
+			res, err := h.SendSupportEmail(ctx, req)
 
-		res, err := h.SendSupportEmail(ctx, req)
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-	})
+	t.Run(
+		"Success", func(t *testing.T) {
+			req := &pb.SendSupportEmailReq{Theme: "Support Request", Text: "Need help with..."}
+			mctrl.EXPECT().SendSupportEmail(gomock.Any(), gomock.Any(), req.Theme, req.Text).Return(nil)
+
+			res, err := h.SendSupportEmail(ctx, req)
+
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+		},
+	)
 }
+
 func TestMe(t *testing.T) {
-	ctrlMock := gomock.NewController(t)
-	defer ctrlMock.Finish()
+	mock := gomock.NewController(t)
+	defer mock.Finish()
 
-	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
-	h := New(auth, mockCtrl)
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
 
-	// Create a valid context with a UID
 	validUID := uuid.New().String()
 	ctx := context.WithValue(context.Background(), "uid", validUID)
 
-	// Case 1: Missing UID in context
-	t.Run("Missing UID", func(t *testing.T) {
-		ctxWithoutUID := context.Background()
-		res, err := h.Me(ctxWithoutUID, &pb.Empty{})
+	t.Run(
+		"Missing ID", func(t *testing.T) {
+			ctxWithoutUID := context.Background()
+			res, err := h.Me(ctxWithoutUID, &pb.EmptySSO{})
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Unauthenticated, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		},
+	)
 
-	// Case 2: Invalid UID
-	t.Run("Invalid UID", func(t *testing.T) {
-		invalidCtx := context.WithValue(context.Background(), "uid", "invalid-uuid")
-		res, err := h.Me(invalidCtx, &pb.Empty{})
+	t.Run(
+		"Invalid ID", func(t *testing.T) {
+			invalidCtx := context.WithValue(context.Background(), "uid", "invalid-uuid")
+			res, err := h.Me(invalidCtx, &pb.EmptySSO{})
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
-	// Case 3: User not found
-	t.Run("User not found", func(t *testing.T) {
-		mockCtrl.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Return(nil, ctrl.ErrNotFound)
+	t.Run(
+		"Not found", func(t *testing.T) {
+			mctrl.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Return(nil, ctrl.ErrNotFound)
 
-		res, err := h.Me(ctx, &pb.Empty{})
+			res, err := h.Me(ctx, &pb.EmptySSO{})
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.NotFound, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.NotFound, status.Code(err))
+		},
+	)
 
-	// Case 4: Internal error from controller
-	t.Run("Internal error", func(t *testing.T) {
-		mockCtrl.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Return(nil, errors.New("internal error"))
+	t.Run(
+		"Internal Error", func(t *testing.T) {
+			mctrl.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Return(nil, errors.New("internal error"))
 
-		res, err := h.Me(ctx, &pb.Empty{})
+			res, err := h.Me(ctx, &pb.EmptySSO{})
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Internal, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
 
-	// Case 5: Success - user retrieved
-	t.Run("Success", func(t *testing.T) {
-		expectedUser := &md.User{
-			ID:    uuid.New(),
-			Name:  "Test User",
-			Email: "test@example.com",
-		}
-		mockCtrl.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Return(expectedUser, nil)
+	t.Run(
+		"Success", func(t *testing.T) {
+			expectedUser := &md.User{
+				ID:    uuid.New(),
+				Name:  "Test User",
+				Email: "test@example.com",
+			}
+			mctrl.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Return(expectedUser, nil)
 
-		res, err := h.Me(ctx, &pb.Empty{})
+			res, err := h.Me(ctx, &pb.EmptySSO{})
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-		assert.Equal(t, expectedUser.ID.String(), res.Id)
-		assert.Equal(t, expectedUser.Name, res.Name)
-		assert.Equal(t, expectedUser.Email, res.Email)
-	})
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+			assert.Equal(t, expectedUser.ID.String(), res.Id)
+			assert.Equal(t, expectedUser.Name, res.Name)
+			assert.Equal(t, expectedUser.Email, res.Email)
+		},
+	)
 }
 
 func TestUpdateMe(t *testing.T) {
-	ctrlMock := gomock.NewController(t)
-	defer ctrlMock.Finish()
+	mock := gomock.NewController(t)
+	defer mock.Finish()
 
-	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
-	h := New(auth, mockCtrl)
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
 
 	validUID := uuid.New().String()
 	ctx := context.WithValue(context.Background(), "uid", validUID)
 
-	t.Run("Missing UID", func(t *testing.T) {
-		ctxWithoutUID := context.Background()
-		res, err := h.UpdateMe(ctxWithoutUID, &pb.User{})
+	t.Run(
+		"Missing UID", func(t *testing.T) {
+			ctxWithoutUID := context.Background()
+			res, err := h.UpdateMe(ctxWithoutUID, &pb.User{})
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Unauthenticated, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		},
+	)
 
-	t.Run("Invalid UID", func(t *testing.T) {
-		invalidCtx := context.WithValue(context.Background(), "uid", "invalid-uuid")
-		res, err := h.UpdateMe(invalidCtx, &pb.User{})
+	t.Run(
+		"Invalid UID", func(t *testing.T) {
+			invalidCtx := context.WithValue(context.Background(), "uid", "invalid-uuid")
+			res, err := h.UpdateMe(invalidCtx, &pb.User{})
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
-	t.Run("Nil Request", func(t *testing.T) {
-		res, err := h.UpdateMe(ctx, nil)
+	t.Run(
+		"Nil Request", func(t *testing.T) {
+			res, err := h.UpdateMe(ctx, nil)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
-	t.Run("Validation Error", func(t *testing.T) {
-		invalidUser := &pb.User{Name: "", Email: "invalid-email"}
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
+	t.Run(
+		"Validation Error", func(t *testing.T) {
+			invalidUser := &pb.User{Name: "", Email: "invalid-email"}
+			mctrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
-		res, err := h.UpdateMe(ctx, invalidUser)
+			res, err := h.UpdateMe(ctx, invalidUser)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.InvalidArgument, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		},
+	)
 
-	t.Run("User Not Found", func(t *testing.T) {
-		user := &pb.User{Name: "Test User", Email: "test@example.com"}
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(ctrl.ErrNotFound)
+	t.Run(
+		"Not Found", func(t *testing.T) {
+			user := &pb.User{Name: "Test User", Email: "test@example.com"}
+			mctrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(ctrl.ErrNotFound)
 
-		res, err := h.UpdateMe(ctx, user)
+			res, err := h.UpdateMe(ctx, user)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.NotFound, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.NotFound, status.Code(err))
+		},
+	)
 
-	t.Run("Internal Error", func(t *testing.T) {
-		user := &pb.User{Name: "Test User", Email: "test@example.com"}
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("internal error"))
+	t.Run(
+		"Internal Error", func(t *testing.T) {
+			user := &pb.User{Name: "Test User", Email: "test@example.com"}
+			mctrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("internal error"))
 
-		res, err := h.UpdateMe(ctx, user)
+			res, err := h.UpdateMe(ctx, user)
 
-		assert.Nil(t, res)
-		assert.Equal(t, codes.Internal, status.Code(err))
-	})
+			assert.Nil(t, res)
+			assert.Equal(t, codes.Internal, status.Code(err))
+		},
+	)
 
-	t.Run("Success", func(t *testing.T) {
-		user := &pb.User{Name: "Test User", Email: "test@example.com"}
-		mockCtrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	t.Run(
+		"Success", func(t *testing.T) {
+			user := &pb.User{Name: "Test User", Email: "test@example.com"}
+			mctrl.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-		res, err := h.UpdateMe(ctx, user)
+			res, err := h.UpdateMe(ctx, user)
 
-		assert.NotNil(t, res)
-		assert.Nil(t, err)
-	})
+			assert.NotNil(t, res)
+			assert.Nil(t, err)
+		},
+	)
 }

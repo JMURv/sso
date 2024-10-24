@@ -8,7 +8,6 @@ import (
 	"github.com/JMURv/sso/mocks"
 	md "github.com/JMURv/sso/pkg/model"
 	gutils "github.com/JMURv/sso/pkg/utils/grpc"
-	utils "github.com/JMURv/sso/pkg/utils/http"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -22,7 +21,7 @@ func TestUserSearch(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuthService(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -30,44 +29,41 @@ func TestUserSearch(t *testing.T) {
 	size := uint64(10)
 	query := "test"
 
-	expectedData := &utils.PaginatedUser{}
+	expectedData := &md.PaginatedUser{}
 
-	// Case 1: Invalid request (query, page, or size is empty/zero)
 	t.Run(
 		"Invalid request", func(t *testing.T) {
-			req := &pb.UserSearchReq{Query: "", Page: 0, Size: 0}
-			res, err := h.UserSearch(ctx, req)
+			req := &pb.SearchReq{Query: "", Page: 0, Size: 0}
+			res, err := h.SearchUser(ctx, req)
 
 			assert.Nil(t, res)
 			assert.Equal(t, codes.InvalidArgument, status.Code(err))
 		},
 	)
 
-	// Case 2: Controller returns user data successfully
 	t.Run(
 		"Success", func(t *testing.T) {
-			req := &pb.UserSearchReq{Query: query, Page: page, Size: size}
+			req := &pb.SearchReq{Query: query, Page: page, Size: size}
 
-			mockCtrl.EXPECT().UserSearch(gomock.Any(), query, int(page), int(size)).Return(expectedData, nil).Times(1)
+			mockCtrl.EXPECT().SearchUser(gomock.Any(), query, int(page), int(size)).Return(expectedData, nil).Times(1)
 
-			res, err := h.UserSearch(ctx, req)
+			res, err := h.SearchUser(ctx, req)
 			assert.Nil(t, err)
 			assert.NotNil(t, res)
 			assert.Equal(t, int64(expectedData.TotalPages), res.TotalPages)
 		},
 	)
 
-	// Case 3: Controller returns an internal error
 	t.Run(
 		"Controller error", func(t *testing.T) {
-			req := &pb.UserSearchReq{Query: query, Page: page, Size: size}
+			req := &pb.SearchReq{Query: query, Page: page, Size: size}
 
-			mockCtrl.EXPECT().UserSearch(gomock.Any(), query, int(page), int(size)).Return(
+			mockCtrl.EXPECT().SearchUser(gomock.Any(), query, int(page), int(size)).Return(
 				nil,
 				errors.New("internal error"),
 			).Times(1)
 
-			res, err := h.UserSearch(ctx, req)
+			res, err := h.SearchUser(ctx, req)
 			assert.Nil(t, res)
 			assert.Equal(t, codes.Internal, status.Code(err))
 		},
@@ -79,18 +75,17 @@ func TestListUsers(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuthService(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
 	page := uint64(1)
 	size := uint64(10)
-	expectedData := &utils.PaginatedUser{}
+	expectedData := &md.PaginatedUser{}
 
-	// Case 1: Invalid request (page or size = 0)
 	t.Run(
 		"Invalid request", func(t *testing.T) {
-			req := &pb.ListUsersReq{Page: 0, Size: 0}
+			req := &pb.ListReq{Page: 0, Size: 0}
 			res, err := h.ListUsers(ctx, req)
 
 			assert.Nil(t, res)
@@ -98,10 +93,9 @@ func TestListUsers(t *testing.T) {
 		},
 	)
 
-	// Case 2: Success case - controller returns user data
 	t.Run(
 		"Success", func(t *testing.T) {
-			req := &pb.ListUsersReq{Page: page, Size: size}
+			req := &pb.ListReq{Page: page, Size: size}
 
 			mockCtrl.EXPECT().ListUsers(gomock.Any(), int(page), int(size)).Return(expectedData, nil).Times(1)
 
@@ -112,10 +106,9 @@ func TestListUsers(t *testing.T) {
 		},
 	)
 
-	// Case 3: Controller error
 	t.Run(
 		"Controller error", func(t *testing.T) {
-			req := &pb.ListUsersReq{Page: page, Size: size}
+			req := &pb.ListReq{Page: page, Size: size}
 
 			mockCtrl.EXPECT().ListUsers(gomock.Any(), int(page), int(size)).Return(
 				nil,
@@ -134,11 +127,11 @@ func TestRegister(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuthService(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
-	req := &pb.RegisterReq{
+	req := &pb.CreateUserReq{
 		Name:     "Test User",
 		Email:    "test@example.com",
 		Password: "securepassword",
@@ -157,8 +150,8 @@ func TestRegister(t *testing.T) {
 	// Case 1: Validation error
 	t.Run(
 		"Validation error", func(t *testing.T) {
-			invalidReq := &pb.RegisterReq{Name: "", Email: "", Password: ""}
-			res, err := h.Register(ctx, invalidReq)
+			invalidReq := &pb.CreateUserReq{Name: "", Email: "", Password: ""}
+			res, err := h.CreateUser(ctx, invalidReq)
 
 			assert.Nil(t, res)
 			assert.Equal(t, codes.InvalidArgument, status.Code(err))
@@ -171,7 +164,7 @@ func TestRegister(t *testing.T) {
 			mockCtrl.EXPECT().CreateUser(gomock.Any(), protoUser, req.File.Filename, req.File.File).
 				Return(idx, accessToken, refreshToken, nil).Times(1)
 
-			res, err := h.Register(ctx, req)
+			res, err := h.CreateUser(ctx, req)
 			assert.Nil(t, err)
 			assert.NotNil(t, res)
 			assert.Equal(t, idx.String(), res.Uid)
@@ -186,7 +179,7 @@ func TestRegister(t *testing.T) {
 			mockCtrl.EXPECT().CreateUser(gomock.Any(), protoUser, req.File.Filename, req.File.File).
 				Return(uuid.Nil, "", "", ctrl.ErrAlreadyExists).Times(1)
 
-			res, err := h.Register(ctx, req)
+			res, err := h.CreateUser(ctx, req)
 			assert.Nil(t, res)
 			assert.Equal(t, codes.AlreadyExists, status.Code(err))
 		},
@@ -198,7 +191,7 @@ func TestRegister(t *testing.T) {
 			mockCtrl.EXPECT().CreateUser(gomock.Any(), protoUser, req.File.Filename, req.File.File).
 				Return(uuid.Nil, "", "", errors.New("internal error")).Times(1)
 
-			res, err := h.Register(ctx, req)
+			res, err := h.CreateUser(ctx, req)
 			assert.Nil(t, res)
 			assert.Equal(t, codes.Internal, status.Code(err))
 		},
@@ -210,7 +203,7 @@ func TestGetUser(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuthService(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
@@ -271,7 +264,7 @@ func TestUpdateUser(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuthService(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.WithValue(context.Background(), "uid", "user-uid")
@@ -282,7 +275,6 @@ func TestUpdateUser(t *testing.T) {
 	validUUID := uuid.MustParse(req.Uid)
 	protoUser := gutils.ProtoToModel(req.User)
 
-	// Case 1: Unauthorized
 	t.Run(
 		"Unauthorized", func(t *testing.T) {
 			invalidCtx := context.Background() // No "uid" in the context
@@ -293,7 +285,6 @@ func TestUpdateUser(t *testing.T) {
 		},
 	)
 
-	// Case 2: Invalid UUID
 	t.Run(
 		"Invalid UUID", func(t *testing.T) {
 			invalidReq := &pb.UserWithUid{Uid: "invalid-uuid"}
@@ -304,7 +295,6 @@ func TestUpdateUser(t *testing.T) {
 		},
 	)
 
-	// Case 3: Validation error
 	t.Run(
 		"Validation error", func(t *testing.T) {
 			invalidUserReq := &pb.UserWithUid{
@@ -318,7 +308,6 @@ func TestUpdateUser(t *testing.T) {
 		},
 	)
 
-	// Case 4: Success case - user updated
 	t.Run(
 		"User updated", func(t *testing.T) {
 			mockCtrl.EXPECT().UpdateUser(gomock.Any(), validUUID, protoUser).Return(nil).Times(1)
@@ -330,7 +319,6 @@ func TestUpdateUser(t *testing.T) {
 		},
 	)
 
-	// Case 5: User not found
 	t.Run(
 		"User not found", func(t *testing.T) {
 			mockCtrl.EXPECT().UpdateUser(gomock.Any(), validUUID, protoUser).Return(ctrl.ErrNotFound).Times(1)
@@ -341,7 +329,6 @@ func TestUpdateUser(t *testing.T) {
 		},
 	)
 
-	// Case 6: Internal error
 	t.Run(
 		"Internal error", func(t *testing.T) {
 			mockCtrl.EXPECT().UpdateUser(
@@ -362,7 +349,7 @@ func TestDeleteUser(t *testing.T) {
 	defer ctrlMock.Finish()
 
 	mockCtrl := mocks.NewMockCtrl(ctrlMock)
-	auth := mocks.NewMockAuth(ctrlMock)
+	auth := mocks.NewMockAuthService(ctrlMock)
 	h := New(auth, mockCtrl)
 
 	ctx := context.WithValue(context.Background(), "uid", "user-uid")

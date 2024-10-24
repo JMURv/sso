@@ -15,4 +15,4 @@ tasks:
     desc: Generate mocks
     cmds:
       - mockgen -source="./internal/handler/grpc/grpc.go" -destination="mocks/mock_grpc_ctrl.go" -package=mocks
-      - mockgen -source="./internal/controller/controller.go" -destination="mocks/mock_repos.go" -package=mocks
+      - mockgen -source="./internal/controller/ctrl.go" -destination="mocks/mock_repos.go" -package=mocks

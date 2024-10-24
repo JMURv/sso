@@ -30,11 +30,14 @@ jobs:
       - name: Run controller tests
         run: go test -coverprofile=ctrl_coverage.out ./internal/controller
 
-      - name: Run handler tests
-        run: go test -coverprofile=hdl_coverage.out ./internal/handler/grpc
+      - name: Run HTTP handler tests
+        run: go test -coverprofile=http_hdl_coverage.out ./internal/handler/http
+
+      - name: Run gRPC handler tests
+        run: go test -coverprofile=grpc_hdl_coverage.out ./internal/handler/grpc
 
       - name: Merge coverage reports
-        run: gocovmerge repo_coverage.out ctrl_coverage.out hdl_coverage.out > coverage.out
+        run: gocovmerge repo_coverage.out ctrl_coverage.out http_hdl_coverage.out grpc_hdl_coverage.out > coverage.out
 
       - name: Update coverage report
         uses: ncruces/go-coverage-report@v0

@@ -95,7 +95,7 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			c = http.StatusInternalServerError
 			zap.L().Debug("failed to read file", zap.String("op", op), zap.Error(err))
-			utils.ErrResponse(w, c, err)
+			utils.ErrResponse(w, c, controller.ErrInternalError)
 			return
 		}
 		fileName = handler.Filename
@@ -108,7 +108,7 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -154,23 +154,24 @@ func (h *Handler) searchUser(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query().Get("q")
 	if len(query) < 3 {
+		utils.SuccessPaginatedResponse(w, c, model.PaginatedUser{})
 		return
 	}
 
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
-	if err != nil {
+	if err != nil || page < 1 {
 		page = 1
 	}
 
 	size, err := strconv.Atoi(r.URL.Query().Get("size"))
-	if err != nil {
-		size = 10
+	if err != nil || size < 1 {
+		size = consts.DefaultPageSize
 	}
 
 	res, err := h.ctrl.SearchUser(r.Context(), query, page, size)
 	if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -185,19 +186,19 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
-	if err != nil {
+	if err != nil || page < 1 {
 		page = 1
 	}
 
 	size, err := strconv.Atoi(r.URL.Query().Get("size"))
-	if err != nil {
+	if err != nil || size < 1 {
 		size = consts.DefaultPageSize
 	}
 
 	res, err := h.ctrl.ListUsers(r.Context(), page, size)
 	if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -213,7 +214,7 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 
 	uid, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/users/"))
 	if uid == uuid.Nil || err != nil {
-		c = http.StatusBadRequest
+		c = http.StatusUnauthorized
 		zap.L().Debug(
 			"failed to parse uid",
 			zap.String("op", op), zap.Error(err),
@@ -229,7 +230,7 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -282,7 +283,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 
@@ -308,9 +309,13 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.ctrl.DeleteUser(r.Context(), uid)
-	if err != nil {
-		c = http.StatusInternalServerError
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
 		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
+		c = http.StatusInternalServerError
+		utils.ErrResponse(w, c, controller.ErrInternalError)
 		return
 	}
 

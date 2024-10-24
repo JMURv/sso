@@ -6,7 +6,7 @@ import (
 	"fmt"
 	repo "github.com/JMURv/sso/internal/repository"
 	"github.com/JMURv/sso/pkg/consts"
-	md "github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/pkg/model"
 	"github.com/goccy/go-json"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
@@ -17,20 +17,20 @@ const permListKey = "perms-list:%v:%v"
 const permPattern = "perms-*"
 
 type permRepo interface {
-	ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error)
-	GetPermission(ctx context.Context, id uint64) (*md.Permission, error)
-	CreatePerm(ctx context.Context, req *md.Permission) (uint64, error)
-	UpdatePerm(ctx context.Context, id uint64, req *md.Permission) error
+	ListPermissions(ctx context.Context, page, size int) (*model.PaginatedPermission, error)
+	GetPermission(ctx context.Context, id uint64) (*model.Permission, error)
+	CreatePerm(ctx context.Context, req *model.Permission) (uint64, error)
+	UpdatePerm(ctx context.Context, id uint64, req *model.Permission) error
 	DeletePerm(ctx context.Context, id uint64) error
 }
 
-func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error) {
+func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*model.PaginatedPermission, error) {
 	const op = "sso.ListPermissions.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	cached := &md.PaginatedPermission{}
+	cached := &model.PaginatedPermission{}
 	key := fmt.Sprintf(permListKey, page, size)
 	if err := c.cache.GetToStruct(ctx, key, &cached); err == nil {
 		return cached, nil
@@ -58,13 +58,13 @@ func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*md.P
 	return res, nil
 }
 
-func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permission, error) {
+func (c *Controller) GetPermission(ctx context.Context, id uint64) (*model.Permission, error) {
 	const op = "sso.GetPermission.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	cached := &md.Permission{}
+	cached := &model.Permission{}
 	cacheKey := fmt.Sprintf(permKey, id)
 	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
 		return cached, nil
@@ -99,7 +99,7 @@ func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permissi
 	return res, nil
 }
 
-func (c *Controller) CreatePerm(ctx context.Context, req *md.Permission) (uint64, error) {
+func (c *Controller) CreatePerm(ctx context.Context, req *model.Permission) (uint64, error) {
 	const op = "sso.CreatePerm.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -120,7 +120,7 @@ func (c *Controller) CreatePerm(ctx context.Context, req *md.Permission) (uint64
 	return res, nil
 }
 
-func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *md.Permission) error {
+func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *model.Permission) error {
 	const op = "sso.UpdatePerm.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)

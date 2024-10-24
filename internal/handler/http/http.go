@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/JMURv/sso/internal/auth"
 	controller "github.com/JMURv/sso/internal/controller"
+	"github.com/JMURv/sso/internal/handler/grpc"
 	utils "github.com/JMURv/sso/pkg/utils/http"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
@@ -16,11 +16,11 @@ import (
 
 type Handler struct {
 	srv  *http.Server
-	ctrl *controller.Controller
-	auth *auth.Auth
+	ctrl grpc.Ctrl
+	auth controller.AuthService
 }
 
-func New(auth *auth.Auth, ctrl *controller.Controller) *Handler {
+func New(auth controller.AuthService, ctrl grpc.Ctrl) *Handler {
 	return &Handler{
 		auth: auth,
 		ctrl: ctrl,

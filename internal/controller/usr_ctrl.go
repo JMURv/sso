@@ -7,7 +7,7 @@ import (
 	"github.com/JMURv/sso/internal/auth"
 	repo "github.com/JMURv/sso/internal/repository"
 	"github.com/JMURv/sso/pkg/consts"
-	md "github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/pkg/model"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
@@ -15,14 +15,14 @@ import (
 )
 
 type userRepo interface {
-	ListUsers(ctx context.Context, page, size int) (*md.PaginatedUser, error)
-	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
+	ListUsers(ctx context.Context, page, size int) (*model.PaginatedUser, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
 
-	CreateUser(ctx context.Context, req *md.User) (uuid.UUID, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error
+	CreateUser(ctx context.Context, req *model.User) (uuid.UUID, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, req *model.User) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
-	SearchUser(ctx context.Context, query string, page int, size int) (*md.PaginatedUser, error)
+	SearchUser(ctx context.Context, query string, page int, size int) (*model.PaginatedUser, error)
 }
 
 const userCacheKey = "user:%v"
@@ -50,13 +50,13 @@ func (c *Controller) IsUserExist(ctx context.Context, email string) (isExist boo
 	return true, nil
 }
 
-func (c *Controller) SearchUser(ctx context.Context, query string, page, size int) (*md.PaginatedUser, error) {
+func (c *Controller) SearchUser(ctx context.Context, query string, page, size int) (*model.PaginatedUser, error) {
 	const op = "users.UserSearch.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	cached := &md.PaginatedUser{}
+	cached := &model.PaginatedUser{}
 	cacheKey := fmt.Sprintf(usersSearchCacheKey, query, page, size)
 	if err := c.cache.GetToStruct(ctx, cacheKey, &cached); err == nil {
 		return cached, nil
@@ -85,13 +85,13 @@ func (c *Controller) SearchUser(ctx context.Context, query string, page, size in
 	return res, nil
 }
 
-func (c *Controller) ListUsers(ctx context.Context, page, size int) (*md.PaginatedUser, error) {
+func (c *Controller) ListUsers(ctx context.Context, page, size int) (*model.PaginatedUser, error) {
 	const op = "users.GetUsersList.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	cached := &md.PaginatedUser{}
+	cached := &model.PaginatedUser{}
 	cacheKey := fmt.Sprintf(usersListKey, page, size)
 	if err := c.cache.GetToStruct(ctx, cacheKey, &cached); err == nil {
 		return cached, nil
@@ -126,13 +126,13 @@ func (c *Controller) ListUsers(ctx context.Context, page, size int) (*md.Paginat
 	return res, nil
 }
 
-func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error) {
+func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error) {
 	const op = "users.GetUserByID.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	cached := &md.User{}
+	cached := &model.User{}
 	cacheKey := fmt.Sprintf(userCacheKey, userID)
 	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
 		return cached, nil
@@ -168,13 +168,13 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 	return res, nil
 }
 
-func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*md.User, error) {
+func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	const op = "users.GetUserByEmail.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	cached := &md.User{}
+	cached := &model.User{}
 	cacheKey := fmt.Sprintf(userCacheKey, email)
 	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
 		return cached, nil
@@ -210,7 +210,7 @@ func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*md.User
 	return res, nil
 }
 
-func (c *Controller) CreateUser(ctx context.Context, u *md.User, fileName string, bytes []byte) (uuid.UUID, string, string, error) {
+func (c *Controller) CreateUser(ctx context.Context, u *model.User, fileName string, bytes []byte) (uuid.UUID, string, string, error) {
 	const op = "users.CreateUser.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
@@ -273,7 +273,7 @@ func (c *Controller) CreateUser(ctx context.Context, u *md.User, fileName string
 	return id, accessToken, refreshToken, nil
 }
 
-func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error {
+func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *model.User) error {
 	const op = "users.UpdateUser.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)

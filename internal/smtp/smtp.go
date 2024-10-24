@@ -22,7 +22,7 @@ type EmailServer struct {
 	serverConfig *config.ServerConfig
 }
 
-func New(conf *config.EmailConfig, serverConfig *config.ServerConfig) controller.SMTPRepo {
+func New(conf *config.EmailConfig, serverConfig *config.ServerConfig) controller.EmailService {
 	return &EmailServer{
 		server:       conf.Server,
 		port:         conf.Port,
@@ -87,15 +87,19 @@ func (s *EmailServer) SendOptFile(_ context.Context, email string, filename stri
 	m := s.GetMessageBase(fmt.Sprintf("Файл, подтверждающий юр. статус: %s", email), s.admin)
 	m.SetBody("text/plain", "")
 
-	m.Attach(fmt.Sprintf(
-		"%s%d%s",
-		strings.Split(filepath.Base(filename), ".")[0],
-		time.Now().Unix(),
-		filepath.Ext(filename),
-	), gomail.SetCopyFunc(func(w io.Writer) error {
-		_, err := w.Write(bytes)
-		return err
-	}))
+	m.Attach(
+		fmt.Sprintf(
+			"%s%d%s",
+			strings.Split(filepath.Base(filename), ".")[0],
+			time.Now().Unix(),
+			filepath.Ext(filename),
+		), gomail.SetCopyFunc(
+			func(w io.Writer) error {
+				_, err := w.Write(bytes)
+				return err
+			},
+		),
+	)
 
 	return s.Send(m)
 }

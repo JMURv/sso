@@ -14,7 +14,6 @@ import (
 	reflect "reflect"
 
 	model "github.com/JMURv/sso/pkg/model"
-	utils "github.com/JMURv/sso/pkg/utils/http"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -72,6 +71,21 @@ func (mr *MockCtrlMockRecorder) CheckLoginCode(ctx, email, code any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckLoginCode", reflect.TypeOf((*MockCtrl)(nil).CheckLoginCode), ctx, email, code)
 }
 
+// CreatePerm mocks base method.
+func (m *MockCtrl) CreatePerm(ctx context.Context, req *model.Permission) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatePerm", ctx, req)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreatePerm indicates an expected call of CreatePerm.
+func (mr *MockCtrlMockRecorder) CreatePerm(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePerm", reflect.TypeOf((*MockCtrl)(nil).CreatePerm), ctx, req)
+}
+
 // CreateUser mocks base method.
 func (m *MockCtrl) CreateUser(ctx context.Context, u *model.User, fileName string, bytes []byte) (uuid.UUID, string, string, error) {
 	m.ctrl.T.Helper()
@@ -89,6 +103,20 @@ func (mr *MockCtrlMockRecorder) CreateUser(ctx, u, fileName, bytes any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockCtrl)(nil).CreateUser), ctx, u, fileName, bytes)
 }
 
+// DeletePerm mocks base method.
+func (m *MockCtrl) DeletePerm(ctx context.Context, id uint64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeletePerm", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeletePerm indicates an expected call of DeletePerm.
+func (mr *MockCtrlMockRecorder) DeletePerm(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePerm", reflect.TypeOf((*MockCtrl)(nil).DeletePerm), ctx, id)
+}
+
 // DeleteUser mocks base method.
 func (m *MockCtrl) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -101,6 +129,21 @@ func (m *MockCtrl) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 func (mr *MockCtrlMockRecorder) DeleteUser(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockCtrl)(nil).DeleteUser), ctx, userID)
+}
+
+// GetPermission mocks base method.
+func (m *MockCtrl) GetPermission(ctx context.Context, id uint64) (*model.Permission, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPermission", ctx, id)
+	ret0, _ := ret[0].(*model.Permission)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPermission indicates an expected call of GetPermission.
+func (mr *MockCtrlMockRecorder) GetPermission(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPermission", reflect.TypeOf((*MockCtrl)(nil).GetPermission), ctx, id)
 }
 
 // GetUserByEmail mocks base method.
@@ -133,6 +176,21 @@ func (mr *MockCtrlMockRecorder) GetUserByID(ctx, userID any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByID", reflect.TypeOf((*MockCtrl)(nil).GetUserByID), ctx, userID)
 }
 
+// GetUserByToken mocks base method.
+func (m *MockCtrl) GetUserByToken(ctx context.Context, token string) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserByToken", ctx, token)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserByToken indicates an expected call of GetUserByToken.
+func (mr *MockCtrlMockRecorder) GetUserByToken(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByToken", reflect.TypeOf((*MockCtrl)(nil).GetUserByToken), ctx, token)
+}
+
 // IsUserExist mocks base method.
 func (m *MockCtrl) IsUserExist(ctx context.Context, email string) (bool, error) {
 	m.ctrl.T.Helper()
@@ -148,11 +206,26 @@ func (mr *MockCtrlMockRecorder) IsUserExist(ctx, email any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsUserExist", reflect.TypeOf((*MockCtrl)(nil).IsUserExist), ctx, email)
 }
 
+// ListPermissions mocks base method.
+func (m *MockCtrl) ListPermissions(ctx context.Context, page, size int) (*model.PaginatedPermission, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListPermissions", ctx, page, size)
+	ret0, _ := ret[0].(*model.PaginatedPermission)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListPermissions indicates an expected call of ListPermissions.
+func (mr *MockCtrlMockRecorder) ListPermissions(ctx, page, size any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPermissions", reflect.TypeOf((*MockCtrl)(nil).ListPermissions), ctx, page, size)
+}
+
 // ListUsers mocks base method.
-func (m *MockCtrl) ListUsers(ctx context.Context, page, size int) (*utils.PaginatedUser, error) {
+func (m *MockCtrl) ListUsers(ctx context.Context, page, size int) (*model.PaginatedUser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsers", ctx, page, size)
-	ret0, _ := ret[0].(*utils.PaginatedUser)
+	ret0, _ := ret[0].(*model.PaginatedUser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -161,6 +234,21 @@ func (m *MockCtrl) ListUsers(ctx context.Context, page, size int) (*utils.Pagina
 func (mr *MockCtrlMockRecorder) ListUsers(ctx, page, size any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsers", reflect.TypeOf((*MockCtrl)(nil).ListUsers), ctx, page, size)
+}
+
+// SearchUser mocks base method.
+func (m *MockCtrl) SearchUser(ctx context.Context, query string, page, size int) (*model.PaginatedUser, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchUser", ctx, query, page, size)
+	ret0, _ := ret[0].(*model.PaginatedUser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchUser indicates an expected call of SearchUser.
+func (mr *MockCtrlMockRecorder) SearchUser(ctx, query, page, size any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchUser", reflect.TypeOf((*MockCtrl)(nil).SearchUser), ctx, query, page, size)
 }
 
 // SendForgotPasswordEmail mocks base method.
@@ -205,6 +293,20 @@ func (mr *MockCtrlMockRecorder) SendSupportEmail(ctx, uid, theme, text any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSupportEmail", reflect.TypeOf((*MockCtrl)(nil).SendSupportEmail), ctx, uid, theme, text)
 }
 
+// UpdatePerm mocks base method.
+func (m *MockCtrl) UpdatePerm(ctx context.Context, id uint64, req *model.Permission) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdatePerm", ctx, id, req)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdatePerm indicates an expected call of UpdatePerm.
+func (mr *MockCtrlMockRecorder) UpdatePerm(ctx, id, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePerm", reflect.TypeOf((*MockCtrl)(nil).UpdatePerm), ctx, id, req)
+}
+
 // UpdateUser mocks base method.
 func (m *MockCtrl) UpdateUser(ctx context.Context, id uuid.UUID, req *model.User) error {
 	m.ctrl.T.Helper()
@@ -219,17 +321,16 @@ func (mr *MockCtrlMockRecorder) UpdateUser(ctx, id, req any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockCtrl)(nil).UpdateUser), ctx, id, req)
 }
 
-// UserSearch mocks base method.
-func (m *MockCtrl) UserSearch(ctx context.Context, query string, page, size int) (*utils.PaginatedUser, error) {
+// ValidateToken mocks base method.
+func (m *MockCtrl) ValidateToken(ctx context.Context, token string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UserSearch", ctx, query, page, size)
-	ret0, _ := ret[0].(*utils.PaginatedUser)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "ValidateToken", ctx, token)
+	ret0, _ := ret[0].(bool)
+	return ret0
 }
 
-// UserSearch indicates an expected call of UserSearch.
-func (mr *MockCtrlMockRecorder) UserSearch(ctx, query, page, size any) *gomock.Call {
+// ValidateToken indicates an expected call of ValidateToken.
+func (mr *MockCtrlMockRecorder) ValidateToken(ctx, token any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UserSearch", reflect.TypeOf((*MockCtrl)(nil).UserSearch), ctx, query, page, size)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateToken", reflect.TypeOf((*MockCtrl)(nil).ValidateToken), ctx, token)
 }

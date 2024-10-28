@@ -8,8 +8,8 @@ import (
 	ctrl "github.com/JMURv/sso/internal/controller"
 	"github.com/JMURv/sso/internal/discovery"
 
-	//handler "github.com/JMURv/sso/internal/handler/http"
-	handler "github.com/JMURv/sso/internal/handler/grpc"
+	handler "github.com/JMURv/sso/internal/handler/http"
+	//handler "github.com/JMURv/sso/internal/handler/grpc"
 	tracing "github.com/JMURv/sso/internal/metrics/jaeger"
 	metrics "github.com/JMURv/sso/internal/metrics/prometheus"
 	"github.com/JMURv/sso/internal/smtp"

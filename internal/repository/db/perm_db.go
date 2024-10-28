@@ -6,8 +6,8 @@ import (
 	"errors"
 	repo "github.com/JMURv/sso/internal/repository"
 	"github.com/JMURv/sso/pkg/model"
-	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
+	"strings"
 )
 
 func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*model.PaginatedPermission, error) {
@@ -16,20 +16,11 @@ func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*mode
 	defer span.Finish()
 
 	var count int64
-	if err := r.conn.QueryRowContext(
-		ctx,
-		`SELECT COUNT(*) FROM permission`,
-	).Scan(&count); err != nil {
+	if err := r.conn.QueryRow(permSelect).Scan(&count); err != nil {
 		return nil, err
 	}
 
-	rows, err := r.conn.QueryContext(
-		ctx,
-		`SELECT id, name
-		FROM permission
-		ORDER BY name
-		LIMIT $1 OFFSET $2`, size, (page-1)*size,
-	)
+	rows, err := r.conn.Query(permList, size, (page-1)*size)
 	if err != nil {
 		return nil, err
 	}
@@ -45,6 +36,10 @@ func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*mode
 			return nil, err
 		}
 		res = append(res, &p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	totalPages := int((count + int64(size) - 1) / int64(size))
@@ -63,17 +58,7 @@ func (r *Repository) GetPermission(ctx context.Context, id uint64) (*model.Permi
 	defer span.Finish()
 
 	res := &model.Permission{}
-	err := r.conn.QueryRowContext(
-		ctx, `
-		SELECT id, name
-		FROM permission
-		WHERE id = $1
-		`, id,
-	).Scan(
-		&res.ID,
-		&res.Name,
-	)
-
+	err := r.conn.QueryRow(permGet, id).Scan(&res.ID, &res.Name)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, repo.ErrNotFound
 	} else if err != nil {
@@ -88,24 +73,18 @@ func (r *Repository) CreatePerm(ctx context.Context, req *model.Permission) (uin
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	var idx uuid.UUID
-	if err := r.conn.
-		QueryRow(`SELECT id FROM permission WHERE name=$1`, req.Name).
-		Scan(&idx); err == nil {
-		return 0, repo.ErrAlreadyExists
-	} else if err != nil && err != sql.ErrNoRows {
-		return 0, err
-	}
-
 	tx, err := r.conn.Begin()
 	if err != nil {
 		return 0, err
 	}
 
 	var id uint64
-	err = tx.QueryRow(`INSERT INTO permission (name) VALUES ($1) RETURNING id`, req.Name).Scan(&id)
+	err = tx.QueryRow(permCreate, req.Name).Scan(&id)
 	if err != nil {
 		tx.Rollback()
+		if strings.Contains(err.Error(), "unique constraint") {
+			return 0, repo.ErrAlreadyExists
+		}
 		return 0, err
 	}
 
@@ -120,8 +99,14 @@ func (r *Repository) UpdatePerm(ctx context.Context, id uint64, req *model.Permi
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res, err := r.conn.Exec(`UPDATE permission SET name = $1 WHERE id = $2`, req.Name, id)
+	tx, err := r.conn.Begin()
 	if err != nil {
+		return err
+	}
+
+	res, err := tx.Exec(permUpdate, req.Name, id)
+	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
@@ -129,7 +114,7 @@ func (r *Repository) UpdatePerm(ctx context.Context, id uint64, req *model.Permi
 		return repo.ErrNotFound
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 func (r *Repository) DeletePerm(ctx context.Context, id uint64) error {
@@ -137,7 +122,7 @@ func (r *Repository) DeletePerm(ctx context.Context, id uint64) error {
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res, err := r.conn.Exec(`DELETE FROM permission WHERE id = $1`, id)
+	res, err := r.conn.Exec(permDelete, id)
 	if err != nil {
 		return err
 	}

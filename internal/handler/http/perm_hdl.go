@@ -54,6 +54,14 @@ func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
+	}()
+
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
 	if err != nil || page < 1 {
 		page = 1
@@ -79,6 +87,14 @@ func (h *Handler) createPerm(w http.ResponseWriter, r *http.Request) {
 	const op = "sso.createPerm.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	req := &model.Permission{}
@@ -120,6 +136,14 @@ func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
+	}()
+
 	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
 	if err != nil {
 		c = http.StatusBadRequest
@@ -150,6 +174,14 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 	const op = "sso.updatePerm.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
@@ -203,6 +235,14 @@ func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
 	const op = "sso.deletePerm.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)

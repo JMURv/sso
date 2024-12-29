@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-func (h *Handler) GetUserByToken(ctx context.Context, req *pb.StringSSOMsg) (*pb.User, error) {
+func (h *Handler) GetUserByToken(ctx context.Context, req *pb.SSO_StringMsg) (*pb.SSO_User, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.GetUserByToken.hdl"
 
@@ -47,7 +47,7 @@ func (h *Handler) GetUserByToken(ctx context.Context, req *pb.StringSSOMsg) (*pb
 	return utils.ModelToProto(u), nil
 }
 
-func (h *Handler) ValidateToken(ctx context.Context, req *pb.StringSSOMsg) (*pb.BoolSSOMsg, error) {
+func (h *Handler) ParseClaims(ctx context.Context, req *pb.SSO_StringMsg) (*pb.SSO_ParseClaimsRes, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.ValidateToken.hdl"
 
@@ -65,10 +65,21 @@ func (h *Handler) ValidateToken(ctx context.Context, req *pb.StringSSOMsg) (*pb.
 		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
 	}
 
-	return &pb.BoolSSOMsg{Bool: h.ctrl.ValidateToken(ctx, token)}, nil
+	res, err := h.ctrl.ParseClaims(ctx, token)
+	if err != nil {
+		c = codes.Internal
+		zap.L().Debug("failed to parse claims", zap.String("op", op), zap.Error(err))
+		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	}
+
+	return &pb.SSO_ParseClaimsRes{
+		Token: res["uid"].(string),
+		Email: res["email"].(string),
+		Exp:   res["exp"].(string),
+	}, nil
 }
 
-func (h *Handler) SendLoginCode(ctx context.Context, req *pb.SendLoginCodeReq) (*pb.EmptySSO, error) {
+func (h *Handler) SendLoginCode(ctx context.Context, req *pb.SSO_SendLoginCodeReq) (*pb.SSO_Empty, error) {
 	const op = "sso.SendLoginCode.hdl"
 	s, c := time.Now(), codes.OK
 
@@ -100,10 +111,10 @@ func (h *Handler) SendLoginCode(ctx context.Context, req *pb.SendLoginCodeReq) (
 		zap.L().Error("failed to send login code", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
-	return &pb.EmptySSO{}, nil
+	return &pb.SSO_Empty{}, nil
 }
 
-func (h *Handler) CheckLoginCode(ctx context.Context, req *pb.CheckLoginCodeReq) (*pb.CheckLoginCodeRes, error) {
+func (h *Handler) CheckLoginCode(ctx context.Context, req *pb.SSO_CheckLoginCodeReq) (*pb.SSO_CheckLoginCodeRes, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.checkLoginCode.handler"
 
@@ -138,13 +149,13 @@ func (h *Handler) CheckLoginCode(ctx context.Context, req *pb.CheckLoginCodeReq)
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.CheckLoginCodeRes{
+	return &pb.SSO_CheckLoginCodeRes{
 		Access:  access,
 		Refresh: refresh,
 	}, nil
 }
 
-func (h *Handler) CheckEmail(ctx context.Context, req *pb.EmailMsg) (*pb.CheckEmailRes, error) {
+func (h *Handler) CheckEmail(ctx context.Context, req *pb.SSO_EmailMsg) (*pb.SSO_CheckEmailRes, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.CheckEmail.handler"
 
@@ -172,12 +183,12 @@ func (h *Handler) CheckEmail(ctx context.Context, req *pb.EmailMsg) (*pb.CheckEm
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.CheckEmailRes{
+	return &pb.SSO_CheckEmailRes{
 		IsExist: isExist,
 	}, nil
 }
 
-func (h *Handler) Logout(ctx context.Context, _ *pb.EmptySSO) (*pb.EmptySSO, error) {
+func (h *Handler) Logout(ctx context.Context, _ *pb.SSO_Empty) (*pb.SSO_Empty, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.Logout.handler"
 
@@ -202,10 +213,10 @@ func (h *Handler) Logout(ctx context.Context, _ *pb.EmptySSO) (*pb.EmptySSO, err
 		return nil, status.Errorf(c, ctrl.ErrParseUUID.Error())
 	}
 
-	return &pb.EmptySSO{}, nil
+	return &pb.SSO_Empty{}, nil
 }
 
-func (h *Handler) SendForgotPasswordEmail(ctx context.Context, req *pb.EmailMsg) (*pb.EmptySSO, error) {
+func (h *Handler) SendForgotPasswordEmail(ctx context.Context, req *pb.SSO_EmailMsg) (*pb.SSO_Empty, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.SendForgotPasswordEmail.handler"
 	span := opentracing.GlobalTracer().StartSpan(op)
@@ -232,10 +243,10 @@ func (h *Handler) SendForgotPasswordEmail(ctx context.Context, req *pb.EmailMsg)
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.EmptySSO{}, nil
+	return &pb.SSO_Empty{}, nil
 }
 
-func (h *Handler) CheckForgotPasswordEmail(ctx context.Context, req *pb.CheckForgotPasswordEmailReq) (*pb.EmptySSO, error) {
+func (h *Handler) CheckForgotPasswordEmail(ctx context.Context, req *pb.SSO_CheckForgotPasswordEmailReq) (*pb.SSO_Empty, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.CheckForgotPasswordEmail.handler"
 	span := opentracing.GlobalTracer().StartSpan(op)
@@ -279,10 +290,10 @@ func (h *Handler) CheckForgotPasswordEmail(ctx context.Context, req *pb.CheckFor
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.EmptySSO{}, nil
+	return &pb.SSO_Empty{}, nil
 }
 
-func (h *Handler) SendSupportEmail(ctx context.Context, req *pb.SendSupportEmailReq) (*pb.EmptySSO, error) {
+func (h *Handler) SendSupportEmail(ctx context.Context, req *pb.SSO_SendSupportEmailReq) (*pb.SSO_Empty, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.SendSupportEmail.handler"
 
@@ -324,10 +335,10 @@ func (h *Handler) SendSupportEmail(ctx context.Context, req *pb.SendSupportEmail
 		return nil, status.Errorf(c, "failed to send email")
 	}
 
-	return &pb.EmptySSO{}, nil
+	return &pb.SSO_Empty{}, nil
 }
 
-func (h *Handler) Me(ctx context.Context, _ *pb.EmptySSO) (*pb.User, error) {
+func (h *Handler) Me(ctx context.Context, _ *pb.SSO_Empty) (*pb.SSO_User, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.Me.handler"
 
@@ -366,7 +377,7 @@ func (h *Handler) Me(ctx context.Context, _ *pb.EmptySSO) (*pb.User, error) {
 	return utils.ModelToProto(u), nil
 }
 
-func (h *Handler) UpdateMe(ctx context.Context, req *pb.User) (*pb.User, error) {
+func (h *Handler) UpdateMe(ctx context.Context, req *pb.SSO_User) (*pb.SSO_User, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.UpdateMe.handler"
 
@@ -415,5 +426,5 @@ func (h *Handler) UpdateMe(ctx context.Context, req *pb.User) (*pb.User, error) 
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.User{}, nil
+	return &pb.SSO_User{}, nil
 }

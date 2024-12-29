@@ -34,7 +34,7 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 	for rows.Next() {
 		user := &md.User{}
 		perms := make([]string, 0, 5)
-		if err := rows.Scan(
+		if err = rows.Scan(
 			&user.ID,
 			&user.Name,
 			&user.Password,
@@ -234,7 +234,7 @@ func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, e
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err = tx.Commit(); err != nil {
 		return uuid.Nil, err
 	}
 	return id, nil
@@ -274,7 +274,7 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User)
 	}
 
 	for _, v := range req.Permissions {
-		if _, err := tx.Exec(
+		if _, err = tx.Exec(
 			userCreatePermQ,
 			id, v.ID, v.Value,
 		); err != nil {

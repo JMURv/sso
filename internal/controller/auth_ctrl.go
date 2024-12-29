@@ -22,8 +22,8 @@ import (
 const codeCacheKey = "code:%v"
 const recoveryCacheKey = "recovery:%v"
 
-func (c *Controller) ValidateToken(ctx context.Context, token string) bool {
-	const op = "sso.ValidateToken.ctrl"
+func (c *Controller) ParseClaims(ctx context.Context, token string) (map[string]any, error) {
+	const op = "sso.ParseClaims.ctrl"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
@@ -31,15 +31,15 @@ func (c *Controller) ValidateToken(ctx context.Context, token string) bool {
 	claims, err := c.auth.VerifyToken(token)
 	if err != nil {
 		zap.L().Debug("invalid token", zap.Error(err))
-		return false
+		return nil, err
 	}
 
-	if _, err := uuid.Parse(claims["uid"].(string)); err != nil {
-		zap.L().Debug("failed to parse uuid", zap.String("op", op))
-		return false
+	if _, ok := claims["uid"].(string); !ok {
+		zap.L().Debug("failed to parse uid", zap.String("op", op))
+		return nil, ErrParseUUID
 	}
 
-	return true
+	return claims, nil
 }
 
 func (c *Controller) GetUserByToken(ctx context.Context, token string) (*model.User, error) {
@@ -48,10 +48,10 @@ func (c *Controller) GetUserByToken(ctx context.Context, token string) (*model.U
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	claims, err := c.auth.VerifyToken(token)
+	claims, err := c.ParseClaims(ctx, token)
 	if err != nil {
 		zap.L().Debug("invalid token", zap.Error(err))
-		return nil, ErrParseUUID
+		return nil, err
 	}
 
 	uid, err := uuid.Parse(claims["uid"].(string))

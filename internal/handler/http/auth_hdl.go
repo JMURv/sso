@@ -17,8 +17,8 @@ import (
 )
 
 func RegisterAuthRoutes(mux *http.ServeMux, h *Handler) {
-	mux.HandleFunc("/api/sso/validate-token", h.validateToken)
-	mux.HandleFunc("/api/sso/get-user-by-token", h.getUserByToken)
+	mux.HandleFunc("/api/sso/parse", h.parseClaims)
+	mux.HandleFunc("/api/sso/user", h.getUserByToken)
 
 	mux.HandleFunc(
 		"/api/sso/recovery", func(w http.ResponseWriter, r *http.Request) {
@@ -57,9 +57,9 @@ type TokenReq struct {
 	Token string `json:"token"`
 }
 
-func (h *Handler) validateToken(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) parseClaims(w http.ResponseWriter, r *http.Request) {
 	s, c := time.Now(), http.StatusOK
-	const op = "sso.validateToken.hdl"
+	const op = "sso.parseClaims.hdl"
 
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
@@ -92,7 +92,18 @@ func (h *Handler) validateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SuccessResponse(w, c, h.ctrl.ValidateToken(r.Context(), req.Token))
+	res, err := h.ctrl.ParseClaims(r.Context(), req.Token)
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
+		c = http.StatusInternalServerError
+		utils.ErrResponse(w, c, controller.ErrInternalError)
+		return
+	}
+
+	utils.SuccessResponse(w, c, res)
 
 }
 
@@ -653,6 +664,14 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	const op = "sso.logout.handler"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	if r.Method != http.MethodPost {

@@ -32,12 +32,13 @@ func TestValidateToken(t *testing.T) {
 
 	validToken := "invalidToken"
 	invalidToken := "invalidToken"
+	var nilM map[string]any
 
 	t.Run(
 		"Invalid Token", func(t *testing.T) {
 			authRepo.EXPECT().VerifyToken(invalidToken).Return(map[string]any{}, errors.New("some error")).Times(1)
-			res := ctrl.ValidateToken(ctx, invalidToken)
-			assert.Equal(t, false, res)
+			res, _ := ctrl.ParseClaims(ctx, invalidToken)
+			assert.Equal(t, nilM, res)
 		},
 	)
 
@@ -45,11 +46,12 @@ func TestValidateToken(t *testing.T) {
 		"Invalid UUID", func(t *testing.T) {
 			authRepo.EXPECT().
 				VerifyToken(validToken).
-				Return(map[string]any{"uid": uuid.New().String() + "invalid"}, nil).
+				Return(map[string]any{"uid": 123}, nil).
 				Times(1)
 
-			res := ctrl.ValidateToken(ctx, validToken)
-			assert.Equal(t, false, res)
+			res, err := ctrl.ParseClaims(ctx, validToken)
+			assert.IsType(t, ErrParseUUID, err)
+			assert.Equal(t, nilM, res)
 		},
 	)
 
@@ -60,8 +62,8 @@ func TestValidateToken(t *testing.T) {
 				Return(map[string]any{"uid": uuid.New().String()}, nil).
 				Times(1)
 
-			res := ctrl.ValidateToken(ctx, validToken)
-			assert.Equal(t, true, res)
+			res, _ := ctrl.ParseClaims(ctx, validToken)
+			assert.IsType(t, map[string]any{}, res)
 		},
 	)
 }
@@ -78,6 +80,7 @@ func TestGetUserByToken(t *testing.T) {
 	ctrl := New(authRepo, mockRepo, mockCache, mockSMTP)
 
 	ctx := context.Background()
+	testErr := errors.New("some error")
 
 	validToken := "invalidToken"
 	invalidToken := "invalidToken"
@@ -86,12 +89,12 @@ func TestGetUserByToken(t *testing.T) {
 		"Invalid Token", func(t *testing.T) {
 			authRepo.EXPECT().
 				VerifyToken(invalidToken).
-				Return(map[string]any{}, errors.New("some error")).
+				Return(map[string]any{}, testErr).
 				Times(1)
 			_, err := ctrl.GetUserByToken(ctx, invalidToken)
 
 			assert.NotNil(t, err)
-			assert.Equal(t, ErrParseUUID, err)
+			assert.Equal(t, testErr, err)
 		},
 	)
 

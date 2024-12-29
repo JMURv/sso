@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-func (h *Handler) SearchUser(ctx context.Context, req *pb.SearchReq) (*pb.PaginatedUsersRes, error) {
+func (h *Handler) SearchUser(ctx context.Context, req *pb.SSO_SearchReq) (*pb.SSO_PaginatedUsersRes, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.SearchUser.hdl"
 
@@ -41,7 +41,7 @@ func (h *Handler) SearchUser(ctx context.Context, req *pb.SearchReq) (*pb.Pagina
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.PaginatedUsersRes{
+	return &pb.SSO_PaginatedUsersRes{
 		Data:        utils.ListModelToProto(u.Data),
 		Count:       u.Count,
 		TotalPages:  int64(u.TotalPages),
@@ -50,7 +50,7 @@ func (h *Handler) SearchUser(ctx context.Context, req *pb.SearchReq) (*pb.Pagina
 	}, nil
 }
 
-func (h *Handler) ListUsers(ctx context.Context, req *pb.ListReq) (*pb.PaginatedUsersRes, error) {
+func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_PaginatedUsersRes, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.ListUsers.hdl"
 
@@ -74,7 +74,7 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.ListReq) (*pb.Paginated
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.PaginatedUsersRes{
+	return &pb.SSO_PaginatedUsersRes{
 		Data:        utils.ListModelToProto(u.Data),
 		Count:       u.Count,
 		TotalPages:  int64(u.TotalPages),
@@ -83,7 +83,7 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.ListReq) (*pb.Paginated
 	}, nil
 }
 
-func (h *Handler) CreateUser(ctx context.Context, req *pb.CreateUserReq) (*pb.CreateUserRes, error) {
+func (h *Handler) CreateUser(ctx context.Context, req *pb.SSO_CreateUserReq) (*pb.SSO_CreateUserRes, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.CreateUser.hdl"
 
@@ -115,14 +115,14 @@ func (h *Handler) CreateUser(ctx context.Context, req *pb.CreateUserReq) (*pb.Cr
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.CreateUserRes{
+	return &pb.SSO_CreateUserRes{
 		Uid:     uid.String(),
 		Access:  access,
 		Refresh: refresh,
 	}, nil
 }
 
-func (h *Handler) GetUser(ctx context.Context, req *pb.UuidMsg) (*pb.User, error) {
+func (h *Handler) GetUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_User, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.GetUser.hdl"
 
@@ -152,7 +152,7 @@ func (h *Handler) GetUser(ctx context.Context, req *pb.UuidMsg) (*pb.User, error
 	return utils.ModelToProto(u), nil
 }
 
-func (h *Handler) UpdateUser(ctx context.Context, req *pb.UserWithUid) (*pb.UuidMsg, error) {
+func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UserWithUid) (*pb.SSO_UuidMsg, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.UpdateUser.hdl"
 
@@ -193,10 +193,10 @@ func (h *Handler) UpdateUser(ctx context.Context, req *pb.UserWithUid) (*pb.Uuid
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.UuidMsg{Uuid: uid.String()}, nil
+	return &pb.SSO_UuidMsg{Uuid: uid.String()}, nil
 }
 
-func (h *Handler) DeleteUser(ctx context.Context, req *pb.UuidMsg) (*pb.EmptySSO, error) {
+func (h *Handler) DeleteUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_Empty, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.DeleteUser.hdl"
 
@@ -227,5 +227,5 @@ func (h *Handler) DeleteUser(ctx context.Context, req *pb.UuidMsg) (*pb.EmptySSO
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.EmptySSO{}, nil
+	return &pb.SSO_Empty{}, nil
 }

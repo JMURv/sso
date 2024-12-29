@@ -59,6 +59,14 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
+	}()
+
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug("failed to parse multipart form", zap.String("op", op), zap.Error(err))
@@ -146,6 +154,14 @@ func (h *Handler) searchUser(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
+	}()
+
 	if r.Method != http.MethodGet {
 		c = http.StatusMethodNotAllowed
 		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
@@ -185,6 +201,14 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
+	}()
+
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
 	if err != nil || page < 1 {
 		page = 1
@@ -210,6 +234,14 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	const op = "sso.getUser.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	uid, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/users/"))
@@ -242,6 +274,14 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	const op = "sso.updateUser.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	uid, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/users/"))
@@ -295,6 +335,14 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	const op = "sso.deleteUser.hdl"
 	defer func() {
 		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			zap.L().Error("panic", zap.Any("err", err))
+			c = http.StatusInternalServerError
+			utils.ErrResponse(w, c, controller.ErrInternalError)
+		}
 	}()
 
 	uid, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/users/"))

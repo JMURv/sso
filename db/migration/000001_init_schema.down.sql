@@ -1,1 +1,3 @@
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS permission;
+DROP TABLE IF EXISTS user_permission;

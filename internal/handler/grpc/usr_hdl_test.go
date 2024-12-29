@@ -33,7 +33,7 @@ func TestUserSearch(t *testing.T) {
 
 	t.Run(
 		"Invalid request", func(t *testing.T) {
-			req := &pb.SearchReq{Query: "", Page: 0, Size: 0}
+			req := &pb.SSO_SearchReq{Query: "", Page: 0, Size: 0}
 			res, err := h.SearchUser(ctx, req)
 
 			assert.Nil(t, res)
@@ -43,7 +43,7 @@ func TestUserSearch(t *testing.T) {
 
 	t.Run(
 		"Success", func(t *testing.T) {
-			req := &pb.SearchReq{Query: query, Page: page, Size: size}
+			req := &pb.SSO_SearchReq{Query: query, Page: page, Size: size}
 
 			mockCtrl.EXPECT().SearchUser(gomock.Any(), query, int(page), int(size)).Return(expectedData, nil).Times(1)
 
@@ -56,7 +56,7 @@ func TestUserSearch(t *testing.T) {
 
 	t.Run(
 		"Controller error", func(t *testing.T) {
-			req := &pb.SearchReq{Query: query, Page: page, Size: size}
+			req := &pb.SSO_SearchReq{Query: query, Page: page, Size: size}
 
 			mockCtrl.EXPECT().SearchUser(gomock.Any(), query, int(page), int(size)).Return(
 				nil,
@@ -85,7 +85,7 @@ func TestListUsers(t *testing.T) {
 
 	t.Run(
 		"Invalid request", func(t *testing.T) {
-			req := &pb.ListReq{Page: 0, Size: 0}
+			req := &pb.SSO_ListReq{Page: 0, Size: 0}
 			res, err := h.ListUsers(ctx, req)
 
 			assert.Nil(t, res)
@@ -95,7 +95,7 @@ func TestListUsers(t *testing.T) {
 
 	t.Run(
 		"Success", func(t *testing.T) {
-			req := &pb.ListReq{Page: page, Size: size}
+			req := &pb.SSO_ListReq{Page: page, Size: size}
 
 			mockCtrl.EXPECT().ListUsers(gomock.Any(), int(page), int(size)).Return(expectedData, nil).Times(1)
 
@@ -108,7 +108,7 @@ func TestListUsers(t *testing.T) {
 
 	t.Run(
 		"Controller error", func(t *testing.T) {
-			req := &pb.ListReq{Page: page, Size: size}
+			req := &pb.SSO_ListReq{Page: page, Size: size}
 
 			mockCtrl.EXPECT().ListUsers(gomock.Any(), int(page), int(size)).Return(
 				nil,
@@ -131,7 +131,7 @@ func TestRegister(t *testing.T) {
 	h := New(auth, mockCtrl)
 
 	ctx := context.Background()
-	req := &pb.CreateUserReq{
+	req := &pb.SSO_CreateUserReq{
 		Name:     "Test User",
 		Email:    "test@example.com",
 		Password: "securepassword",
@@ -150,7 +150,7 @@ func TestRegister(t *testing.T) {
 	// Case 1: Validation error
 	t.Run(
 		"Validation error", func(t *testing.T) {
-			invalidReq := &pb.CreateUserReq{Name: "", Email: "", Password: ""}
+			invalidReq := &pb.SSO_CreateUserReq{Name: "", Email: "", Password: ""}
 			res, err := h.CreateUser(ctx, invalidReq)
 
 			assert.Nil(t, res)
@@ -214,7 +214,7 @@ func TestGetUser(t *testing.T) {
 	// Case 1: Invalid UUID
 	t.Run(
 		"Invalid UUID", func(t *testing.T) {
-			req := &pb.UuidMsg{Uuid: invalidUUID}
+			req := &pb.SSO_UuidMsg{Uuid: invalidUUID}
 			res, err := h.GetUser(ctx, req)
 
 			assert.Nil(t, res)
@@ -225,7 +225,7 @@ func TestGetUser(t *testing.T) {
 	// Case 2: Success case - user found
 	t.Run(
 		"Success", func(t *testing.T) {
-			req := &pb.UuidMsg{Uuid: validUUID}
+			req := &pb.SSO_UuidMsg{Uuid: validUUID}
 			mockCtrl.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Return(expectedUser, nil).Times(1)
 
 			res, err := h.GetUser(ctx, req)
@@ -237,7 +237,7 @@ func TestGetUser(t *testing.T) {
 	// Case 3: User not found
 	t.Run(
 		"User Not Found", func(t *testing.T) {
-			req := &pb.UuidMsg{Uuid: validUUID}
+			req := &pb.SSO_UuidMsg{Uuid: validUUID}
 			mockCtrl.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Return(nil, ctrl.ErrNotFound).Times(1)
 
 			res, err := h.GetUser(ctx, req)
@@ -249,7 +249,7 @@ func TestGetUser(t *testing.T) {
 	// Case 4: Internal error
 	t.Run(
 		"Internal Error", func(t *testing.T) {
-			req := &pb.UuidMsg{Uuid: validUUID}
+			req := &pb.SSO_UuidMsg{Uuid: validUUID}
 			mockCtrl.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Return(nil, errors.New("internal error")).Times(1)
 
 			res, err := h.GetUser(ctx, req)
@@ -268,9 +268,9 @@ func TestUpdateUser(t *testing.T) {
 	h := New(auth, mockCtrl)
 
 	ctx := context.WithValue(context.Background(), "uid", "user-uid")
-	req := &pb.UserWithUid{
+	req := &pb.SSO_UserWithUid{
 		Uid:  uuid.New().String(),
-		User: &pb.User{Name: "Test User", Email: "test@example.com"},
+		User: &pb.SSO_User{Name: "Test User", Email: "test@example.com"},
 	}
 	validUUID := uuid.MustParse(req.Uid)
 	protoUser := gutils.ProtoToModel(req.User)
@@ -287,7 +287,7 @@ func TestUpdateUser(t *testing.T) {
 
 	t.Run(
 		"Invalid UUID", func(t *testing.T) {
-			invalidReq := &pb.UserWithUid{Uid: "invalid-uuid"}
+			invalidReq := &pb.SSO_UserWithUid{Uid: "invalid-uuid"}
 			res, err := h.UpdateUser(ctx, invalidReq)
 
 			assert.Nil(t, res)
@@ -297,9 +297,9 @@ func TestUpdateUser(t *testing.T) {
 
 	t.Run(
 		"Validation error", func(t *testing.T) {
-			invalidUserReq := &pb.UserWithUid{
+			invalidUserReq := &pb.SSO_UserWithUid{
 				Uid:  req.Uid,
-				User: &pb.User{Name: ""}, // Invalid user data
+				User: &pb.SSO_User{Name: ""}, // Invalid user data
 			}
 			res, err := h.UpdateUser(ctx, invalidUserReq)
 
@@ -315,7 +315,7 @@ func TestUpdateUser(t *testing.T) {
 			res, err := h.UpdateUser(ctx, req)
 			assert.Nil(t, err)
 			assert.NotNil(t, res)
-			assert.Equal(t, &pb.UuidMsg{Uuid: res.Uuid}, res)
+			assert.Equal(t, &pb.SSO_UuidMsg{Uuid: res.Uuid}, res)
 		},
 	)
 
@@ -353,7 +353,7 @@ func TestDeleteUser(t *testing.T) {
 	h := New(auth, mockCtrl)
 
 	ctx := context.WithValue(context.Background(), "uid", "user-uid")
-	req := &pb.UuidMsg{Uuid: "123e4567-e89b-12d3-a456-426614174000"}
+	req := &pb.SSO_UuidMsg{Uuid: "123e4567-e89b-12d3-a456-426614174000"}
 	validUUID := uuid.MustParse(req.Uuid)
 
 	// Case 1: Unauthorized
@@ -370,7 +370,7 @@ func TestDeleteUser(t *testing.T) {
 	// Case 2: Invalid UUID
 	t.Run(
 		"Invalid UUID", func(t *testing.T) {
-			invalidReq := &pb.UuidMsg{Uuid: "invalid-uuid"}
+			invalidReq := &pb.SSO_UuidMsg{Uuid: "invalid-uuid"}
 			res, err := h.DeleteUser(ctx, invalidReq)
 
 			assert.Nil(t, res)

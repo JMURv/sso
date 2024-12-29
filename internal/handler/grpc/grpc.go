@@ -21,7 +21,7 @@ import (
 )
 
 type Ctrl interface {
-	ValidateToken(ctx context.Context, token string) bool
+	ParseClaims(ctx context.Context, token string) (map[string]any, error)
 	GetUserByToken(ctx context.Context, token string) (*md.User, error)
 	SendSupportEmail(ctx context.Context, uid uuid.UUID, theme, text string) error
 	CheckForgotPasswordEmail(ctx context.Context, password string, uid uuid.UUID, code int) error

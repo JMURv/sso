@@ -1,28 +1,24 @@
 syntax = "proto3";
 
-package user;
+package protos;
 
-option go_package = "github.com/JMURv/par-pro/api/pb/users";
+option go_package = "github.com/JMURv/par-pro/api/pb/protos";
 import "google/protobuf/timestamp.proto";
 
-message EmptySSO {}
+message SSO_Empty {}
 
-message stringSSOMsg {
+message SSO_StringMsg {
   string string = 1;
 }
 
-message uuidMsg {
+message SSO_UuidMsg {
   string uuid = 1;
 }
-message uint64Msg {
+message SSO_Uint64Msg {
   uint64 uint64 = 1;
 }
 
-message boolSSOMsg {
-  bool bool = 1;
-}
-
-message User {
+message SSO_User {
   string id = 1;
   string name = 2;
   string password = 3;
@@ -30,27 +26,27 @@ message User {
   string avatar = 5;
   string address = 6;
   string phone = 7;
-  repeated Permission permissions = 8;
+  repeated SSO_Permission permissions = 8;
   google.protobuf.Timestamp created_at = 9;
   google.protobuf.Timestamp updated_at = 10;
 }
 
 service PermissionSvc {
-  rpc ListPermissions (ListReq) returns (PermissionList);
-  rpc GetPermission (uint64Msg) returns (Permission);
-  rpc CreatePermission (Permission) returns (uint64Msg);
-  rpc UpdatePermission (Permission) returns (EmptySSO);
-  rpc DeletePermission (uint64Msg) returns (EmptySSO);
+  rpc ListPermissions (SSO_ListReq) returns (SSO_PermissionList);
+  rpc GetPermission (SSO_Uint64Msg) returns (SSO_Permission);
+  rpc CreatePermission (SSO_Permission) returns (SSO_Uint64Msg);
+  rpc UpdatePermission (SSO_Permission) returns (SSO_Empty);
+  rpc DeletePermission (SSO_Uint64Msg) returns (SSO_Empty);
 }
 
-message Permission {
+message SSO_Permission {
   uint64 id = 1;
   string name = 2;
   bool   value = 3;
 }
 
-message PermissionList {
-  repeated Permission data = 1;
+message SSO_PermissionList {
+  repeated SSO_Permission data = 1;
   int64 count = 2;
   int64 total_pages = 3;
   int64 current_page = 4;
@@ -58,67 +54,73 @@ message PermissionList {
 }
 
 service SSO {
-  rpc ValidateToken (stringSSOMsg) returns (boolSSOMsg);
-  rpc GetUserByToken(stringSSOMsg) returns (User);
+  rpc ParseClaims (SSO_StringMsg) returns (SSO_ParseClaimsRes);
+  rpc GetUserByToken(SSO_StringMsg) returns (SSO_User);
 
-  rpc SendLoginCode (SendLoginCodeReq) returns (EmptySSO);
-  rpc CheckLoginCode (CheckLoginCodeReq) returns (CheckLoginCodeRes);
-  rpc Logout (EmptySSO) returns (EmptySSO);
+  rpc SendLoginCode (SSO_SendLoginCodeReq) returns (SSO_Empty);
+  rpc CheckLoginCode (SSO_CheckLoginCodeReq) returns (SSO_CheckLoginCodeRes);
+  rpc Logout (SSO_Empty) returns (SSO_Empty);
 
-  rpc Me (EmptySSO) returns (User);
-  rpc UpdateMe(User) returns (User);
+  rpc Me (SSO_Empty) returns (SSO_User);
+  rpc UpdateMe(SSO_User) returns (SSO_User);
 
-  rpc CheckEmail (EmailMsg) returns (CheckEmailRes);
-  rpc SendForgotPasswordEmail (EmailMsg) returns (EmptySSO);
-  rpc CheckForgotPasswordEmail (CheckForgotPasswordEmailReq) returns (EmptySSO);
-  rpc SendSupportEmail (SendSupportEmailReq) returns (EmptySSO);
+  rpc CheckEmail (SSO_EmailMsg) returns (SSO_CheckEmailRes);
+  rpc SendForgotPasswordEmail (SSO_EmailMsg) returns (SSO_Empty);
+  rpc CheckForgotPasswordEmail (SSO_CheckForgotPasswordEmailReq) returns (SSO_Empty);
+  rpc SendSupportEmail (SSO_SendSupportEmailReq) returns (SSO_Empty);
 }
 
-message SendLoginCodeReq {
+message SSO_ParseClaimsRes {
+  string token = 1;
+  string email = 2;
+  string exp = 3;
+}
+
+message SSO_SendLoginCodeReq {
   string email = 1;
   string password = 2;
 }
 
-message CheckLoginCodeReq {
+message SSO_CheckLoginCodeReq {
   string email = 1;
   int32 code = 2;
 }
 
-message CheckLoginCodeRes {
+message SSO_CheckLoginCodeRes {
   string access = 1;
   string refresh = 2;
 }
 
-message EmailMsg {
+message SSO_EmailMsg {
   string email = 1;
 }
 
-message CheckEmailRes {
+message SSO_CheckEmailRes {
   bool is_exist = 1;
 }
 
-message CheckForgotPasswordEmailReq {
+message SSO_CheckForgotPasswordEmailReq {
   string password = 1;
   string uidb64 = 2;
   string token = 3;
 }
 
-message SendSupportEmailReq {
+message SSO_SendSupportEmailReq {
   string theme = 1;
   string text = 2;
 }
 
 service Users {
-  rpc SearchUser (SearchReq) returns (PaginatedUsersRes);
-  rpc ListUsers (ListReq) returns (PaginatedUsersRes);
-  rpc GetUser (uuidMsg) returns (User);
-  rpc CreateUser (CreateUserReq) returns (CreateUserRes);
-  rpc UpdateUser (UserWithUid) returns (uuidMsg);
-  rpc DeleteUser (uuidMsg) returns (EmptySSO);
+  rpc SearchUser (SSO_SearchReq) returns (SSO_PaginatedUsersRes);
+  rpc ListUsers (SSO_ListReq) returns (SSO_PaginatedUsersRes);
+  rpc GetUser (SSO_UuidMsg) returns (SSO_User);
+  rpc CreateUser (SSO_CreateUserReq) returns (SSO_CreateUserRes);
+  rpc UpdateUser (SSO_UserWithUid) returns (SSO_UuidMsg);
+  rpc DeleteUser (SSO_UuidMsg) returns (SSO_Empty);
 }
 
-message UserWithUid {
-  User user = 1;
+message SSO_UserWithUid {
+  SSO_User user = 1;
   string uid = 2;
 }
 
@@ -127,32 +129,32 @@ message FileReq {
   string filename = 2;
 }
 
-message CreateUserReq {
+message SSO_CreateUserReq {
   string name = 1;
   string email = 2;
   string password = 3;
   FileReq file = 4;
 }
 
-message CreateUserRes {
+message SSO_CreateUserRes {
   string uid = 1;
   string access = 2;
   string refresh = 3;
 }
 
-message ListReq {
+message SSO_ListReq {
   uint64 page = 1;
   uint64 size = 2;
 }
 
-message SearchReq {
+message SSO_SearchReq {
   string query = 1;
   uint64 page = 2;
   uint64 size = 3;
 }
 
-message PaginatedUsersRes {
-  repeated User data = 1;
+message SSO_PaginatedUsersRes {
+  repeated SSO_User data = 1;
   int64 count = 2;
   int64 total_pages = 3;
   int64 current_page = 4;

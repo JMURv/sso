@@ -84,7 +84,7 @@ func (s *EmailServer) SendUserCredentials(_ context.Context, email, pass string)
 }
 
 func (s *EmailServer) SendOptFile(_ context.Context, email string, filename string, bytes []byte) error {
-	m := s.GetMessageBase(fmt.Sprintf("Файл, подтверждающий юр. статус: %s", email), s.admin)
+	m := s.GetMessageBase(fmt.Sprintf("Файл, подтверждающий личность: %s", email), s.admin)
 	m.SetBody("text/plain", "")
 
 	m.Attach(

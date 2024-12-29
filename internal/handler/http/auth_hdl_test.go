@@ -187,14 +187,20 @@ func TestHandler_GetUserByToken(t *testing.T) {
 	)
 }
 
-func TestHandler_ValidateToken(t *testing.T) {
-	const uri = "/api/sso/validate-token"
+func TestHandler_ParseClaims(t *testing.T) {
+	const uri = "/api/sso/parse"
 	mock := gomock.NewController(t)
 	defer mock.Finish()
 
 	mctrl := mocks.NewMockCtrl(mock)
 	auth := mocks.NewMockAuthService(mock)
 	h := New(auth, mctrl)
+
+	expSuccess := map[string]any{
+		"uid":   uuid.New().String(),
+		"email": "test@example.com",
+		"exp":   "test-exp",
+	}
 
 	t.Run(
 		"ErrMethodNotAllowed", func(t *testing.T) {
@@ -205,7 +211,7 @@ func TestHandler_ValidateToken(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
-			h.validateToken(w, req)
+			h.parseClaims(w, req)
 
 			res := &utils.ErrorResponse{}
 			err = json.NewDecoder(w.Result().Body).Decode(res)
@@ -229,7 +235,7 @@ func TestHandler_ValidateToken(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
-			h.validateToken(w, req)
+			h.parseClaims(w, req)
 
 			res := &utils.ErrorResponse{}
 			err = json.NewDecoder(w.Result().Body).Decode(res)
@@ -249,7 +255,7 @@ func TestHandler_ValidateToken(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
-			h.validateToken(w, req)
+			h.parseClaims(w, req)
 
 			res := &utils.ErrorResponse{}
 			err = json.NewDecoder(w.Result().Body).Decode(res)
@@ -263,7 +269,7 @@ func TestHandler_ValidateToken(t *testing.T) {
 	t.Run(
 		"Panic", func(t *testing.T) {
 			mctrl.EXPECT().
-				ValidateToken(gomock.Any(), "test-token").
+				ParseClaims(gomock.Any(), "test-token").
 				DoAndReturn(
 					func(ctx context.Context, token string) bool {
 						panic("test panic")
@@ -276,7 +282,7 @@ func TestHandler_ValidateToken(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
-			h.validateToken(w, req)
+			h.parseClaims(w, req)
 
 			res := &utils.ErrorResponse{}
 			err = json.NewDecoder(w.Result().Body).Decode(res)
@@ -289,7 +295,9 @@ func TestHandler_ValidateToken(t *testing.T) {
 
 	t.Run(
 		"Success", func(t *testing.T) {
-			mctrl.EXPECT().ValidateToken(gomock.Any(), "test-token").Return(true)
+			mctrl.EXPECT().ParseClaims(gomock.Any(), "test-token").Return(
+				expSuccess, nil,
+			)
 			b, err := json.Marshal(&TokenReq{Token: "test-token"})
 			require.NoError(t, err)
 
@@ -297,14 +305,14 @@ func TestHandler_ValidateToken(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
-			h.validateToken(w, req)
+			h.parseClaims(w, req)
 
 			res := &utils.Response{}
 			err = json.NewDecoder(w.Result().Body).Decode(res)
 			assert.Nil(t, err)
 
 			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
-			assert.Equal(t, true, res.Data)
+			assert.Equal(t, expSuccess, res.Data)
 		},
 	)
 

@@ -236,6 +236,21 @@ func (mr *MockCtrlMockRecorder) ListUsers(ctx, page, size any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsers", reflect.TypeOf((*MockCtrl)(nil).ListUsers), ctx, page, size)
 }
 
+// ParseClaims mocks base method.
+func (m *MockCtrl) ParseClaims(ctx context.Context, token string) (map[string]any, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ParseClaims", ctx, token)
+	ret0, _ := ret[0].(map[string]any)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ParseClaims indicates an expected call of ParseClaims.
+func (mr *MockCtrlMockRecorder) ParseClaims(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseClaims", reflect.TypeOf((*MockCtrl)(nil).ParseClaims), ctx, token)
+}
+
 // SearchUser mocks base method.
 func (m *MockCtrl) SearchUser(ctx context.Context, query string, page, size int) (*model.PaginatedUser, error) {
 	m.ctrl.T.Helper()
@@ -319,18 +334,4 @@ func (m *MockCtrl) UpdateUser(ctx context.Context, id uuid.UUID, req *model.User
 func (mr *MockCtrlMockRecorder) UpdateUser(ctx, id, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockCtrl)(nil).UpdateUser), ctx, id, req)
-}
-
-// ValidateToken mocks base method.
-func (m *MockCtrl) ValidateToken(ctx context.Context, token string) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateToken", ctx, token)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ValidateToken indicates an expected call of ValidateToken.
-func (mr *MockCtrlMockRecorder) ValidateToken(ctx, token any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateToken", reflect.TypeOf((*MockCtrl)(nil).ValidateToken), ctx, token)
 }

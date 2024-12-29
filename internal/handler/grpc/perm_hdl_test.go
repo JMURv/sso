@@ -30,7 +30,7 @@ func TestHandler_ListPermissions(t *testing.T) {
 
 	t.Run(
 		"Invalid request", func(t *testing.T) {
-			req := &pb.ListReq{Page: 0, Size: 0}
+			req := &pb.SSO_ListReq{Page: 0, Size: 0}
 			res, err := h.ListPermissions(ctx, req)
 
 			assert.Nil(t, res)
@@ -40,7 +40,7 @@ func TestHandler_ListPermissions(t *testing.T) {
 
 	t.Run(
 		"Success", func(t *testing.T) {
-			req := &pb.ListReq{Page: page, Size: size}
+			req := &pb.SSO_ListReq{Page: page, Size: size}
 
 			mctrl.EXPECT().ListPermissions(gomock.Any(), int(page), int(size)).Return(expectedData, nil).Times(1)
 
@@ -53,7 +53,7 @@ func TestHandler_ListPermissions(t *testing.T) {
 
 	t.Run(
 		"Internal Error", func(t *testing.T) {
-			req := &pb.ListReq{Page: page, Size: size}
+			req := &pb.SSO_ListReq{Page: page, Size: size}
 
 			mctrl.EXPECT().ListPermissions(gomock.Any(), int(page), int(size)).Return(
 				nil,
@@ -83,7 +83,7 @@ func TestHandler_GetPermission(t *testing.T) {
 
 	t.Run(
 		"Invalid ID", func(t *testing.T) {
-			req := &pb.Uint64Msg{Uint64: invalidID}
+			req := &pb.SSO_Uint64Msg{Uint64: invalidID}
 			res, err := h.GetPermission(ctx, req)
 
 			assert.Nil(t, res)
@@ -93,7 +93,7 @@ func TestHandler_GetPermission(t *testing.T) {
 
 	t.Run(
 		"Success", func(t *testing.T) {
-			req := &pb.Uint64Msg{Uint64: validID}
+			req := &pb.SSO_Uint64Msg{Uint64: validID}
 			mctrl.EXPECT().GetPermission(gomock.Any(), validID).Return(expectedData, nil).Times(1)
 
 			res, err := h.GetPermission(ctx, req)
@@ -104,7 +104,7 @@ func TestHandler_GetPermission(t *testing.T) {
 
 	t.Run(
 		"Not Found", func(t *testing.T) {
-			req := &pb.Uint64Msg{Uint64: validID}
+			req := &pb.SSO_Uint64Msg{Uint64: validID}
 			mctrl.EXPECT().GetPermission(gomock.Any(), validID).Return(nil, ctrl.ErrNotFound).Times(1)
 
 			res, err := h.GetPermission(ctx, req)
@@ -115,7 +115,7 @@ func TestHandler_GetPermission(t *testing.T) {
 
 	t.Run(
 		"Internal Error", func(t *testing.T) {
-			req := &pb.Uint64Msg{Uint64: validID}
+			req := &pb.SSO_Uint64Msg{Uint64: validID}
 			mctrl.EXPECT().GetPermission(gomock.Any(), validID).Return(nil, errors.New("internal error")).Times(1)
 
 			res, err := h.GetPermission(ctx, req)
@@ -134,7 +134,7 @@ func TestHandler_CreatePermission(t *testing.T) {
 	h := New(auth, mctrl)
 
 	ctx := context.Background()
-	req := &pb.Permission{
+	req := &pb.SSO_Permission{
 		Name: "Test Perm",
 	}
 
@@ -146,7 +146,7 @@ func TestHandler_CreatePermission(t *testing.T) {
 	invalidIDX := uint64(0)
 	t.Run(
 		"Validation error", func(t *testing.T) {
-			invalidReq := &pb.Permission{Name: ""}
+			invalidReq := &pb.SSO_Permission{Name: ""}
 			res, err := h.CreatePermission(ctx, invalidReq)
 
 			assert.Nil(t, res)
@@ -199,7 +199,7 @@ func TestHandler_UpdatePermission(t *testing.T) {
 
 	idx := uint64(1)
 	ctx := context.WithValue(context.Background(), "uid", "user-uid")
-	req := &pb.Permission{
+	req := &pb.SSO_Permission{
 		Id:   idx,
 		Name: "new-name",
 	}
@@ -217,7 +217,7 @@ func TestHandler_UpdatePermission(t *testing.T) {
 
 	t.Run(
 		"Invalid ID", func(t *testing.T) {
-			invalidReq := &pb.Permission{Id: uint64(0)}
+			invalidReq := &pb.SSO_Permission{Id: uint64(0)}
 			res, err := h.UpdatePermission(ctx, invalidReq)
 
 			assert.Nil(t, res)
@@ -227,7 +227,7 @@ func TestHandler_UpdatePermission(t *testing.T) {
 
 	t.Run(
 		"Validation error", func(t *testing.T) {
-			invalidReq := &pb.Permission{Id: idx, Name: ""}
+			invalidReq := &pb.SSO_Permission{Id: idx, Name: ""}
 			res, err := h.UpdatePermission(ctx, invalidReq)
 
 			assert.Nil(t, res)
@@ -242,7 +242,7 @@ func TestHandler_UpdatePermission(t *testing.T) {
 			res, err := h.UpdatePermission(ctx, req)
 			assert.Nil(t, err)
 			assert.NotNil(t, res)
-			assert.Equal(t, &pb.EmptySSO{}, res)
+			assert.Equal(t, &pb.SSO_Empty{}, res)
 		},
 	)
 
@@ -281,7 +281,7 @@ func TestHandler_DeletePermission(t *testing.T) {
 
 	idx := uint64(1)
 	ctx := context.WithValue(context.Background(), "uid", "user-uid")
-	req := &pb.Uint64Msg{Uint64: idx}
+	req := &pb.SSO_Uint64Msg{Uint64: idx}
 
 	t.Run(
 		"Unauthorized", func(t *testing.T) {
@@ -295,7 +295,7 @@ func TestHandler_DeletePermission(t *testing.T) {
 
 	t.Run(
 		"Invalid ID", func(t *testing.T) {
-			invalidReq := &pb.Uint64Msg{Uint64: uint64(0)}
+			invalidReq := &pb.SSO_Uint64Msg{Uint64: uint64(0)}
 			res, err := h.DeletePermission(ctx, invalidReq)
 
 			assert.Nil(t, res)

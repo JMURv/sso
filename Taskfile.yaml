@@ -16,3 +16,30 @@ tasks:
     cmds:
       - mockgen -source="./internal/handler/grpc/grpc.go" -destination="mocks/mock_grpc_ctrl.go" -package=mocks
       - mockgen -source="./internal/controller/ctrl.go" -destination="mocks/mock_repos.go" -package=mocks
+
+  t:
+    desc: Test all
+    cmds:
+      - task t-hdl
+      - task t-ctrl
+      - task t-repo
+
+  t-hdl:
+    desc: Test handler
+    cmds:
+      - "go test ./internal/handler/grpc/"
+      - "go test -coverprofile=cov_http.out ./internal/handler/grpc/ && go tool cover -func=cov_http.out"
+      - "go test ./internal/handler/http/"
+      - "go test -coverprofile=cov_grpc.out ./internal/handler/http/ && go tool cover -func=cov_grpc.out"
+
+  t-ctrl:
+    desc: Test controller
+    cmds:
+      - "go test ./internal/controller/"
+      - "go test -coverprofile=cov_ctrl.out ./internal/controller/ && go tool cover -func=cov_ctrl.out"
+
+  t-repo:
+    desc: Test repository
+    cmds:
+      - "go test ./internal/repository/db/"
+      - "go test -coverprofile=cov_repo.out ./internal/repository/db/ && go tool cover -func=cov_repo.out"

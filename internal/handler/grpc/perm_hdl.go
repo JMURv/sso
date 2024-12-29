@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func (h *Handler) ListPermissions(ctx context.Context, req *pb.ListReq) (*pb.PermissionList, error) {
+func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_PermissionList, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.ListPermissions.hdl"
 
@@ -40,7 +40,7 @@ func (h *Handler) ListPermissions(ctx context.Context, req *pb.ListReq) (*pb.Per
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.PermissionList{
+	return &pb.SSO_PermissionList{
 		Data:        utils.ListPermissionsToProto(res.Data),
 		Count:       res.Count,
 		TotalPages:  int64(res.TotalPages),
@@ -49,7 +49,7 @@ func (h *Handler) ListPermissions(ctx context.Context, req *pb.ListReq) (*pb.Per
 	}, nil
 }
 
-func (h *Handler) GetPermission(ctx context.Context, req *pb.Uint64Msg) (*pb.Permission, error) {
+func (h *Handler) GetPermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb.SSO_Permission, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.GetPermission.hdl"
 
@@ -82,7 +82,7 @@ func (h *Handler) GetPermission(ctx context.Context, req *pb.Uint64Msg) (*pb.Per
 	return utils.PermissionToProto(res), nil
 }
 
-func (h *Handler) CreatePermission(ctx context.Context, req *pb.Permission) (*pb.Uint64Msg, error) {
+func (h *Handler) CreatePermission(ctx context.Context, req *pb.SSO_Permission) (*pb.SSO_Uint64Msg, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.CreatePermission.hdl"
 
@@ -113,12 +113,12 @@ func (h *Handler) CreatePermission(ctx context.Context, req *pb.Permission) (*pb
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.Uint64Msg{
+	return &pb.SSO_Uint64Msg{
 		Uint64: uid,
 	}, nil
 }
 
-func (h *Handler) UpdatePermission(ctx context.Context, req *pb.Permission) (*pb.EmptySSO, error) {
+func (h *Handler) UpdatePermission(ctx context.Context, req *pb.SSO_Permission) (*pb.SSO_Empty, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.UpdatePermission.hdl"
 
@@ -156,10 +156,10 @@ func (h *Handler) UpdatePermission(ctx context.Context, req *pb.Permission) (*pb
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.EmptySSO{}, nil
+	return &pb.SSO_Empty{}, nil
 }
 
-func (h *Handler) DeletePermission(ctx context.Context, req *pb.Uint64Msg) (*pb.EmptySSO, error) {
+func (h *Handler) DeletePermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb.SSO_Empty, error) {
 	s, c := time.Now(), codes.OK
 	const op = "sso.DeletePermission.hdl"
 
@@ -190,5 +190,5 @@ func (h *Handler) DeletePermission(ctx context.Context, req *pb.Uint64Msg) (*pb.
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.EmptySSO{}, nil
+	return &pb.SSO_Empty{}, nil
 }

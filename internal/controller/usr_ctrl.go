@@ -241,8 +241,7 @@ func (c *Controller) CreateUser(ctx context.Context, u *model.User, fileName str
 	}
 
 	if fileName != "" && bytes != nil {
-		err := c.smtp.SendOptFile(ctx, u.Email, fileName, bytes)
-		if err != nil {
+		if err = c.smtp.SendOptFile(ctx, u.Email, fileName, bytes); err != nil {
 			zap.L().Debug(
 				"failed to send email",
 				zap.Error(err),
@@ -267,6 +266,10 @@ func (c *Controller) CreateUser(ctx context.Context, u *model.User, fileName str
 			zap.Error(err), zap.String("op", op),
 		)
 		return id, "", "", ErrWhileGeneratingToken
+	}
+
+	if err = c.smtp.SendUserCredentials(ctx, u.Email, u.Password); err != nil {
+		return id, accessToken, refreshToken, err
 	}
 
 	go c.cache.InvalidateKeysByPattern(ctx, userPattern)

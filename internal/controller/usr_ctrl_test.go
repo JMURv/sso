@@ -360,6 +360,7 @@ func TestCreateUser(t *testing.T) {
 	mockCache.EXPECT().Set(gomock.Any(), consts.DefaultCacheTime, gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 	mockSMTP.EXPECT().SendOptFile(gomock.Any(), user.Email, fileName, fileBytes).Times(0)
+	mockSMTP.EXPECT().SendUserCredentials(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
 	authRepo.EXPECT().NewToken(user, auth.AccessTokenDuration).Return(expectedAccessToken, nil).Times(1)
 	authRepo.EXPECT().NewToken(user, auth.RefreshTokenDuration).Return(expectedRefreshToken, nil).Times(1)
@@ -380,6 +381,7 @@ func TestCreateUser(t *testing.T) {
 	).Return(errors.New("cache error")).Times(1)
 
 	mockSMTP.EXPECT().SendOptFile(gomock.Any(), user.Email, fileName, fileBytes).Return(nil).Times(1)
+	mockSMTP.EXPECT().SendUserCredentials(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
 	authRepo.EXPECT().NewToken(user, auth.AccessTokenDuration).Return(expectedAccessToken, nil).Times(1)
 	authRepo.EXPECT().NewToken(user, auth.RefreshTokenDuration).Return(expectedRefreshToken, nil).Times(1)
@@ -406,6 +408,7 @@ func TestCreateUser(t *testing.T) {
 				fileName,
 				fileBytes,
 			).Return(errors.New("file error")).Times(1)
+			mockSMTP.EXPECT().SendUserCredentials(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
 			authRepo.EXPECT().NewToken(user, auth.AccessTokenDuration).Return(expectedAccessToken, nil).Times(1)
 			authRepo.EXPECT().NewToken(user, auth.RefreshTokenDuration).Return(expectedRefreshToken, nil).Times(1)

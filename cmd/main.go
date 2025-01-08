@@ -7,6 +7,7 @@ import (
 	"github.com/JMURv/sso/internal/cache/redis"
 	ctrl "github.com/JMURv/sso/internal/controller"
 	discovery "github.com/JMURv/sso/internal/discovery/JMURv/grpc"
+
 	//handler "github.com/JMURv/sso/internal/handler/http"
 	handler "github.com/JMURv/sso/internal/handler/grpc"
 	tracing "github.com/JMURv/sso/internal/metrics/jaeger"
@@ -48,9 +49,9 @@ func main() {
 	go tracing.Start(ctx, conf.ServiceName, conf.Jaeger)
 
 	dscvry := discovery.New(
-		conf.SrvDiscovery.URL,
+		conf.SrvDiscovery,
 		conf.ServiceName,
-		fmt.Sprintf("%v://%v:%v", conf.Server.Scheme, conf.Server.Domain, conf.Server.Port),
+		conf.Server,
 	)
 
 	if err := dscvry.Register(ctx); err != nil {
@@ -74,7 +75,6 @@ func main() {
 
 		zap.L().Info("Shutting down gracefully...")
 
-		cancel()
 		if err := cache.Close(); err != nil {
 			zap.L().Debug("Failed to close connection to Redis: ", zap.Error(err))
 		}
@@ -90,6 +90,7 @@ func main() {
 		if err := h.Close(); err != nil {
 			zap.L().Warn("Error closing handler", zap.Error(err))
 		}
+		cancel()
 
 		os.Exit(0)
 	}()

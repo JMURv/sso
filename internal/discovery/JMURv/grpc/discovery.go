@@ -2,8 +2,10 @@ package discovery
 
 import (
 	"context"
+	"fmt"
 	pb "github.com/JMURv/protos/discovery"
 	"github.com/JMURv/sso/internal/discovery"
+	conf "github.com/JMURv/sso/pkg/config"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -11,23 +13,23 @@ import (
 
 type Discovery struct {
 	cli  *grpc.ClientConn
-	url  string
 	name string
 	addr string
 }
 
-func New(url, name, addr string) discovery.ServiceDiscovery {
-	cli, err := grpc.NewClient(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func New(url *conf.SrvDiscoveryConfig, name string, addr *conf.ServerConfig) discovery.ServiceDiscovery {
+	cli, err := grpc.NewClient(
+		fmt.Sprintf("%v:%v", url.Host, url.Port),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
-		zap.L().Debug("failed to create client", zap.Error(err))
-		return nil
+		zap.L().Fatal("failed to create client", zap.Error(err))
 	}
 
 	return &Discovery{
 		cli:  cli,
-		url:  url,
 		name: name,
-		addr: addr,
+		addr: fmt.Sprintf("%v:%v", addr.Domain, addr.Port),
 	}
 }
 

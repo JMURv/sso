@@ -17,7 +17,9 @@ type Config struct {
 }
 
 type SrvDiscoveryConfig struct {
-	URL string `yaml:"url" env-required:"true"`
+	Scheme string `yaml:"scheme" env-default:"http"`
+	Host   string `yaml:"host" env-default:"localhost"`
+	Port   int    `yaml:"port" env-default:"50030"`
 }
 
 type ServerConfig struct {

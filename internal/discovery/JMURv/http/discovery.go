@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/JMURv/sso/internal/discovery"
+	conf "github.com/JMURv/sso/pkg/config"
 	"github.com/goccy/go-json"
+	"log"
 	"net/http"
 )
 
@@ -28,11 +30,11 @@ type Discovery struct {
 	addr string
 }
 
-func New(url, name, addr string) discovery.ServiceDiscovery {
+func New(url *conf.SrvDiscoveryConfig, name string, addr *conf.ServerConfig) discovery.ServiceDiscovery {
 	return &Discovery{
-		url:  url,
+		url:  fmt.Sprintf("%v://%v:%v", url.Scheme, url.Host, url.Port),
 		name: name,
-		addr: addr,
+		addr: fmt.Sprintf("%v://%v:%v", addr.Scheme, addr.Domain, addr.Port),
 	}
 }
 
@@ -51,7 +53,8 @@ func (d *Discovery) Register(_ context.Context) error {
 		return err
 	}
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusCreated {
+		log.Println(res.StatusCode)
 		return discovery.ErrFailedToRegister
 	}
 

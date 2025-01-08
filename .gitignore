@@ -2,3 +2,4 @@
 *.config.yaml
 !example.config.yaml
 cov*
+*/**~

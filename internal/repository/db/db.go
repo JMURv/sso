@@ -97,15 +97,9 @@ func MustPrecreate(db *sql.DB) {
 			}
 
 			for _, perm := range v.Perms {
-				var permID uint64
 
-				err := tx.QueryRow(`SELECT FROM permission WHERE name = $1`, perm.Name).Scan(&permID)
-				if err != nil && err == sql.ErrNoRows {
-					if err := tx.QueryRow(permCreate, perm.Name).Scan(&permID); err != nil {
-						tx.Rollback()
-						panic(err)
-					}
-				} else if err != nil {
+				var permID uint64
+				if err := tx.QueryRow(permCreate, perm.Name).Scan(&permID); err != nil {
 					tx.Rollback()
 					panic(err)
 				}

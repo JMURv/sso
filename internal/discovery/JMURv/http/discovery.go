@@ -28,7 +28,7 @@ type Discovery struct {
 	addr string
 }
 
-func New(url, name, addr string) *Discovery {
+func New(url, name, addr string) discovery.ServiceDiscovery {
 	return &Discovery{
 		url:  url,
 		name: name,
@@ -36,7 +36,11 @@ func New(url, name, addr string) *Discovery {
 	}
 }
 
-func (d *Discovery) Register() error {
+func (d *Discovery) Close() error {
+	return nil
+}
+
+func (d *Discovery) Register(_ context.Context) error {
 	req, err := json.Marshal(registerRequest{Name: d.name, Address: d.addr})
 	if err != nil {
 		return err
@@ -54,7 +58,7 @@ func (d *Discovery) Register() error {
 	return nil
 }
 
-func (d *Discovery) Deregister() error {
+func (d *Discovery) Deregister(_ context.Context) error {
 	req, err := json.Marshal(registerRequest{Name: d.name, Address: d.addr})
 	if err != nil {
 		return err
@@ -72,7 +76,7 @@ func (d *Discovery) Deregister() error {
 	return nil
 }
 
-func (d *Discovery) FindServiceByName(ctx context.Context, name string) (string, error) {
+func (d *Discovery) FindServiceByName(_ context.Context, name string) (string, error) {
 	req, err := json.Marshal(findRequest{Name: name})
 	if err != nil {
 		return "", err

@@ -15,6 +15,7 @@ import (
 )
 
 type userRepo interface {
+	SearchUser(ctx context.Context, query string, page int, size int) (*model.PaginatedUser, error)
 	ListUsers(ctx context.Context, page, size int) (*model.PaginatedUser, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
@@ -22,7 +23,6 @@ type userRepo interface {
 	CreateUser(ctx context.Context, req *model.User) (uuid.UUID, error)
 	UpdateUser(ctx context.Context, id uuid.UUID, req *model.User) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
-	SearchUser(ctx context.Context, query string, page int, size int) (*model.PaginatedUser, error)
 }
 
 const userCacheKey = "user:%v"

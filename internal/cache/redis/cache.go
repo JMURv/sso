@@ -33,10 +33,8 @@ func New(conf *cfg.RedisConfig) *Cache {
 	return &Cache{cli: cli}
 }
 
-func (c *Cache) Close() {
-	if err := c.cli.Close(); err != nil {
-		zap.L().Debug("Failed to close connection to Redis: ", zap.Error(err))
-	}
+func (c *Cache) Close() error {
+	return c.cli.Close()
 }
 
 func (c *Cache) GetToStruct(ctx context.Context, key string, dest any) error {

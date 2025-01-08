@@ -6,7 +6,7 @@ import (
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/cache/redis"
 	ctrl "github.com/JMURv/sso/internal/controller"
-	"github.com/JMURv/sso/internal/discovery/JMURv"
+	discovery "github.com/JMURv/sso/internal/discovery/JMURv/grpc"
 	//handler "github.com/JMURv/sso/internal/handler/http"
 	handler "github.com/JMURv/sso/internal/handler/grpc"
 	tracing "github.com/JMURv/sso/internal/metrics/jaeger"
@@ -53,7 +53,7 @@ func main() {
 		fmt.Sprintf("%v://%v:%v", conf.Server.Scheme, conf.Server.Domain, conf.Server.Port),
 	)
 
-	if err := dscvry.Register(); err != nil {
+	if err := dscvry.Register(ctx); err != nil {
 		zap.L().Warn("Error registering service", zap.Error(err))
 	}
 
@@ -75,10 +75,16 @@ func main() {
 		zap.L().Info("Shutting down gracefully...")
 
 		cancel()
-		cache.Close()
+		if err := cache.Close(); err != nil {
+			zap.L().Debug("Failed to close connection to Redis: ", zap.Error(err))
+		}
 
-		if err := dscvry.Deregister(); err != nil {
+		if err := dscvry.Deregister(ctx); err != nil {
 			zap.L().Warn("Error deregistering from discovery", zap.Error(err))
+		}
+
+		if err := dscvry.Close(); err != nil {
+			zap.L().Warn("Error closing discovery", zap.Error(err))
 		}
 
 		if err := h.Close(); err != nil {

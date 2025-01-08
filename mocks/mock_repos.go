@@ -23,6 +23,7 @@ import (
 type MockAppRepo struct {
 	ctrl     *gomock.Controller
 	recorder *MockAppRepoMockRecorder
+	isgomock struct{}
 }
 
 // MockAppRepoMockRecorder is the mock recorder for MockAppRepo.
@@ -222,6 +223,7 @@ func (mr *MockAppRepoMockRecorder) UpdateUser(ctx, id, req any) *gomock.Call {
 type MockAuthService struct {
 	ctrl     *gomock.Controller
 	recorder *MockAuthServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockAuthServiceMockRecorder is the mock recorder for MockAuthService.
@@ -275,6 +277,7 @@ func (mr *MockAuthServiceMockRecorder) VerifyToken(tokenStr any) *gomock.Call {
 type MockCacheService struct {
 	ctrl     *gomock.Controller
 	recorder *MockCacheServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockCacheServiceMockRecorder is the mock recorder for MockCacheService.
@@ -295,9 +298,11 @@ func (m *MockCacheService) EXPECT() *MockCacheServiceMockRecorder {
 }
 
 // Close mocks base method.
-func (m *MockCacheService) Close() {
+func (m *MockCacheService) Close() error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Close")
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Close indicates an expected call of Close.
@@ -379,6 +384,7 @@ func (mr *MockCacheServiceMockRecorder) Set(ctx, t, key, val any) *gomock.Call {
 type MockEmailService struct {
 	ctrl     *gomock.Controller
 	recorder *MockEmailServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockEmailServiceMockRecorder is the mock recorder for MockEmailService.

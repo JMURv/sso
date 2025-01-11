@@ -39,9 +39,10 @@ func (d *Discovery) Close() error {
 
 func (d *Discovery) Register(ctx context.Context) error {
 	_, err := pb.NewServiceDiscoveryClient(d.cli).Register(
-		ctx, &pb.NameAndAddressMsg{
+		ctx, &pb.RegisterMsg{
 			Name:    d.name,
 			Address: d.addr,
+			Type:    "grpc",
 		},
 	)
 	if err != nil {
@@ -68,7 +69,7 @@ func (d *Discovery) Deregister(ctx context.Context) error {
 }
 
 func (d *Discovery) FindServiceByName(ctx context.Context, name string) (addr string, err error) {
-	res, err := pb.NewServiceDiscoveryClient(d.cli).FindService(
+	res, err := pb.NewServiceDiscoveryClient(d.cli).FindServiceByName(
 		ctx, &pb.ServiceNameMsg{
 			Name: name,
 		},

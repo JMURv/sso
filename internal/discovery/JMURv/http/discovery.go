@@ -22,6 +22,7 @@ type findResponse struct {
 type registerRequest struct {
 	Name    string `json:"name"`
 	Address string `json:"address"`
+	SvcType string `json:"svc_type"`
 }
 
 type Discovery struct {
@@ -43,7 +44,7 @@ func (d *Discovery) Close() error {
 }
 
 func (d *Discovery) Register(_ context.Context) error {
-	req, err := json.Marshal(registerRequest{Name: d.name, Address: d.addr})
+	req, err := json.Marshal(registerRequest{Name: d.name, Address: d.addr, SvcType: "http"})
 	if err != nil {
 		return err
 	}

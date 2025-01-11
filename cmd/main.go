@@ -7,6 +7,8 @@ import (
 	"github.com/JMURv/sso/internal/cache/redis"
 	ctrl "github.com/JMURv/sso/internal/controller"
 	discovery "github.com/JMURv/sso/internal/discovery/JMURv/grpc"
+	"os/signal"
+	"syscall"
 
 	//handler "github.com/JMURv/sso/internal/handler/http"
 	handler "github.com/JMURv/sso/internal/handler/grpc"
@@ -17,8 +19,6 @@ import (
 	cfg "github.com/JMURv/sso/pkg/config"
 	"go.uber.org/zap"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 const configPath = "local.config.yaml"
@@ -41,6 +41,8 @@ func main() {
 	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	conf := cfg.MustLoad(configPath)
 	mustRegisterLogger(conf.Server.Mode)
 
@@ -67,37 +69,34 @@ func main() {
 	svc := ctrl.New(au, repo, cache, email)
 	h := handler.New(au, svc)
 
-	// Graceful shutdown
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-		<-c
-
-		zap.L().Info("Shutting down gracefully...")
-
-		if err := cache.Close(); err != nil {
-			zap.L().Debug("Failed to close connection to Redis: ", zap.Error(err))
-		}
-
-		if err := dscvry.Deregister(ctx); err != nil {
-			zap.L().Warn("Error deregistering from discovery", zap.Error(err))
-		}
-
-		if err := dscvry.Close(); err != nil {
-			zap.L().Warn("Error closing discovery", zap.Error(err))
-		}
-
-		if err := h.Close(); err != nil {
-			zap.L().Warn("Error closing handler", zap.Error(err))
-		}
-		cancel()
-
-		os.Exit(0)
-	}()
-
 	// Start service
 	zap.L().Info(
 		fmt.Sprintf("Starting server on %v://%v:%v", conf.Server.Scheme, conf.Server.Domain, conf.Server.Port),
 	)
-	h.Start(conf.Server.Port)
+	go h.Start(conf.Server.Port)
+
+	// Graceful shutdown
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	<-c
+
+	zap.L().Info("Shutting down gracefully...")
+
+	if err := cache.Close(); err != nil {
+		zap.L().Warn("Failed to close connection to Redis: ", zap.Error(err))
+	}
+
+	if err := dscvry.Deregister(ctx); err != nil {
+		zap.L().Warn("Error deregistering from discovery", zap.Error(err))
+	}
+
+	if err := dscvry.Close(); err != nil {
+		zap.L().Warn("Error closing discovery", zap.Error(err))
+	}
+
+	if err := h.Close(); err != nil {
+		zap.L().Warn("Error closing handler", zap.Error(err))
+	}
+
+	os.Exit(0)
 }

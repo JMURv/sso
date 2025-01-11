@@ -34,7 +34,7 @@ func (h *Handler) Start(port int) {
 	RegisterUserRoutes(mux, h)
 	RegisterPermRoutes(mux, h)
 	mux.HandleFunc(
-		"/api/health-check", func(w http.ResponseWriter, r *http.Request) {
+		"/health-check", func(w http.ResponseWriter, r *http.Request) {
 			utils.SuccessResponse(w, http.StatusOK, "OK")
 		},
 	)

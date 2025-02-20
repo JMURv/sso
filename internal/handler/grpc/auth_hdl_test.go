@@ -5,6 +5,8 @@ import (
 	"errors"
 	pb "github.com/JMURv/sso/api/pb"
 	ctrl "github.com/JMURv/sso/internal/controller"
+	"github.com/JMURv/sso/internal/dto"
+	"github.com/JMURv/sso/internal/validation"
 	"github.com/JMURv/sso/mocks"
 	md "github.com/JMURv/sso/pkg/model"
 	utils "github.com/JMURv/sso/pkg/utils/grpc"
@@ -15,6 +17,134 @@ import (
 	"google.golang.org/grpc/status"
 	"testing"
 )
+
+func TestHandler_Authenticate(t *testing.T) {
+	const uri = "/api/sso/auth"
+	mock := gomock.NewController(t)
+	defer mock.Finish()
+
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
+	ctx := context.Background()
+	testErr := errors.New("test-err")
+
+	tests := []struct {
+		name       string
+		req        *pb.SSO_EmailAndPasswordRequest
+		assertions func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error)
+		expect     func()
+	}{
+		{
+			name: "InvalidArgument",
+			req:  nil,
+			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+				assert.Equal(t, codes.InvalidArgument, status.Code(err))
+				assert.Nil(t, res)
+				assert.Contains(t, err.Error(), ctrl.ErrDecodeRequest.Error())
+			},
+			expect: func() {},
+		},
+		{
+			name: "ErrMissingEmail",
+			req: &pb.SSO_EmailAndPasswordRequest{
+				Email:    "",
+				Password: "password",
+			},
+			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+				assert.Equal(t, codes.InvalidArgument, status.Code(err))
+				assert.Nil(t, res)
+				assert.Contains(t, err.Error(), validation.ErrMissingEmail.Error())
+			},
+			expect: func() {},
+		},
+		{
+			name: "ErrMissingPass",
+			req: &pb.SSO_EmailAndPasswordRequest{
+				Email:    "email",
+				Password: "",
+			},
+			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+				assert.Equal(t, codes.InvalidArgument, status.Code(err))
+				assert.Nil(t, res)
+				assert.Contains(t, err.Error(), validation.ErrMissingPass.Error())
+			},
+			expect: func() {},
+		},
+		{
+			name: "NotFound",
+			req: &pb.SSO_EmailAndPasswordRequest{
+				Email:    "email",
+				Password: "password",
+			},
+			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+				assert.Equal(t, codes.NotFound, status.Code(err))
+				assert.Nil(t, res)
+				assert.Contains(t, err.Error(), ctrl.ErrNotFound.Error())
+			},
+			expect: func() {
+				mctrl.EXPECT().Authenticate(
+					gomock.Any(), &dto.EmailAndPasswordRequest{
+						Email:    "email",
+						Password: "password",
+					},
+				).Return(nil, ctrl.ErrNotFound)
+			},
+		},
+		{
+			name: "Internal",
+			req: &pb.SSO_EmailAndPasswordRequest{
+				Email:    "email",
+				Password: "password",
+			},
+			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+				assert.Equal(t, codes.Internal, status.Code(err))
+				assert.Nil(t, res)
+				assert.Contains(t, err.Error(), ctrl.ErrInternalError.Error())
+			},
+			expect: func() {
+				mctrl.EXPECT().Authenticate(
+					gomock.Any(), &dto.EmailAndPasswordRequest{
+						Email:    "email",
+						Password: "password",
+					},
+				).Return(nil, testErr)
+			},
+		},
+		{
+			name: "OK",
+			req: &pb.SSO_EmailAndPasswordRequest{
+				Email:    "email",
+				Password: "password",
+			},
+			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+				assert.Equal(t, codes.OK, status.Code(err))
+				assert.Nil(t, err)
+				assert.Equal(t, "token", res.Token)
+			},
+			expect: func() {
+				mctrl.EXPECT().Authenticate(
+					gomock.Any(), &dto.EmailAndPasswordRequest{
+						Email:    "email",
+						Password: "password",
+					},
+				).Return(&dto.EmailAndPasswordResponse{Token: "token"}, nil)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			tt.name, func(t *testing.T) {
+				tt.expect()
+
+				res, err := h.Authenticate(ctx, tt.req)
+
+				tt.assertions(t, res, err)
+			},
+		)
+	}
+}
 
 func TestHandler_GetUserByToken(t *testing.T) {
 	mock := gomock.NewController(t)

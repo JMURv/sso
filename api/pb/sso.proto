@@ -54,6 +54,7 @@ message SSO_PermissionList {
 }
 
 service SSO {
+  rpc Authenticate (SSO_EmailAndPasswordRequest) returns (SSO_EmailAndPasswordResponse);
   rpc ParseClaims (SSO_StringMsg) returns (SSO_ParseClaimsRes);
   rpc GetUserByToken(SSO_StringMsg) returns (SSO_User);
 
@@ -68,6 +69,15 @@ service SSO {
   rpc SendForgotPasswordEmail (SSO_EmailMsg) returns (SSO_Empty);
   rpc CheckForgotPasswordEmail (SSO_CheckForgotPasswordEmailReq) returns (SSO_Empty);
   rpc SendSupportEmail (SSO_SendSupportEmailReq) returns (SSO_Empty);
+}
+
+message SSO_EmailAndPasswordRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message SSO_EmailAndPasswordResponse {
+  string token = 1;
 }
 
 message SSO_ParseClaimsRes {

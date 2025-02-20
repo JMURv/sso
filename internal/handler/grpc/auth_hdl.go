@@ -5,6 +5,7 @@ import (
 	"errors"
 	pb "github.com/JMURv/sso/api/pb"
 	ctrl "github.com/JMURv/sso/internal/controller"
+	"github.com/JMURv/sso/internal/dto"
 	metrics "github.com/JMURv/sso/internal/metrics/prometheus"
 	"github.com/JMURv/sso/internal/validation"
 	utils "github.com/JMURv/sso/pkg/utils/grpc"
@@ -16,6 +17,46 @@ import (
 	"strconv"
 	"time"
 )
+
+func (h *Handler) Authenticate(ctx context.Context, req *pb.SSO_EmailAndPasswordRequest) (*pb.SSO_EmailAndPasswordResponse, error) {
+	const op = "sso.Authenticate.hdl"
+	s, c := time.Now(), codes.OK
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer func() {
+		span.Finish()
+		metrics.ObserveRequest(time.Since(s), int(c), op)
+	}()
+
+	if req == nil {
+		c = codes.InvalidArgument
+		zap.L().Debug("failed to decode request", zap.String("op", op))
+		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+	}
+
+	r := &dto.EmailAndPasswordRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+
+	err := validation.LoginAndPasswordRequest(r)
+	if err != nil {
+		c = codes.InvalidArgument
+		return nil, status.Errorf(c, err.Error())
+	}
+
+	res, err := h.ctrl.Authenticate(ctx, r)
+	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
+		c = codes.NotFound
+		return nil, status.Errorf(c, err.Error())
+	} else if err != nil {
+		c = codes.Internal
+		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	}
+
+	return &pb.SSO_EmailAndPasswordResponse{
+		Token: res.Token,
+	}, nil
+}
 
 func (h *Handler) GetUserByToken(ctx context.Context, req *pb.SSO_StringMsg) (*pb.SSO_User, error) {
 	s, c := time.Now(), codes.OK

@@ -83,7 +83,7 @@ message SSO_EmailAndPasswordResponse {
 message SSO_ParseClaimsRes {
   string token = 1;
   string email = 2;
-  string exp = 3;
+  int64 exp = 3;
 }
 
 message SSO_SendLoginCodeReq {

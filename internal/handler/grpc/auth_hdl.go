@@ -116,7 +116,7 @@ func (h *Handler) ParseClaims(ctx context.Context, req *pb.SSO_StringMsg) (*pb.S
 	return &pb.SSO_ParseClaimsRes{
 		Token: res["uid"].(string),
 		Email: res["email"].(string),
-		Exp:   strconv.FormatInt(res["exp"].(int64), 10),
+		Exp:   int64(res["exp"].(float64)),
 	}, nil
 }
 

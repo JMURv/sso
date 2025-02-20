@@ -21,6 +21,9 @@ func mustPrecreate(db *sql.DB) {
 			Name     string             `json:"name"`
 			Password string             `json:"password"`
 			Email    string             `json:"email"`
+			Avatar   string             `json:"avatar"`
+			Address  string             `json:"address"`
+			Phone    string             `json:"phone"`
 			Perms    []model.Permission `json:"permissions"`
 		}
 		bytes, err := os.ReadFile("precreate.json")
@@ -47,11 +50,14 @@ func mustPrecreate(db *sql.DB) {
 
 			var userID uuid.UUID
 			err = tx.QueryRow(
-				`INSERT INTO users (name, password, email) 
+				`INSERT INTO users (name, password, email, avatar, address, phone) 
 				VALUES ($1, $2, $3) RETURNING id`,
 				v.Name,
 				v.Password,
 				v.Email,
+				v.Avatar,
+				v.Address,
+				v.Phone,
 			).Scan(&userID)
 
 			if err != nil {

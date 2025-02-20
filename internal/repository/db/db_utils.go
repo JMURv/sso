@@ -51,7 +51,7 @@ func mustPrecreate(db *sql.DB) {
 			var userID uuid.UUID
 			err = tx.QueryRow(
 				`INSERT INTO users (name, password, email, avatar, address, phone) 
-				VALUES ($1, $2, $3) RETURNING id`,
+				VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
 				v.Name,
 				v.Password,
 				v.Email,

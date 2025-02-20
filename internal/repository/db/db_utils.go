@@ -76,6 +76,10 @@ func mustPrecreate(db *sql.DB) {
 					panic(err)
 				}
 			}
+
+			if err := tx.Commit(); err != nil {
+				panic(err)
+			}
 		}
 
 		zap.L().Debug("Users and permissions have been created")

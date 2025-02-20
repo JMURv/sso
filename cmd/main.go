@@ -6,7 +6,6 @@ import (
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/cache/redis"
 	ctrl "github.com/JMURv/sso/internal/controller"
-	discovery "github.com/JMURv/sso/internal/discovery/JMURv/grpc"
 	"os/signal"
 	"syscall"
 
@@ -50,16 +49,6 @@ func main() {
 	go metrics.New(conf.Server.Port + 5).Start(ctx)
 	go tracing.Start(ctx, conf.ServiceName, conf.Jaeger)
 
-	dscvry := discovery.New(
-		conf.SrvDiscovery,
-		conf.ServiceName,
-		conf.Server,
-	)
-
-	if err := dscvry.Register(ctx); err != nil {
-		zap.L().Warn("Error registering service", zap.Error(err))
-	}
-
 	// Setting up main app
 	cache := redis.New(conf.Redis)
 	repo := db.New(conf.DB)
@@ -75,7 +64,6 @@ func main() {
 	)
 	go h.Start(conf.Server.Port)
 
-	// Graceful shutdown
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-c
@@ -84,14 +72,6 @@ func main() {
 
 	if err := cache.Close(); err != nil {
 		zap.L().Warn("Failed to close connection to Redis: ", zap.Error(err))
-	}
-
-	if err := dscvry.Deregister(ctx); err != nil {
-		zap.L().Warn("Error deregistering from discovery", zap.Error(err))
-	}
-
-	if err := dscvry.Close(); err != nil {
-		zap.L().Warn("Error closing discovery", zap.Error(err))
 	}
 
 	if err := h.Close(); err != nil {

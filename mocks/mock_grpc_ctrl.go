@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	dto "github.com/JMURv/sso/internal/dto"
 	model "github.com/JMURv/sso/pkg/model"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
@@ -40,6 +41,21 @@ func NewMockCtrl(ctrl *gomock.Controller) *MockCtrl {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockCtrl) EXPECT() *MockCtrlMockRecorder {
 	return m.recorder
+}
+
+// Authenticate mocks base method.
+func (m *MockCtrl) Authenticate(ctx context.Context, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Authenticate", ctx, req)
+	ret0, _ := ret[0].(*dto.EmailAndPasswordResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Authenticate indicates an expected call of Authenticate.
+func (mr *MockCtrlMockRecorder) Authenticate(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authenticate", reflect.TypeOf((*MockCtrl)(nil).Authenticate), ctx, req)
 }
 
 // CheckForgotPasswordEmail mocks base method.

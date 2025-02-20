@@ -29,12 +29,12 @@ func New(auth controller.AuthService, ctrl grpc.Ctrl) *Handler {
 
 func (h *Handler) Start(port int) {
 	mux := http.NewServeMux()
-	//r.Use(h.tracingMiddleware)
+
 	RegisterAuthRoutes(mux, h)
 	RegisterUserRoutes(mux, h)
 	RegisterPermRoutes(mux, h)
 	mux.HandleFunc(
-		"/health-check", func(w http.ResponseWriter, r *http.Request) {
+		"/health", func(w http.ResponseWriter, r *http.Request) {
 			utils.SuccessResponse(w, http.StatusOK, "OK")
 		},
 	)

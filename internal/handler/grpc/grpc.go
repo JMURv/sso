@@ -6,6 +6,7 @@ import (
 	"fmt"
 	pb "github.com/JMURv/sso/api/pb"
 	ctrl "github.com/JMURv/sso/internal/controller"
+	"github.com/JMURv/sso/internal/dto"
 	metrics "github.com/JMURv/sso/internal/metrics/prometheus"
 	md "github.com/JMURv/sso/pkg/model"
 	"github.com/google/uuid"
@@ -21,6 +22,7 @@ import (
 )
 
 type Ctrl interface {
+	Authenticate(ctx context.Context, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error)
 	ParseClaims(ctx context.Context, token string) (map[string]any, error)
 	GetUserByToken(ctx context.Context, token string) (*md.User, error)
 	SendSupportEmail(ctx context.Context, uid uuid.UUID, theme, text string) error

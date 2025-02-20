@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/cache"
+	"github.com/JMURv/sso/internal/dto"
 	repo "github.com/JMURv/sso/internal/repository"
 	"github.com/JMURv/sso/pkg/consts"
 	"github.com/JMURv/sso/pkg/model"
@@ -21,6 +22,40 @@ import (
 
 const codeCacheKey = "code:%v"
 const recoveryCacheKey = "recovery:%v"
+
+func (c *Controller) Authenticate(ctx context.Context, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error) {
+	const op = "sso.Authenticate.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	u, err := c.repo.GetUserByEmail(ctx, req.Email)
+	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		zap.L().Debug(
+			"failed to find user",
+			zap.Error(err), zap.String("op", op),
+		)
+		return nil, ErrNotFound
+	} else if err != nil {
+		zap.L().Debug(
+			"failed to get user",
+			zap.Error(err), zap.String("op", op),
+		)
+		return nil, err
+	}
+
+	accessToken, err := c.auth.NewToken(u, auth.AccessTokenDuration)
+	if err != nil {
+		zap.L().Debug(
+			"failed to generate access token",
+			zap.Error(err), zap.String("op", op),
+		)
+		return nil, ErrWhileGeneratingToken
+	}
+
+	return &dto.EmailAndPasswordResponse{
+		Token: accessToken,
+	}, nil
+}
 
 func (c *Controller) ParseClaims(ctx context.Context, token string) (map[string]any, error) {
 	const op = "sso.ParseClaims.ctrl"

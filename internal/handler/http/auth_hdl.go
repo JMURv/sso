@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/JMURv/sso/internal/auth"
 	controller "github.com/JMURv/sso/internal/controller"
+	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/handler"
 	metrics "github.com/JMURv/sso/internal/metrics/prometheus"
 	"github.com/JMURv/sso/internal/validation"
@@ -11,6 +12,7 @@ import (
 	utils "github.com/JMURv/sso/pkg/utils/http"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
+	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
@@ -46,11 +48,54 @@ func RegisterAuthRoutes(mux *http.ServeMux, h *Handler) {
 		},
 	)
 
+	mux.HandleFunc("/api/sso/auth", h.authenticate)
 	mux.HandleFunc("/api/sso/send-login-code", h.sendLoginCode)
 	mux.HandleFunc("/api/sso/check-login-code", h.checkLoginCode)
 	mux.HandleFunc("/api/sso/check-email", h.checkEmail)
 	mux.HandleFunc("/api/sso/logout", middlewareFunc(h.logout, h.authMiddleware))
 	mux.HandleFunc("/api/sso/support", middlewareFunc(h.sendSupportEmail, h.authMiddleware))
+}
+
+func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
+	const op = "sso.authenticate.hdl"
+	s, c := time.Now(), http.StatusOK
+	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
+	defer func() {
+		span.Finish()
+		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	if r.Method != http.MethodPost {
+		c = http.StatusMethodNotAllowed
+		utils.ErrResponse(w, c, handler.ErrMethodNotAllowed)
+		return
+	}
+
+	req := &dto.EmailAndPasswordRequest{}
+	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
+		return
+	}
+
+	if err := validation.LoginAndPasswordRequest(req); err != nil {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, err)
+		return
+	}
+
+	res, err := h.ctrl.Authenticate(ctx, req)
+	if err != nil && errors.Is(err, controller.ErrNotFound) {
+		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil {
+		c = http.StatusInternalServerError
+		utils.ErrResponse(w, c, err)
+		return
+	}
+
+	utils.SuccessResponse(w, c, res)
 }
 
 type TokenReq struct {

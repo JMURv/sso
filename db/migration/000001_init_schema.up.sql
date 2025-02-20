@@ -12,9 +12,6 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS users_id_idx ON users (id);
-CREATE INDEX IF NOT EXISTS users_email_idx ON users (email);
-
 CREATE TABLE IF NOT EXISTS permission (
     id    SERIAL PRIMARY KEY,
     name  VARCHAR(255) UNIQUE NOT NULL
@@ -31,4 +28,7 @@ CREATE TABLE IF NOT EXISTS user_permission (
     CONSTRAINT fk_permission FOREIGN KEY (permission_id) REFERENCES permission (id) ON DELETE CASCADE
 );
 
-INSERT INTO permission (name) VALUES('admin'), ('staff');
+INSERT INTO permission (name) VALUES('admin'), ('staff') ON CONFLICT (name) DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS users_id_idx ON users (id);
+CREATE INDEX IF NOT EXISTS users_email_idx ON users (email);

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	ctrl "github.com/JMURv/sso/internal/controller"
+	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/handler"
 	"github.com/JMURv/sso/internal/validation"
 	"github.com/JMURv/sso/mocks"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,6 +24,182 @@ import (
 
 var testErr = errors.New("test error")
 var validEmail = "test@example.com"
+
+func TestHandler_Authenticate(t *testing.T) {
+	const uri = "/api/sso/auth"
+	mock := gomock.NewController(t)
+	defer mock.Finish()
+
+	mctrl := mocks.NewMockCtrl(mock)
+	auth := mocks.NewMockAuthService(mock)
+	h := New(auth, mctrl)
+
+	tests := []struct {
+		name       string
+		method     string
+		status     int
+		payload    map[string]any
+		expect     func()
+		assertions func(r io.ReadCloser)
+	}{
+		{
+			name:   "ErrMethodNotAllowed",
+			method: http.MethodPut,
+			status: http.StatusMethodNotAllowed,
+			payload: map[string]any{
+				"email":    "email",
+				"password": "password",
+			},
+			assertions: func(r io.ReadCloser) {
+				res := &utils.ErrorResponse{}
+				err := json.NewDecoder(r).Decode(res)
+				assert.Nil(t, err)
+				assert.Equal(t, handler.ErrMethodNotAllowed.Error(), res.Error)
+			},
+			expect: func() {},
+		},
+		{
+			name:   "ErrDecodeRequest",
+			method: http.MethodPost,
+			status: http.StatusBadRequest,
+			payload: map[string]any{
+				"email":    0,
+				"password": "password",
+			},
+			assertions: func(r io.ReadCloser) {
+				res := &utils.ErrorResponse{}
+				err := json.NewDecoder(r).Decode(res)
+				assert.Nil(t, err)
+				assert.Equal(t, ctrl.ErrDecodeRequest.Error(), res.Error)
+			},
+			expect: func() {},
+		},
+		{
+			name:   "ErrMissingEmail",
+			method: http.MethodPost,
+			status: http.StatusBadRequest,
+			payload: map[string]any{
+				"email":    "",
+				"password": "password",
+			},
+			assertions: func(r io.ReadCloser) {
+				res := &utils.ErrorResponse{}
+				err := json.NewDecoder(r).Decode(res)
+				assert.Nil(t, err)
+				assert.Equal(t, validation.ErrMissingEmail.Error(), res.Error)
+			},
+			expect: func() {},
+		},
+		{
+			name:   "ErrMissingPass",
+			method: http.MethodPost,
+			status: http.StatusBadRequest,
+			payload: map[string]any{
+				"email":    "email",
+				"password": "",
+			},
+			assertions: func(r io.ReadCloser) {
+				res := &utils.ErrorResponse{}
+				err := json.NewDecoder(r).Decode(res)
+				assert.Nil(t, err)
+				assert.Equal(t, validation.ErrMissingPass.Error(), res.Error)
+			},
+			expect: func() {},
+		},
+		{
+			name:   "StatusNotFound",
+			method: http.MethodPost,
+			status: http.StatusNotFound,
+			payload: map[string]any{
+				"email":    "email",
+				"password": "password",
+			},
+			assertions: func(r io.ReadCloser) {
+				res := &utils.ErrorResponse{}
+				err := json.NewDecoder(r).Decode(res)
+				assert.Nil(t, err)
+				assert.Equal(t, ctrl.ErrNotFound.Error(), res.Error)
+			},
+			expect: func() {
+				mctrl.EXPECT().Authenticate(
+					gomock.Any(), &dto.EmailAndPasswordRequest{
+						Email:    "email",
+						Password: "password",
+					},
+				).Return(nil, ctrl.ErrNotFound)
+			},
+		},
+		{
+			name:   "StatusInternalServerError",
+			method: http.MethodPost,
+			status: http.StatusInternalServerError,
+			payload: map[string]any{
+				"email":    "email",
+				"password": "password",
+			},
+			assertions: func(r io.ReadCloser) {
+				res := &utils.ErrorResponse{}
+				err := json.NewDecoder(r).Decode(res)
+				assert.Nil(t, err)
+				assert.Equal(t, testErr.Error(), res.Error)
+			},
+			expect: func() {
+				mctrl.EXPECT().Authenticate(
+					gomock.Any(), &dto.EmailAndPasswordRequest{
+						Email:    "email",
+						Password: "password",
+					},
+				).Return(nil, testErr)
+			},
+		},
+		{
+			name:   "Success",
+			method: http.MethodPost,
+			status: http.StatusOK,
+			payload: map[string]any{
+				"email":    "email",
+				"password": "password",
+			},
+			assertions: func(r io.ReadCloser) {
+				res := &dto.EmailAndPasswordResponse{Token: "token"}
+				err := json.NewDecoder(r).Decode(res)
+				assert.Nil(t, err)
+				assert.Equal(t, "token", res.Token)
+			},
+			expect: func() {
+				mctrl.EXPECT().Authenticate(
+					gomock.Any(), &dto.EmailAndPasswordRequest{
+						Email:    "email",
+						Password: "password",
+					},
+				).Return(&dto.EmailAndPasswordResponse{Token: "token"}, nil)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			tt.name, func(t *testing.T) {
+				tt.expect()
+				b, err := json.Marshal(tt.payload)
+				require.NoError(t, err)
+
+				req := httptest.NewRequest(tt.method, uri, bytes.NewBuffer(b))
+				req.Header.Set("Content-Type", "application/json")
+
+				w := httptest.NewRecorder()
+				h.authenticate(w, req)
+				assert.Equal(t, tt.status, w.Result().StatusCode)
+
+				defer func() {
+					assert.Nil(t, w.Result().Body.Close())
+				}()
+
+				tt.assertions(w.Result().Body)
+			},
+		)
+	}
+}
 
 func TestHandler_GetUserByToken(t *testing.T) {
 	const uri = "/api/sso/get-user-by-token"

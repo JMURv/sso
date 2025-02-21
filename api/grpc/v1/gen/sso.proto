@@ -1,0 +1,170 @@
+syntax = "proto3";
+package gen;
+option go_package = "github.com/JMURv/sso/api/grpc/v1/gen";
+import "google/protobuf/timestamp.proto";
+
+message SSO_Empty {}
+
+message SSO_StringMsg {
+  string string = 1;
+}
+
+message SSO_UuidMsg {
+  string uuid = 1;
+}
+message SSO_Uint64Msg {
+  uint64 uint64 = 1;
+}
+
+message SSO_User {
+  string id = 1;
+  string name = 2;
+  string password = 3;
+  string email = 4;
+  string avatar = 5;
+  string address = 6;
+  string phone = 7;
+  repeated SSO_Permission permissions = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+service PermissionSvc {
+  rpc ListPermissions (SSO_ListReq) returns (SSO_PermissionList);
+  rpc GetPermission (SSO_Uint64Msg) returns (SSO_Permission);
+  rpc CreatePermission (SSO_Permission) returns (SSO_Uint64Msg);
+  rpc UpdatePermission (SSO_Permission) returns (SSO_Empty);
+  rpc DeletePermission (SSO_Uint64Msg) returns (SSO_Empty);
+}
+
+message SSO_Permission {
+  uint64 id = 1;
+  string name = 2;
+  bool   value = 3;
+}
+
+message SSO_PermissionList {
+  repeated SSO_Permission data = 1;
+  int64 count = 2;
+  int64 total_pages = 3;
+  int64 current_page = 4;
+  bool has_next_page = 5;
+}
+
+service SSO {
+  rpc Authenticate (SSO_EmailAndPasswordRequest) returns (SSO_EmailAndPasswordResponse);
+  rpc ParseClaims (SSO_StringMsg) returns (SSO_ParseClaimsRes);
+  rpc GetUserByToken(SSO_StringMsg) returns (SSO_User);
+
+  rpc SendLoginCode (SSO_SendLoginCodeReq) returns (SSO_Empty);
+  rpc CheckLoginCode (SSO_CheckLoginCodeReq) returns (SSO_CheckLoginCodeRes);
+  rpc Logout (SSO_Empty) returns (SSO_Empty);
+
+  rpc Me (SSO_Empty) returns (SSO_User);
+  rpc UpdateMe(SSO_User) returns (SSO_User);
+
+  rpc CheckEmail (SSO_EmailMsg) returns (SSO_CheckEmailRes);
+  rpc SendForgotPasswordEmail (SSO_EmailMsg) returns (SSO_Empty);
+  rpc CheckForgotPasswordEmail (SSO_CheckForgotPasswordEmailReq) returns (SSO_Empty);
+  rpc SendSupportEmail (SSO_SendSupportEmailReq) returns (SSO_Empty);
+}
+
+message SSO_EmailAndPasswordRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message SSO_EmailAndPasswordResponse {
+  string token = 1;
+}
+
+message SSO_ParseClaimsRes {
+  string token = 1;
+  string email = 2;
+  int64 exp = 3;
+}
+
+message SSO_SendLoginCodeReq {
+  string email = 1;
+  string password = 2;
+}
+
+message SSO_CheckLoginCodeReq {
+  string email = 1;
+  int32 code = 2;
+}
+
+message SSO_CheckLoginCodeRes {
+  string access = 1;
+  string refresh = 2;
+}
+
+message SSO_EmailMsg {
+  string email = 1;
+}
+
+message SSO_CheckEmailRes {
+  bool is_exist = 1;
+}
+
+message SSO_CheckForgotPasswordEmailReq {
+  string password = 1;
+  string uidb64 = 2;
+  string token = 3;
+}
+
+message SSO_SendSupportEmailReq {
+  string theme = 1;
+  string text = 2;
+}
+
+service Users {
+  rpc SearchUser (SSO_SearchReq) returns (SSO_PaginatedUsersRes);
+  rpc ListUsers (SSO_ListReq) returns (SSO_PaginatedUsersRes);
+  rpc GetUser (SSO_UuidMsg) returns (SSO_User);
+  rpc CreateUser (SSO_CreateUserReq) returns (SSO_CreateUserRes);
+  rpc UpdateUser (SSO_UserWithUid) returns (SSO_UuidMsg);
+  rpc DeleteUser (SSO_UuidMsg) returns (SSO_Empty);
+}
+
+message SSO_UserWithUid {
+  SSO_User user = 1;
+  string uid = 2;
+}
+
+message FileReq {
+  bytes file = 1;
+  string filename = 2;
+}
+
+message SSO_CreateUserReq {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+  FileReq file = 4;
+}
+
+message SSO_CreateUserRes {
+  string uid = 1;
+  string access = 2;
+  string refresh = 3;
+}
+
+message SSO_ListReq {
+  uint64 page = 1;
+  uint64 size = 2;
+}
+
+message SSO_SearchReq {
+  string query = 1;
+  uint64 page = 2;
+  uint64 size = 3;
+}
+
+message SSO_PaginatedUsersRes {
+  repeated SSO_User data = 1;
+  int64 count = 2;
+  int64 total_pages = 3;
+  int64 current_page = 4;
+  bool has_next_page = 5;
+}

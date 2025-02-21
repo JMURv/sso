@@ -2,25 +2,21 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/cache/redis"
-	ctrl "github.com/JMURv/sso/internal/controller"
-	"os/signal"
-	"syscall"
-
-	//handler "github.com/JMURv/sso/internal/handler/http"
-	handler "github.com/JMURv/sso/internal/handler/grpc"
-	tracing "github.com/JMURv/sso/internal/metrics/jaeger"
-	metrics "github.com/JMURv/sso/internal/metrics/prometheus"
-	db "github.com/JMURv/sso/internal/repository/db"
-	"github.com/JMURv/sso/internal/smtp"
-	cfg "github.com/JMURv/sso/pkg/config"
+	"github.com/JMURv/sso/internal/config"
+	"github.com/JMURv/sso/internal/ctrl"
+	"github.com/JMURv/sso/internal/hdl/http"
+	"github.com/JMURv/sso/internal/observability/metrics/prometheus"
+	"github.com/JMURv/sso/internal/observability/tracing/jaeger"
+	"github.com/JMURv/sso/internal/repo/db"
 	"go.uber.org/zap"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
-const configPath = "local.config.yaml"
+const configPath = "configs/local.config.yaml"
 
 func mustRegisterLogger(mode string) {
 	switch mode {
@@ -42,26 +38,18 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := cfg.MustLoad(configPath)
-	mustRegisterLogger(conf.Server.Mode)
+	conf := config.MustLoad(configPath)
+	mustRegisterLogger(conf.Mode)
 
-	// Start metrics and tracing
-	go metrics.New(conf.Server.Port + 5).Start(ctx)
-	go tracing.Start(ctx, conf.ServiceName, conf.Jaeger)
+	go prometheus.New(conf.Server.Port + 5).Start(ctx)
+	go jaeger.Start(ctx, conf.ServiceName, conf.Jaeger)
 
-	// Setting up main app
+	auth.New(conf.Secret)
 	cache := redis.New(conf.Redis)
 	repo := db.New(conf.DB)
-	email := smtp.New(conf.Email, conf.Server)
+	svc := ctrl.New(repo, cache)
+	h := http.New(svc)
 
-	au := auth.New(conf.Auth.Secret)
-	svc := ctrl.New(au, repo, cache, email)
-	h := handler.New(au, svc)
-
-	// Start service
-	zap.L().Info(
-		fmt.Sprintf("Starting server on %v://%v:%v", conf.Server.Scheme, conf.Server.Domain, conf.Server.Port),
-	)
 	go h.Start(conf.Server.Port)
 
 	c := make(chan os.Signal, 1)
@@ -69,13 +57,16 @@ func main() {
 	<-c
 
 	zap.L().Info("Shutting down gracefully...")
-
-	if err := cache.Close(); err != nil {
-		zap.L().Warn("Failed to close connection to Redis: ", zap.Error(err))
+	if err := h.Close(ctx); err != nil {
+		zap.L().Warn("Error closing handler", zap.Error(err))
 	}
 
-	if err := h.Close(); err != nil {
-		zap.L().Warn("Error closing handler", zap.Error(err))
+	if err := cache.Close(); err != nil {
+		zap.L().Warn("Failed to close connection to cache: ", zap.Error(err))
+	}
+
+	if err := repo.Close(); err != nil {
+		zap.L().Warn("Error closing repository", zap.Error(err))
 	}
 
 	os.Exit(0)

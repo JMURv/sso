@@ -1,0 +1,35 @@
+mode: "dev"
+serviceName: "sso"
+secret: "DYHlaJpPiZ"
+
+server:
+  port: 8080
+  scheme: "http"
+  domain: "localhost"
+
+email:
+  server: "smtp.gmail.com"
+  port: 587
+  user: "my@gmail.com"
+  pass: "password"
+  admin: "admin@gmail.com"
+
+db:
+  host: "localhost"
+  port: 5432
+  user: "app_owner"
+  password: "app_password"
+  database: "app_db"
+
+redis:
+  addr: "localhost:6379"
+  pass: ""
+
+jaeger:
+  sampler:
+    type: "const"
+    param: 1
+  reporter:
+    LogSpans: true
+    LocalAgentHostPort: "localhost:6831"
+    CollectorEndpoint: "http://localhost:14268/api/traces"

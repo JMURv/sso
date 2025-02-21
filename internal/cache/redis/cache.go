@@ -2,13 +2,12 @@ package redis
 
 import (
 	"context"
-	errs "github.com/JMURv/sso/internal/cache"
-	cfg "github.com/JMURv/sso/pkg/config"
+	"encoding/json"
+	"github.com/JMURv/sso/internal/cache"
+	cfg "github.com/JMURv/sso/internal/config"
 	"github.com/go-redis/redis/v8"
-	"github.com/goccy/go-json"
-	"github.com/opentracing/opentracing-go"
+	ot "github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"log"
 	"time"
 )
 
@@ -27,7 +26,7 @@ func New(conf *cfg.RedisConfig) *Cache {
 
 	_, err := cli.Ping(context.Background()).Result()
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		zap.L().Fatal("Failed to connect to Redis", zap.Error(err))
 	}
 
 	return &Cache{cli: cli}
@@ -38,69 +37,81 @@ func (c *Cache) Close() error {
 }
 
 func (c *Cache) GetToStruct(ctx context.Context, key string, dest any) error {
-	const op = "GetStructFromCache"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+	const op = "cache.GetToStruct"
+	span, ctx := ot.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	val, err := c.cli.Get(ctx, key).Bytes()
 	if err == redis.Nil {
-		zap.L().Debug("[CACHE] MISS", zap.String("key", key))
-		return errs.ErrNotFoundInCache
+		zap.L().Debug(
+			cache.ErrNotFoundInCache.Error(),
+			zap.String("op", op), zap.String("key", key),
+		)
+		return cache.ErrNotFoundInCache
 	} else if err != nil {
-		zap.L().Debug("[CACHE] ERROR", zap.String("key", key), zap.Error(err))
+		span.SetTag("error", true)
+		zap.L().Debug(
+			"failed to get from cache",
+			zap.String("op", op), zap.String("key", key),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if err = json.Unmarshal(val, dest); err != nil {
-		zap.L().Debug("[CACHE] ERROR", zap.String("key", key), zap.Error(err))
+		span.SetTag("error", true)
+		zap.L().Debug(
+			"failed to unmarshal",
+			zap.String("op", op),
+			zap.String("key", key), zap.Any("dest", dest),
+			zap.Error(err),
+		)
 		return err
 	}
 
-	zap.L().Debug("[CACHE] HIT", zap.String("key", key))
+	zap.L().Debug("cache hit", zap.String("key", key))
 	return nil
 }
 
-func (c *Cache) GetCode(ctx context.Context, key string) (int, error) {
-	const op = "GetCode"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
-
-	val, err := c.cli.Get(ctx, key).Int()
-	if err == redis.Nil {
-		zap.L().Debug("[CACHE] MISS", zap.String("key", key))
-		return 0, errs.ErrNotFoundInCache
-	} else if err != nil {
-		zap.L().Debug("[CACHE] ERROR", zap.String("key", key), zap.Error(err))
-		return 0, err
-	}
-
-	return val, nil
-}
-
-func (c *Cache) Set(ctx context.Context, t time.Duration, key string, val any) error {
+func (c *Cache) Set(ctx context.Context, t time.Duration, key string, val any) {
 	const op = "SetToCache"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+	span, ctx := ot.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	if err := c.cli.Set(ctx, key, val, t).Err(); err != nil {
-		zap.L().Debug("[CACHE] ERROR", zap.String("key", key), zap.Error(err))
-		return err
+		span.SetTag("error", true)
+		zap.L().Debug(
+			"failed to set to cache",
+			zap.String("op", op),
+			zap.String("t", t.String()), zap.String("key", key), zap.Any("val", val),
+			zap.Error(err),
+		)
+		return
 	}
 
-	zap.L().Debug("[CACHE] SET", zap.String("key", key))
-	return nil
+	zap.L().Debug(
+		"successfully set to cache",
+		zap.String("key", key),
+	)
+	return
 }
 
-func (c *Cache) Delete(ctx context.Context, key string) error {
-	const op = "DeleteFromCache"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+func (c *Cache) Delete(ctx context.Context, key string) {
+	const op = "cache.Delete"
+	span, ctx := ot.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	if err := c.cli.Del(ctx, key).Err(); err != nil {
-		zap.L().Debug("[CACHE] ERROR", zap.String("key", key), zap.Error(err))
-		return err
+		span.SetTag("error", true)
+		zap.L().Debug(
+			"failed to delete from cache",
+			zap.String("op", op),
+			zap.String("key", key),
+			zap.Error(err),
+		)
+		return
 	}
-	return nil
+	return
 }
 
 func (c *Cache) InvalidateKeysByPattern(ctx context.Context, pattern string) {
@@ -116,7 +127,7 @@ func (c *Cache) InvalidateKeysByPattern(ctx context.Context, pattern string) {
 		}
 
 		if len(keys) > 0 {
-			if err := c.cli.Del(ctx, keys...).Err(); err != nil {
+			if err = c.cli.Del(ctx, keys...).Err(); err != nil {
 				zap.L().Debug("failed to delete keys", zap.Error(err))
 				break
 			}

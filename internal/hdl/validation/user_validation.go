@@ -16,12 +16,9 @@ func NewUserValidation(u *md.User) error {
 	if u.Name == "" {
 		return ErrMissingName
 	}
+
 	if u.Email == "" {
 		return ErrMissingEmail
-	}
-
-	if compile, _ := regexp.Compile(`^[\w.%+-]+@[\w.-]+\.[a-zA-Z]+$`); !compile.MatchString(u.Email) {
-		return ErrInvalidEmail
 	}
 
 	if u.Password == "" {
@@ -32,7 +29,7 @@ func NewUserValidation(u *md.User) error {
 		return ErrPassTooShort
 	}
 
-	return nil
+	return ValidateEmail(u.Email)
 }
 
 func UserValidation(u *md.User) error {
@@ -44,9 +41,5 @@ func UserValidation(u *md.User) error {
 		return ErrMissingEmail
 	}
 
-	if compile, _ := regexp.Compile(`^[\w.%+-]+@[\w.-]+\.[a-zA-Z]+$`); !compile.MatchString(u.Email) {
-		return ErrInvalidEmail
-	}
-
-	return nil
+	return ValidateEmail(u.Email)
 }

@@ -27,12 +27,12 @@ func AuthUnaryInterceptor() grpc.UnaryServerInterceptor {
 			tokenStr = tokenStr[7:]
 		}
 
-		claims, err := auth.Au.VerifyToken(tokenStr)
+		claims, err := auth.Au.ParseClaims(tokenStr)
 		if err != nil {
 			return handler(ctx, req)
 		}
 
-		ctx = context.WithValue(ctx, "uid", claims["uid"])
+		ctx = context.WithValue(ctx, "uid", claims.UID)
 		return handler(ctx, req)
 	}
 }

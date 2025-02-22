@@ -10,26 +10,30 @@ import (
 )
 
 type AppRepo interface {
+	authRepo
 	userRepo
 	permRepo
 }
 
 type AppCtrl interface {
 	Authenticate(ctx context.Context, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error)
+	Refresh(ctx context.Context, req *dto.RefreshRequest) (*dto.RefreshResponse, error)
 	ParseClaims(ctx context.Context, token string) (map[string]any, error)
+	Logout(ctx context.Context, uid uuid.UUID) error
+
 	GetUserByToken(ctx context.Context, token string) (*md.User, error)
 	SendSupportEmail(ctx context.Context, uid uuid.UUID, theme, text string) error
-	CheckForgotPasswordEmail(ctx context.Context, password string, uid uuid.UUID, code int) error
+	CheckForgotPasswordEmail(ctx context.Context, req *dto.CheckForgotPasswordEmailRequest) error
 	SendForgotPasswordEmail(ctx context.Context, email string) error
 	SendLoginCode(ctx context.Context, email, password string) error
-	CheckLoginCode(ctx context.Context, email string, code int) (string, string, error)
+	CheckLoginCode(ctx context.Context, req *dto.CheckLoginCodeRequest) (*dto.CheckLoginCodeResponse, error)
 
-	IsUserExist(ctx context.Context, email string) (isExist bool, err error)
-	SearchUser(ctx context.Context, query string, page, size int) (*md.PaginatedUser, error)
-	ListUsers(ctx context.Context, page, size int) (*md.PaginatedUser, error)
+	IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error)
+	SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error)
+	ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
-	CreateUser(ctx context.Context, u *md.User, fileName string, bytes []byte) (uuid.UUID, string, string, error)
+	CreateUser(ctx context.Context, u *md.User) (*dto.CreateUserResponse, error)
 	UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
@@ -42,6 +46,7 @@ type AppCtrl interface {
 
 type CacheService interface {
 	io.Closer
+	GetInt(ctx context.Context, key string) (int, error)
 	GetToStruct(ctx context.Context, key string, dest any) error
 	Set(ctx context.Context, t time.Duration, key string, val any)
 	Delete(ctx context.Context, key string)
@@ -53,7 +58,6 @@ type EmailService interface {
 	SendForgotPasswordEmail(ctx context.Context, token, uid64, toEmail string) error
 	SendSupportEmail(ctx context.Context, u *md.User, theme, text string) error
 	SendUserCredentials(_ context.Context, email, pass string) error
-	SendOptFile(_ context.Context, email string, filename string, bytes []byte) error
 }
 
 type Controller struct {

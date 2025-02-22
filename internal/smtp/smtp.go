@@ -3,14 +3,9 @@ package smtp
 import (
 	"context"
 	"fmt"
-	controller "github.com/JMURv/sso/internal/controller"
-	"github.com/JMURv/sso/pkg/config"
-	"github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/internal/config"
+	md "github.com/JMURv/sso/internal/models"
 	"gopkg.in/gomail.v2"
-	"io"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 type EmailServer struct {
@@ -22,7 +17,7 @@ type EmailServer struct {
 	serverConfig *config.ServerConfig
 }
 
-func New(conf *config.EmailConfig, serverConfig *config.ServerConfig) controller.EmailService {
+func New(conf *config.EmailConfig, serverConfig *config.ServerConfig) *EmailServer {
 	return &EmailServer{
 		server:       conf.Server,
 		port:         conf.Port,
@@ -71,7 +66,7 @@ func (s *EmailServer) SendForgotPasswordEmail(_ context.Context, token, uid64, t
 	return s.Send(m)
 }
 
-func (s *EmailServer) SendSupportEmail(_ context.Context, u *model.User, theme, text string) error {
+func (s *EmailServer) SendSupportEmail(_ context.Context, u *md.User, theme, text string) error {
 	m := s.GetMessageBase(theme, s.admin)
 	m.SetBody("text/plain", fmt.Sprintf("New support message from %v with email: %v\n %v", u.Name, u.Email, text))
 	return s.Send(m)
@@ -80,26 +75,5 @@ func (s *EmailServer) SendSupportEmail(_ context.Context, u *model.User, theme, 
 func (s *EmailServer) SendUserCredentials(_ context.Context, email, pass string) error {
 	m := s.GetMessageBase("Данные для входа", email)
 	m.SetBody("text/plain", fmt.Sprintf("Данные для входа.\nLogin: %v\nPassword: %v", email, pass))
-	return s.Send(m)
-}
-
-func (s *EmailServer) SendOptFile(_ context.Context, email string, filename string, bytes []byte) error {
-	m := s.GetMessageBase(fmt.Sprintf("Файл, подтверждающий личность: %s", email), s.admin)
-	m.SetBody("text/plain", "")
-
-	m.Attach(
-		fmt.Sprintf(
-			"%s%d%s",
-			strings.Split(filepath.Base(filename), ".")[0],
-			time.Now().Unix(),
-			filepath.Ext(filename),
-		), gomail.SetCopyFunc(
-			func(w io.Writer) error {
-				_, err := w.Write(bytes)
-				return err
-			},
-		),
-	)
-
 	return s.Send(m)
 }

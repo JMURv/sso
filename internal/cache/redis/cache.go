@@ -73,6 +73,31 @@ func (c *Cache) GetToStruct(ctx context.Context, key string, dest any) error {
 	return nil
 }
 
+func (c *Cache) GetInt(ctx context.Context, key string) (int, error) {
+	const op = "cache.GetToStruct"
+	span, ctx := ot.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	val, err := c.cli.Get(ctx, key).Int()
+	if err == redis.Nil {
+		zap.L().Debug(
+			cache.ErrNotFoundInCache.Error(),
+			zap.String("op", op), zap.String("key", key),
+		)
+		return 0, cache.ErrNotFoundInCache
+	} else if err != nil {
+		span.SetTag("error", true)
+		zap.L().Debug(
+			"failed to get from cache",
+			zap.String("op", op), zap.String("key", key),
+			zap.Error(err),
+		)
+		return 0, err
+	}
+
+	return val, nil
+}
+
 func (c *Cache) Set(ctx context.Context, t time.Duration, key string, val any) {
 	const op = "SetToCache"
 	span, ctx := ot.StartSpanFromContext(ctx, op)

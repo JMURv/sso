@@ -7,7 +7,7 @@ import (
 	controller "github.com/JMURv/sso/internal/controller"
 	"github.com/JMURv/sso/internal/validation"
 	"github.com/JMURv/sso/mocks"
-	"github.com/JMURv/sso/pkg/consts"
+	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/pkg/model"
 	utils "github.com/JMURv/sso/pkg/utils/http"
 	"github.com/goccy/go-json"

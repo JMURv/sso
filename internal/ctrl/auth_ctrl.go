@@ -2,155 +2,150 @@ package ctrl
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/cache"
 	"github.com/JMURv/sso/internal/dto"
-	repo "github.com/JMURv/sso/internal/repository"
-	"github.com/JMURv/sso/pkg/consts"
-	"github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/internal/repo"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"strconv"
 	"time"
 )
 
+type authRepo interface {
+	CreateToken(ctx context.Context, userID uuid.UUID, hashedT string, expiresAt time.Time) error
+	IsTokenValid(ctx context.Context, userID uuid.UUID, token string) (bool, error)
+	RevokeAllTokens(ctx context.Context, userID uuid.UUID) error
+}
+
 const codeCacheKey = "code:%v"
 const recoveryCacheKey = "recovery:%v"
 
 func (c *Controller) Authenticate(ctx context.Context, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error) {
-	const op = "sso.Authenticate.ctrl"
+	const op = "auth.Authenticate.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	u, err := c.repo.GetUserByEmail(ctx, req.Email)
+	res, err := c.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Any("req", req),
+			zap.Error(err),
 		)
 		return nil, ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to get user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Any("req", req),
+			zap.Error(err),
 		)
 		return nil, err
 	}
 
-	accessToken, err := c.auth.NewToken(u, auth.AccessTokenDuration)
+	access, refresh, err := auth.Au.GenPair(ctx, res.ID, res.Permissions)
 	if err != nil {
+		return nil, err
+	}
+
+	if err = c.repo.CreateToken(ctx, res.ID, refresh, time.Now().Add(auth.RefreshTokenDuration)); err != nil {
 		zap.L().Debug(
-			"failed to generate access token",
-			zap.Error(err), zap.String("op", op),
+			"Failed to save token",
+			zap.String("op", op),
+			zap.String("refresh", refresh),
+			zap.Error(err),
 		)
-		return nil, ErrWhileGeneratingToken
+		return nil, err
 	}
 
 	return &dto.EmailAndPasswordResponse{
-		Token: accessToken,
+		Access:  access,
+		Refresh: refresh,
 	}, nil
 }
 
-func (c *Controller) ParseClaims(ctx context.Context, token string) (map[string]any, error) {
-	const op = "sso.ParseClaims.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) Refresh(ctx context.Context, req *dto.RefreshRequest) (*dto.RefreshResponse, error) {
+	const op = "auth.Refresh.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	claims, err := c.auth.VerifyToken(token)
+	claims, err := auth.Au.ParseClaims(ctx, req.Refresh)
 	if err != nil {
-		zap.L().Debug("invalid token", zap.Error(err))
 		return nil, err
 	}
 
-	if _, ok := claims["uid"].(string); !ok {
-		zap.L().Debug("failed to parse uid", zap.String("op", op))
-		return nil, ErrParseUUID
+	isValid, err := c.repo.IsTokenValid(ctx, claims.UID, req.Refresh)
+	if err != nil {
+		return nil, err
+	}
+
+	if !isValid {
+		return nil, auth.ErrTokenRevoked
+	}
+
+	access, refresh, err := auth.Au.GenPair(ctx, claims.UID, claims.Roles)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = c.repo.RevokeAllTokens(ctx, claims.UID); err != nil {
+		zap.L().Debug(
+			"Failed to revoke tokens",
+			zap.String("op", op),
+			zap.Any("claims", claims),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	if err = c.repo.CreateToken(ctx, claims.UID, refresh, time.Now().Add(auth.RefreshTokenDuration)); err != nil {
+		zap.L().Debug(
+			"Failed to save token",
+			zap.String("op", op),
+			zap.String("refresh", refresh),
+			zap.Any("claims", claims),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	return &dto.RefreshResponse{
+		Access:  access,
+		Refresh: refresh,
+	}, nil
+}
+
+func (c *Controller) ParseClaims(ctx context.Context, token string) (*auth.Claims, error) {
+	const op = "auth.ParseClaims.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	claims, err := auth.Au.ParseClaims(ctx, token)
+	if err != nil {
+		zap.L().Debug("invalid token", zap.Error(err))
+		return nil, err
 	}
 
 	return claims, nil
 }
 
-func (c *Controller) GetUserByToken(ctx context.Context, token string) (*model.User, error) {
-	const op = "sso.GetUserByToken.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) Logout(ctx context.Context, uid uuid.UUID) error {
+	const op = "auth.Logout.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	claims, err := c.ParseClaims(ctx, token)
-	if err != nil {
-		zap.L().Debug("invalid token", zap.Error(err))
-		return nil, err
-	}
-
-	uid, err := uuid.Parse(claims["uid"].(string))
-	if err != nil {
-		zap.L().Debug("failed to parse uuid", zap.String("op", op))
-		return nil, ErrParseUUID
-	}
-
-	cached := &model.User{}
-	cacheKey := fmt.Sprintf(userCacheKey, uid)
-	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
-		return cached, nil
-	}
-
-	res, err := c.repo.GetUserByID(ctx, uid)
-	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		return nil, ErrNotFound
-	} else if err != nil {
+	if err := c.repo.RevokeAllTokens(ctx, uid); err != nil {
 		zap.L().Debug(
-			"failed to get user",
-			zap.Error(err), zap.String("op", op),
-			zap.String("id", uid.String()),
-		)
-		return nil, err
-	}
-
-	if bytes, err := json.Marshal(res); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug(
-				"failed to set to cache",
-				zap.Error(err), zap.String("op", op),
-				zap.String("id", uid.String()),
-			)
-		}
-	}
-
-	return res, nil
-}
-
-func (c *Controller) SendSupportEmail(ctx context.Context, uid uuid.UUID, theme, text string) error {
-	const op = "sso.SendSupportEmail.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer span.Finish()
-
-	u, err := c.repo.GetUserByID(ctx, uid)
-	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"Error find user",
-			zap.Error(err), zap.String("op", op),
-		)
-		return ErrNotFound
-	} else if err != nil {
-		zap.L().Debug(
-			"Error getting user",
-			zap.Error(err), zap.String("op", op),
-		)
-		return err
-	}
-
-	if err = c.smtp.SendSupportEmail(ctx, u, theme, text); err != nil {
-		zap.L().Debug(
-			"Error sending email",
-			zap.Error(err), zap.String("op", op),
+			"Failed to revoke tokens",
+			zap.String("op", op),
+			zap.Any("uid", uid),
+			zap.Error(err),
 		)
 		return err
 	}
@@ -158,13 +153,12 @@ func (c *Controller) SendSupportEmail(ctx context.Context, uid uuid.UUID, theme,
 	return nil
 }
 
-func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, password string, uid uuid.UUID, code int) error {
-	const op = "sso.CheckForgotPasswordEmail.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, req *dto.CheckForgotPasswordEmailRequest) error {
+	const op = "auth.CheckForgotPasswordEmail.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	storedCode, err := c.cache.GetCode(ctx, fmt.Sprintf(recoveryCacheKey, uid))
+	storedCode, err := c.cache.GetInt(ctx, fmt.Sprintf(recoveryCacheKey, req.ID))
 	if err != nil {
 		zap.L().Debug(
 			"Error getting from cache",
@@ -173,11 +167,11 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, password stri
 		return err
 	}
 
-	if storedCode != code {
+	if storedCode != req.Code {
 		return ErrCodeIsNotValid
 	}
 
-	u, err := c.repo.GetUserByID(ctx, uid)
+	u, err := c.repo.GetUserByID(ctx, req.ID)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"Error find user",
@@ -192,13 +186,13 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, password stri
 		return err
 	}
 
-	newPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	newPass, err := auth.Au.Hash(req.Password)
 	if err != nil {
-		return repo.ErrGeneratingPassword
+		return err
 	}
 
-	u.Password = string(newPassword)
-	if err = c.repo.UpdateUser(ctx, uid, u); err != nil {
+	u.Password = newPass
+	if err = c.repo.UpdateUser(ctx, req.ID, u); err != nil {
 		zap.L().Debug(
 			"Error updating user",
 			zap.Error(err), zap.String("op", op),
@@ -206,33 +200,28 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, password stri
 		return err
 	}
 
-	if err = c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, uid)); err != nil {
-		zap.L().Debug(
-			"Error deleting from cache",
-			zap.Error(err), zap.String("op", op),
-		)
-	}
-
+	c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, req.ID))
 	return nil
 }
 
 func (c *Controller) SendForgotPasswordEmail(ctx context.Context, email string) error {
-	const op = "sso.SendForgotPasswordEmail.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+	const op = "auth.SendForgotPasswordEmail.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	u, err := c.repo.GetUserByEmail(ctx, email)
+	res, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
-		return ErrInvalidCredentials
+		return auth.ErrInvalidCredentials
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to get user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
 		return err
 	}
@@ -240,124 +229,103 @@ func (c *Controller) SendForgotPasswordEmail(ctx context.Context, email string) 
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 	code := rand.Intn(9999-1000+1) + 1000
 
-	if err = c.cache.Set(ctx, time.Minute*15, fmt.Sprintf(recoveryCacheKey, u.ID.String()), code); err != nil {
-		zap.L().Debug(
-			"failed to set to cache",
-			zap.Error(err), zap.String("op", op),
-		)
-		return err
-	}
-
-	if err = c.smtp.SendForgotPasswordEmail(ctx, strconv.Itoa(code), u.ID.String(), email); err != nil {
+	if err = c.smtp.SendForgotPasswordEmail(ctx, strconv.Itoa(code), res.ID.String(), email); err != nil {
 		zap.L().Debug(
 			"failed to send email",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
 		return err
 	}
 
+	c.cache.Set(ctx, time.Minute*15, fmt.Sprintf(recoveryCacheKey, res.ID.String()), code)
 	return nil
 }
 
 func (c *Controller) SendLoginCode(ctx context.Context, email, password string) error {
-	const op = "sso.SendLoginCode.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+	const op = "auth.SendLoginCode.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	u, err := c.repo.GetUserByEmail(ctx, email)
+	res, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
-		return ErrInvalidCredentials
+		return auth.ErrInvalidCredentials
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to get user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
 		return err
 	}
 
-	if err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)); err != nil {
-		return ErrInvalidCredentials
+	if err = auth.Au.ComparePasswords([]byte(res.Password), []byte(password)); err != nil {
+		return err
 	}
 
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 	code := rand.Intn(9999-1000+1) + 1000
 
-	if err = c.cache.Set(ctx, time.Minute*15, fmt.Sprintf(codeCacheKey, email), code); err != nil {
-		zap.L().Debug(
-			"failed to set to cache",
-			zap.Error(err), zap.String("op", op),
-		)
-		return err
-	}
-
 	if err = c.smtp.SendLoginEmail(ctx, code, email); err != nil {
 		zap.L().Debug(
 			"failed to send an email",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
 		return err
 	}
 
+	c.cache.Set(ctx, time.Minute*15, fmt.Sprintf(codeCacheKey, email), code)
 	return nil
 }
 
-func (c *Controller) CheckLoginCode(ctx context.Context, email string, code int) (string, string, error) {
-	const op = "sso.CheckLoginCode.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) CheckLoginCode(ctx context.Context, req *dto.CheckLoginCodeRequest) (*dto.CheckLoginCodeResponse, error) {
+	const op = "auth.CheckLoginCode.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	storedCode, err := c.cache.GetCode(ctx, fmt.Sprintf(codeCacheKey, email))
+	storedCode, err := c.cache.GetInt(ctx, fmt.Sprintf(codeCacheKey, req.Email))
 	if err != nil && errors.Is(err, cache.ErrNotFoundInCache) {
-		return "", "", ErrNotFound
+		return nil, ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to get from cache",
 			zap.Error(err), zap.String("op", op),
 		)
-		return "", "", err
+		return nil, err
 	}
 
-	if storedCode != code {
-		return "", "", ErrCodeIsNotValid
+	if storedCode != req.Code {
+		return nil, ErrCodeIsNotValid
 	}
 
-	u, err := c.repo.GetUserByEmail(ctx, email)
+	res, err := c.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find user",
 			zap.Error(err), zap.String("op", op),
 		)
-		return "", "", ErrNotFound
+		return nil, ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to get user",
 			zap.Error(err), zap.String("op", op),
 		)
-		return "", "", err
+		return nil, err
 	}
 
-	accessToken, err := c.auth.NewToken(u, auth.AccessTokenDuration)
+	access, refresh, err := auth.Au.GenPair(ctx, res.ID, res.Permissions)
 	if err != nil {
-		zap.L().Debug(
-			"failed to generate access token",
-			zap.Error(err), zap.String("op", op),
-		)
-		return "", "", ErrWhileGeneratingToken
+		return nil, ErrWhileGeneratingToken
 	}
 
-	refreshToken, err := c.auth.NewToken(u, auth.RefreshTokenDuration)
-	if err != nil {
-		zap.L().Debug(
-			"failed to generate refresh token",
-			zap.Error(err), zap.String("op", op),
-		)
-		return "", "", ErrWhileGeneratingToken
-	}
-	return accessToken, refreshToken, nil
+	return &dto.CheckLoginCodeResponse{
+		Access:  access,
+		Refresh: refresh,
+	}, nil
 }

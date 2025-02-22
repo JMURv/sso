@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/JMURv/sso/internal/auth"
-	repo "github.com/JMURv/sso/internal/repository"
-	"github.com/JMURv/sso/mocks"
-	"github.com/JMURv/sso/pkg/consts"
-	md "github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/internal/config"
+	md "github.com/JMURv/sso/internal/models"
+	"github.com/JMURv/sso/internal/repo"
+	"github.com/JMURv/sso/tests/mocks"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -19,12 +19,11 @@ func TestIsUserExist(t *testing.T) {
 	mock := gomock.NewController(t)
 	defer mock.Finish()
 
-	authRepo := mocks.NewMockAuthService(mock)
 	mockRepo := mocks.NewMockAppRepo(mock)
 	mockCache := mocks.NewMockCacheService(mock)
 	mockSMTP := mocks.NewMockEmailService(mock)
 
-	ctrl := New(authRepo, mockRepo, mockCache, mockSMTP)
+	ctrl := New(mockRepo, mockCache, mockSMTP)
 
 	ctx := context.Background()
 	email := "test@example.com"
@@ -55,12 +54,11 @@ func TestUserSearch(t *testing.T) {
 	mock := gomock.NewController(t)
 	defer mock.Finish()
 
-	authRepo := mocks.NewMockAuthService(mock)
 	mockRepo := mocks.NewMockAppRepo(mock)
 	mockCache := mocks.NewMockCacheService(mock)
 	mockSMTP := mocks.NewMockEmailService(mock)
 
-	ctrl := New(authRepo, mockRepo, mockCache, mockSMTP)
+	ctrl := New(mockRepo, mockCache, mockSMTP)
 
 	ctx := context.Background()
 	query := "test"
@@ -114,12 +112,11 @@ func TestListUsers(t *testing.T) {
 	mock := gomock.NewController(t)
 	defer mock.Finish()
 
-	authRepo := mocks.NewMockAuthService(mock)
 	mockRepo := mocks.NewMockAppRepo(mock)
 	mockCache := mocks.NewMockCacheService(mock)
 	mockSMTP := mocks.NewMockEmailService(mock)
 
-	ctrl := New(authRepo, mockRepo, mockCache, mockSMTP)
+	ctrl := New(mockRepo, mockCache, mockSMTP)
 
 	ctx := context.Background()
 	page := 1
@@ -143,7 +140,7 @@ func TestListUsers(t *testing.T) {
 	// Test case 2: Cache miss, repo success, cache set success
 	mockCache.EXPECT().GetToStruct(gomock.Any(), cacheKey, gomock.Any()).Return(errors.New("cache miss")).Times(1)
 	mockRepo.EXPECT().ListUsers(gomock.Any(), page, size).Return(expectedData, nil).Times(1)
-	mockCache.EXPECT().Set(gomock.Any(), consts.DefaultCacheTime, cacheKey, gomock.Any()).Return(nil).Times(1)
+	mockCache.EXPECT().Set(gomock.Any(), config.DefaultCacheTime, cacheKey, gomock.Any()).Return(nil).Times(1)
 
 	data, err = ctrl.ListUsers(ctx, page, size)
 	assert.Nil(t, err)
@@ -170,7 +167,7 @@ func TestListUsers(t *testing.T) {
 	mockRepo.EXPECT().ListUsers(gomock.Any(), page, size).Return(expectedData, nil).Times(1)
 	mockCache.EXPECT().Set(
 		gomock.Any(),
-		consts.DefaultCacheTime,
+		config.DefaultCacheTime,
 		cacheKey,
 		gomock.Any(),
 	).Return(errors.New("cache set failure")).Times(1)
@@ -184,12 +181,11 @@ func TestGetUserByID(t *testing.T) {
 	mock := gomock.NewController(t)
 	defer mock.Finish()
 
-	authRepo := mocks.NewMockAuthService(mock)
 	mockRepo := mocks.NewMockAppRepo(mock)
 	mockCache := mocks.NewMockCacheService(mock)
 	mockSMTP := mocks.NewMockEmailService(mock)
 
-	ctrl := New(authRepo, mockRepo, mockCache, mockSMTP)
+	ctrl := New(mockRepo, mockCache, mockSMTP)
 
 	ctx := context.Background()
 	userID := uuid.New()
@@ -211,7 +207,7 @@ func TestGetUserByID(t *testing.T) {
 	// Test case 2: Cache miss, repo success, cache set success
 	mockCache.EXPECT().GetToStruct(gomock.Any(), cacheKey, gomock.Any()).Return(errors.New("cache miss")).Times(1)
 	mockRepo.EXPECT().GetUserByID(gomock.Any(), userID).Return(expectedUser, nil).Times(1)
-	mockCache.EXPECT().Set(gomock.Any(), consts.DefaultCacheTime, cacheKey, gomock.Any()).Return(nil).Times(1)
+	mockCache.EXPECT().Set(gomock.Any(), config.DefaultCacheTime, cacheKey, gomock.Any()).Return(nil).Times(1)
 
 	user, err = ctrl.GetUserByID(ctx, userID)
 	assert.Nil(t, err)
@@ -238,7 +234,7 @@ func TestGetUserByID(t *testing.T) {
 	mockRepo.EXPECT().GetUserByID(gomock.Any(), userID).Return(expectedUser, nil).Times(1)
 	mockCache.EXPECT().Set(
 		gomock.Any(),
-		consts.DefaultCacheTime,
+		config.DefaultCacheTime,
 		cacheKey,
 		gomock.Any(),
 	).Return(errors.New("cache set failure")).Times(1)
@@ -252,12 +248,11 @@ func TestGetUserByEmail(t *testing.T) {
 	mock := gomock.NewController(t)
 	defer mock.Finish()
 
-	authRepo := mocks.NewMockAuthService(mock)
 	mockRepo := mocks.NewMockAppRepo(mock)
 	mockCache := mocks.NewMockCacheService(mock)
 	mockSMTP := mocks.NewMockEmailService(mock)
 
-	ctrl := New(authRepo, mockRepo, mockCache, mockSMTP)
+	ctrl := New(mockRepo, mockCache, mockSMTP)
 
 	ctx := context.Background()
 	email := "test@example.com"
@@ -279,7 +274,7 @@ func TestGetUserByEmail(t *testing.T) {
 	// Test case 2: Cache miss, repo success, cache set success
 	mockCache.EXPECT().GetToStruct(gomock.Any(), cacheKey, gomock.Any()).Return(errors.New("cache miss")).Times(1)
 	mockRepo.EXPECT().GetUserByEmail(gomock.Any(), email).Return(expectedUser, nil).Times(1)
-	mockCache.EXPECT().Set(gomock.Any(), consts.DefaultCacheTime, cacheKey, gomock.Any()).Return(nil).Times(1)
+	mockCache.EXPECT().Set(gomock.Any(), config.DefaultCacheTime, cacheKey, gomock.Any()).Return(nil).Times(1)
 
 	user, err = ctrl.GetUserByEmail(ctx, email)
 	assert.Nil(t, err)
@@ -306,7 +301,7 @@ func TestGetUserByEmail(t *testing.T) {
 	mockRepo.EXPECT().GetUserByEmail(gomock.Any(), email).Return(expectedUser, nil).Times(1)
 	mockCache.EXPECT().Set(
 		gomock.Any(),
-		consts.DefaultCacheTime,
+		config.DefaultCacheTime,
 		cacheKey,
 		gomock.Any(),
 	).Return(errors.New("cache set failure")).Times(1)
@@ -325,7 +320,7 @@ func TestCreateUser(t *testing.T) {
 	mockCache := mocks.NewMockCacheService(mock)
 	mockSMTP := mocks.NewMockEmailService(mock)
 
-	ctrl := New(authRepo, mockRepo, mockCache, mockSMTP)
+	ctrl := New(mockRepo, mockCache, mockSMTP)
 
 	ctx := context.Background()
 	idx := uuid.New()
@@ -357,7 +352,7 @@ func TestCreateUser(t *testing.T) {
 
 	// Test case 3: Successful user creation, no file, cache set success
 	mockRepo.EXPECT().CreateUser(gomock.Any(), user).Return(idx, nil).Times(1)
-	mockCache.EXPECT().Set(gomock.Any(), consts.DefaultCacheTime, gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	mockCache.EXPECT().Set(gomock.Any(), config.DefaultCacheTime, gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 	mockSMTP.EXPECT().SendOptFile(gomock.Any(), user.Email, fileName, fileBytes).Times(0)
 	mockSMTP.EXPECT().SendUserCredentials(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
@@ -375,7 +370,7 @@ func TestCreateUser(t *testing.T) {
 	mockRepo.EXPECT().CreateUser(gomock.Any(), user).Return(idx, nil).Times(1)
 	mockCache.EXPECT().Set(
 		gomock.Any(),
-		consts.DefaultCacheTime,
+		config.DefaultCacheTime,
 		gomock.Any(),
 		gomock.Any(),
 	).Return(errors.New("cache error")).Times(1)
@@ -397,7 +392,7 @@ func TestCreateUser(t *testing.T) {
 			mockRepo.EXPECT().CreateUser(gomock.Any(), user).Return(idx, nil).Times(1)
 			mockCache.EXPECT().Set(
 				gomock.Any(),
-				consts.DefaultCacheTime,
+				config.DefaultCacheTime,
 				gomock.Any(),
 				gomock.Any(),
 			).Return(errors.New("cache error")).Times(1)
@@ -426,7 +421,7 @@ func TestCreateUser(t *testing.T) {
 			mockRepo.EXPECT().CreateUser(gomock.Any(), user).Return(idx, nil).Times(1)
 			mockCache.EXPECT().Set(
 				gomock.Any(),
-				consts.DefaultCacheTime,
+				config.DefaultCacheTime,
 				gomock.Any(),
 				gomock.Any(),
 			).Return(nil).Times(1)
@@ -451,7 +446,7 @@ func TestCreateUser(t *testing.T) {
 			mockRepo.EXPECT().CreateUser(gomock.Any(), user).Return(idx, nil).Times(1)
 			mockCache.EXPECT().Set(
 				gomock.Any(),
-				consts.DefaultCacheTime,
+				config.DefaultCacheTime,
 				gomock.Any(),
 				gomock.Any(),
 			).Return(nil).Times(1)
@@ -477,12 +472,11 @@ func TestUpdateUser(t *testing.T) {
 	mock := gomock.NewController(t)
 	defer mock.Finish()
 
-	authRepo := mocks.NewMockAuthService(mock)
 	mockRepo := mocks.NewMockAppRepo(mock)
 	mockCache := mocks.NewMockCacheService(mock)
 	mockSMTP := mocks.NewMockEmailService(mock)
 
-	ctrl := New(authRepo, mockRepo, mockCache, mockSMTP)
+	ctrl := New(mockRepo, mockCache, mockSMTP)
 
 	ctx := context.Background()
 	userID := uuid.New()
@@ -524,12 +518,11 @@ func TestDeleteUser(t *testing.T) {
 	mock := gomock.NewController(t)
 	defer mock.Finish()
 
-	authRepo := mocks.NewMockAuthService(mock)
 	mockRepo := mocks.NewMockAppRepo(mock)
 	mockCache := mocks.NewMockCacheService(mock)
 	mockSMTP := mocks.NewMockEmailService(mock)
 
-	ctrl := New(authRepo, mockRepo, mockCache, mockSMTP)
+	ctrl := New(mockRepo, mockCache, mockSMTP)
 
 	ctx := context.Background()
 	userID := uuid.New()

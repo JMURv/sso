@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/JMURv/sso/internal/auth"
-	repo "github.com/JMURv/sso/internal/repository"
-	"github.com/JMURv/sso/pkg/consts"
-	"github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/internal/config"
+	"github.com/JMURv/sso/internal/dto"
+	md "github.com/JMURv/sso/internal/models"
+	"github.com/JMURv/sso/internal/repo"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
@@ -15,13 +16,12 @@ import (
 )
 
 type userRepo interface {
-	SearchUser(ctx context.Context, query string, page int, size int) (*model.PaginatedUser, error)
-	ListUsers(ctx context.Context, page, size int) (*model.PaginatedUser, error)
-	GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
-
-	CreateUser(ctx context.Context, req *model.User) (uuid.UUID, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, req *model.User) error
+	SearchUser(ctx context.Context, query string, page int, size int) (*dto.PaginatedUserResponse, error)
+	ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
+	CreateUser(ctx context.Context, req *md.User) (uuid.UUID, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -30,35 +30,36 @@ const usersSearchCacheKey = "users-search:%v:%v:%v"
 const usersListKey = "users-list:%v:%v"
 const userPattern = "users-*"
 
-func (c *Controller) IsUserExist(ctx context.Context, email string) (isExist bool, err error) {
-	const op = "sso.IsUserExist.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error) {
+	const op = "users.IsUserExist.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	_, err = c.repo.GetUserByEmail(ctx, email)
+	res := &dto.ExistsUserResponse{Exists: false}
+	_, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		return false, nil
+		return res, nil
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to get user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
-		return true, err
+		return nil, err
 	}
 
-	return true, nil
+	res.Exists = true
+	return res, nil
 }
 
-func (c *Controller) SearchUser(ctx context.Context, query string, page, size int) (*model.PaginatedUser, error) {
-	const op = "users.UserSearch.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error) {
+	const op = "users.SearchUser.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &model.PaginatedUser{}
+	cached := &dto.PaginatedUserResponse{}
 	cacheKey := fmt.Sprintf(usersSearchCacheKey, query, page, size)
-	if err := c.cache.GetToStruct(ctx, cacheKey, &cached); err == nil {
+	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
 		return cached, nil
 	}
 
@@ -66,73 +67,54 @@ func (c *Controller) SearchUser(ctx context.Context, query string, page, size in
 	if err != nil {
 		zap.L().Debug(
 			"failed to search users",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.String("query", query),
+			zap.Error(err),
 		)
 		return nil, err
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug(
-				"failed to set to cache",
-				zap.Error(err), zap.String("op", op),
-				zap.String("query", query),
-			)
-		}
+		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
 	}
 
 	return res, nil
 }
 
-func (c *Controller) ListUsers(ctx context.Context, page, size int) (*model.PaginatedUser, error) {
-	const op = "users.GetUsersList.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error) {
+	const op = "users.ListUsers.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &model.PaginatedUser{}
+	cached := &dto.PaginatedUserResponse{}
 	cacheKey := fmt.Sprintf(usersListKey, page, size)
 	if err := c.cache.GetToStruct(ctx, cacheKey, &cached); err == nil {
 		return cached, nil
 	}
 
 	res, err := c.repo.ListUsers(ctx, page, size)
-	if err != nil && errors.Is(err, repo.ErrNotFound) {
+	if err != nil {
 		zap.L().Debug(
 			"failed to list users",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.Int("page", page), zap.Int("size", size),
-		)
-		return nil, ErrNotFound
-	} else if err != nil {
-		zap.L().Debug(
-			"failed to list users",
-			zap.Error(err), zap.String("op", op),
-			zap.Int("page", page), zap.Int("size", size),
+			zap.Error(err),
 		)
 		return nil, err
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug(
-				"failed to set to cache",
-				zap.Error(err), zap.String("op", op),
-				zap.Int("page", page), zap.Int("size", size),
-			)
-		}
+		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
 	}
 	return res, nil
 }
 
-func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error) {
+func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error) {
 	const op = "users.GetUserByID.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &model.User{}
+	cached := &md.User{}
 	cacheKey := fmt.Sprintf(userCacheKey, userID)
 	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
 		return cached, nil
@@ -142,39 +124,33 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*model.
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.String("id", userID.String()),
+			zap.Error(err),
 		)
 		return nil, ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to get user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.String("id", userID.String()),
+			zap.Error(err),
 		)
 		return nil, err
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug(
-				"failed to set to cache",
-				zap.Error(err), zap.String("op", op),
-				zap.String("id", userID.String()),
-			)
-		}
+		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
 	}
-
 	return res, nil
 }
 
-func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
+func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*md.User, error) {
 	const op = "users.GetUserByEmail.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &model.User{}
+	cached := &md.User{}
 	cacheKey := fmt.Sprintf(userCacheKey, email)
 	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
 		return cached, nil
@@ -184,37 +160,37 @@ func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*model.U
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.String("email", email),
+			zap.Error(err),
 		)
 		return nil, ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to get user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.String("email", email),
+			zap.Error(err),
 		)
 		return nil, err
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug(
-				"failed to set to cache",
-				zap.Error(err), zap.String("op", op),
-				zap.String("email", email),
-			)
-		}
+		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
 	}
-
 	return res, nil
 }
 
-func (c *Controller) CreateUser(ctx context.Context, u *model.User, fileName string, bytes []byte) (uuid.UUID, string, string, error) {
+func (c *Controller) CreateUser(ctx context.Context, u *md.User) (*dto.CreateUserResponse, error) {
 	const op = "users.CreateUser.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
+
+	hash, err := auth.Au.Hash(u.Password)
+	if err != nil {
+		return nil, err
+	}
+	u.Password = hash
 
 	id, err := c.repo.CreateUser(ctx, u)
 	if err != nil && errors.Is(err, repo.ErrAlreadyExists) {
@@ -222,125 +198,79 @@ func (c *Controller) CreateUser(ctx context.Context, u *model.User, fileName str
 			"user already exists",
 			zap.Error(err), zap.String("op", op),
 		)
-		return uuid.Nil, "", "", ErrAlreadyExists
+		return nil, ErrAlreadyExists
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to create user",
 			zap.Error(err), zap.String("op", op),
 		)
-		return uuid.Nil, "", "", err
+		return nil, err
 	}
 
+	u.ID = id
 	if bytes, err := json.Marshal(u); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, fmt.Sprintf(userCacheKey, id), bytes); err != nil {
-			zap.L().Debug(
-				"failed to set to cache",
-				zap.Error(err), zap.String("op", op),
-			)
-		}
+		c.cache.Set(ctx, config.DefaultCacheTime, fmt.Sprintf(userCacheKey, id), bytes)
 	}
-
-	if fileName != "" && bytes != nil {
-		if err = c.smtp.SendOptFile(ctx, u.Email, fileName, bytes); err != nil {
-			zap.L().Debug(
-				"failed to send email",
-				zap.Error(err),
-				zap.String("op", op),
-			)
-		}
-	}
-
-	accessToken, err := c.auth.NewToken(u, auth.AccessTokenDuration)
-	if err != nil {
-		zap.L().Debug(
-			"failed to create access token",
-			zap.Error(err), zap.String("op", op),
-		)
-		return id, "", "", ErrWhileGeneratingToken
-	}
-
-	refreshToken, err := c.auth.NewToken(u, auth.RefreshTokenDuration)
-	if err != nil {
-		zap.L().Debug(
-			"failed to create refresh token",
-			zap.Error(err), zap.String("op", op),
-		)
-		return id, "", "", ErrWhileGeneratingToken
-	}
-
-	if err = c.smtp.SendUserCredentials(ctx, u.Email, u.Password); err != nil {
-		return id, accessToken, refreshToken, err
-	}
-
 	go c.cache.InvalidateKeysByPattern(ctx, userPattern)
-	return id, accessToken, refreshToken, nil
+	return &dto.CreateUserResponse{
+		ID: id,
+	}, nil
 }
 
-func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *model.User) error {
+func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error {
 	const op = "users.UpdateUser.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	err := c.repo.UpdateUser(ctx, id, req)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.String("id", id.String()),
+			zap.Error(err),
 		)
 		return ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to update user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.String("id", id.String()),
+			zap.Error(err),
 		)
 		return err
 	}
 
-	if err := c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, id)); err != nil {
-		zap.L().Debug(
-			"failed to delete from cache",
-			zap.Error(err), zap.String("op", op),
-			zap.String("id", id.String()),
-		)
-	}
-
+	c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, id))
 	go c.cache.InvalidateKeysByPattern(ctx, userPattern)
 	return nil
 }
 
 func (c *Controller) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	const op = "users.DeleteUser.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	if err := c.repo.DeleteUser(ctx, userID); err != nil && errors.Is(err, repo.ErrNotFound) {
+	err := c.repo.DeleteUser(ctx, userID)
+	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.String("id", userID.String()),
+			zap.Error(err),
 		)
 		return ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to delete user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.String("id", userID.String()),
+			zap.Error(err),
 		)
 		return err
 	}
 
-	if err := c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, userID)); err != nil {
-		zap.L().Debug(
-			"failed to delete from cache",
-			zap.Error(err), zap.String("op", op),
-			zap.String("id", userID.String()),
-		)
-	}
-
+	c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, userID))
 	go c.cache.InvalidateKeysByPattern(ctx, userPattern)
 	return nil
 }

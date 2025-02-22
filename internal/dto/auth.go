@@ -2,13 +2,23 @@ package dto
 
 import "github.com/google/uuid"
 
+type RefreshRequest struct {
+	Refresh string `json:"refresh"`
+}
+
+type RefreshResponse struct {
+	Access  string `json:"access"`
+	Refresh string `json:"refresh"`
+}
+
 type EmailAndPasswordRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type EmailAndPasswordResponse struct {
-	Token string `json:"token"`
+	Access  string `json:"access"`
+	Refresh string `json:"refresh"`
 }
 
 type LoginCodeRequest struct {
@@ -21,6 +31,11 @@ type CheckLoginCodeRequest struct {
 	Code  int    `json:"code"`
 }
 
+type CheckLoginCodeResponse struct {
+	Access  string `json:"access"`
+	Refresh string `json:"refresh"`
+}
+
 type CheckEmailRequest struct {
 	Email string `json:"email"`
 }
@@ -31,8 +46,12 @@ type CheckEmailResponse struct {
 
 type CheckForgotPasswordEmailRequest struct {
 	Password string    `json:"password"`
-	Uidb64   uuid.UUID `json:"uidb64"`
-	Token    int       `json:"token"`
+	ID       uuid.UUID `json:"uidb64"`
+	Code     int       `json:"token"`
+}
+
+type SendForgotPasswordEmail struct {
+	Email string `json:"email"`
 }
 
 type SendSupportEmailRequest struct {

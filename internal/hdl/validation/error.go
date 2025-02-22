@@ -2,7 +2,8 @@ package validation
 
 import "errors"
 
-var ErrLoginIsRequired = errors.New("login is required")
+var ErrIDIsRequired = errors.New("id is required")
+var ErrCodeIsRequired = errors.New("code is required")
 var ErrMissingToken = errors.New("token is required")
 var ErrMissingCode = errors.New("code is required")
 var ErrMissingEmail = errors.New("email is required")

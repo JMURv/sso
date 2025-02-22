@@ -1,6 +1,9 @@
 mode: "dev"
 serviceName: "sso"
-secret: "DYHlaJpPiZ"
+
+auth:
+  access: "DYHlaJpPiZ"
+  refresh: "DYHlaJpPiZ"
 
 server:
   port: 8080

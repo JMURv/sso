@@ -2,14 +2,16 @@ package http
 
 import (
 	"errors"
-	controller "github.com/JMURv/sso/internal/controller"
-	"github.com/JMURv/sso/internal/handler"
-	metrics "github.com/JMURv/sso/internal/metrics/prometheus"
-	"github.com/JMURv/sso/internal/validation"
-	"github.com/JMURv/sso/pkg/consts"
-	"github.com/JMURv/sso/pkg/model"
-	utils "github.com/JMURv/sso/pkg/utils/http"
+	"github.com/JMURv/sso/internal/config"
+	"github.com/JMURv/sso/internal/ctrl"
+	"github.com/JMURv/sso/internal/hdl"
+	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
+	"github.com/JMURv/sso/internal/hdl/http/utils"
+	"github.com/JMURv/sso/internal/hdl/validation"
+	md "github.com/JMURv/sso/internal/models"
+	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/goccy/go-json"
+	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"net/http"
 	"strconv"
@@ -26,7 +28,7 @@ func RegisterPermRoutes(mux *http.ServeMux, h *Handler) {
 			case http.MethodPost:
 				h.createPerm(w, r)
 			default:
-				utils.ErrResponse(w, http.StatusMethodNotAllowed, handler.ErrMethodNotAllowed)
+				utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 			}
 		},
 	)
@@ -37,111 +39,93 @@ func RegisterPermRoutes(mux *http.ServeMux, h *Handler) {
 			case http.MethodGet:
 				h.getPerm(w, r)
 			case http.MethodPut:
-				middlewareFunc(h.updatePerm, h.authMiddleware)
+				mid.Apply(h.updatePerm, mid.Auth)(w, r)
 			case http.MethodDelete:
-				middlewareFunc(h.deletePerm, h.authMiddleware)
+				mid.Apply(h.deletePerm, mid.Auth)(w, r)
 			default:
-				utils.ErrResponse(w, http.StatusMethodNotAllowed, handler.ErrMethodNotAllowed)
+				utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 			}
 		},
 	)
 }
 
 func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {
+	const op = "perm.listPerms.hdl"
 	s, c := time.Now(), http.StatusOK
-	const op = "sso.listPerms.hdl"
+	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
 	defer func() {
+		span.Finish()
 		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			zap.L().Error("panic", zap.Any("err", err))
-			c = http.StatusInternalServerError
-			utils.ErrResponse(w, c, controller.ErrInternalError)
-		}
 	}()
 
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
 	if err != nil || page < 1 {
-		page = 1
+		page = config.DefaultPage
 	}
 
 	size, err := strconv.Atoi(r.URL.Query().Get("size"))
 	if err != nil || size < 1 {
-		size = consts.DefaultPageSize
+		size = config.DefaultSize
 	}
 
-	res, err := h.ctrl.ListPermissions(r.Context(), page, size)
+	res, err := h.ctrl.ListPermissions(ctx, page, size)
 	if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, controller.ErrInternalError)
+		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}
 
-	utils.SuccessPaginatedResponse(w, c, res)
+	utils.SuccessResponse(w, c, res)
 }
 
 func (h *Handler) createPerm(w http.ResponseWriter, r *http.Request) {
+	const op = "perm.createPerm.hdl"
 	s, c := time.Now(), http.StatusCreated
-	const op = "sso.createPerm.hdl"
+	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
 	defer func() {
+		span.Finish()
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	defer func() {
-		if err := recover(); err != nil {
-			zap.L().Error("panic", zap.Any("err", err))
-			c = http.StatusInternalServerError
-			utils.ErrResponse(w, c, controller.ErrInternalError)
-		}
-	}()
-
-	req := &model.Permission{}
+	req := &md.Permission{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
-			"failed to decode request",
-			zap.String("op", op), zap.Error(err),
+			hdl.ErrDecodeRequest.Error(),
+			zap.String("op", op),
+			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
+		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err := validation.PermValidation(req); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug("failed to validate user", zap.String("op", op), zap.Error(err))
 		utils.ErrResponse(w, c, err)
 		return
 	}
 
-	uid, err := h.ctrl.CreatePerm(r.Context(), req)
-	if err != nil && errors.Is(err, controller.ErrAlreadyExists) {
+	res, err := h.ctrl.CreatePerm(ctx, req)
+	if err != nil && errors.Is(err, ctrl.ErrAlreadyExists) {
 		c = http.StatusConflict
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, controller.ErrInternalError)
+		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}
 
-	utils.SuccessResponse(w, c, uid)
+	utils.SuccessResponse(w, c, res)
 }
 
 func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
+	const op = "perm.getPerm.hdl"
 	s, c := time.Now(), http.StatusOK
-	const op = "sso.getPerm.hdl"
+	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
 	defer func() {
+		span.Finish()
 		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			zap.L().Error("panic", zap.Any("err", err))
-			c = http.StatusInternalServerError
-			utils.ErrResponse(w, c, controller.ErrInternalError)
-		}
 	}()
 
 	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
@@ -151,18 +135,18 @@ func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
 			"failed to parse id",
 			zap.String("op", op),
 		)
-		utils.ErrResponse(w, c, handler.ErrRetrievePathVars)
+		utils.ErrResponse(w, c, ErrRetrievePathVars)
 		return
 	}
 
-	res, err := h.ctrl.GetPermission(r.Context(), uid)
-	if err != nil && errors.Is(err, controller.ErrNotFound) {
+	res, err := h.ctrl.GetPermission(ctx, uid)
+	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = http.StatusNotFound
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, controller.ErrInternalError)
+		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}
 
@@ -170,18 +154,12 @@ func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
+	const op = "perm.updatePerm.hdl"
 	s, c := time.Now(), http.StatusOK
-	const op = "sso.updatePerm.hdl"
+	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
 	defer func() {
+		span.Finish()
 		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			zap.L().Error("panic", zap.Any("err", err))
-			c = http.StatusInternalServerError
-			utils.ErrResponse(w, c, controller.ErrInternalError)
-		}
 	}()
 
 	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
@@ -191,18 +169,18 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 			"failed to parse id",
 			zap.String("op", op),
 		)
-		utils.ErrResponse(w, c, handler.ErrRetrievePathVars)
+		utils.ErrResponse(w, c, ErrRetrievePathVars)
 		return
 	}
 
-	req := &model.Permission{}
+	req := &md.Permission{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
-			"failed to decode request",
+			hdl.ErrDecodeRequest.Error(),
 			zap.String("op", op), zap.Error(err),
 		)
-		utils.ErrResponse(w, c, controller.ErrDecodeRequest)
+		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
 		return
 	}
 
@@ -216,33 +194,27 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.ctrl.UpdatePerm(r.Context(), uid, req)
-	if err != nil && errors.Is(err, controller.ErrNotFound) {
+	err = h.ctrl.UpdatePerm(ctx, uid, req)
+	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = http.StatusNotFound
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, controller.ErrInternalError)
+		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}
 
-	utils.SuccessResponse(w, c, "OK")
+	utils.StatusResponse(w, c)
 }
 
 func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
+	const op = "perm.deletePerm.hdl"
 	s, c := time.Now(), http.StatusNoContent
-	const op = "sso.deletePerm.hdl"
+	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
 	defer func() {
+		span.Finish()
 		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			zap.L().Error("panic", zap.Any("err", err))
-			c = http.StatusInternalServerError
-			utils.ErrResponse(w, c, controller.ErrInternalError)
-		}
 	}()
 
 	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
@@ -252,20 +224,20 @@ func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
 			"failed to parse id",
 			zap.String("op", op),
 		)
-		utils.ErrResponse(w, c, handler.ErrRetrievePathVars)
+		utils.ErrResponse(w, c, ErrRetrievePathVars)
 		return
 	}
 
-	err = h.ctrl.DeletePerm(r.Context(), uid)
-	if err != nil && errors.Is(err, controller.ErrNotFound) {
+	err = h.ctrl.DeletePerm(ctx, uid)
+	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = http.StatusNotFound
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
 		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, controller.ErrInternalError)
+		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}
 
-	utils.SuccessResponse(w, c, "OK")
+	utils.StatusResponse(w, c)
 }

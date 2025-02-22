@@ -3,32 +3,41 @@ package db
 import (
 	"context"
 	"database/sql"
-	repo "github.com/JMURv/sso/internal/repository"
-	md "github.com/JMURv/sso/pkg/model"
-	utils "github.com/JMURv/sso/pkg/utils/db"
+	"errors"
+	"github.com/JMURv/sso/internal/dto"
+	md "github.com/JMURv/sso/internal/models"
+	"github.com/JMURv/sso/internal/repo"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/opentracing/opentracing-go"
-	"golang.org/x/crypto/bcrypt"
+	"go.uber.org/zap"
 	"strings"
 )
 
-func (r *Repository) SearchUser(ctx context.Context, query string, page, size int) (*md.PaginatedUser, error) {
-	const op = "sso.SearchUser.repo"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+func (r *Repository) SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error) {
+	const op = "users.SearchUser.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	var count int64
-	if err := r.conn.QueryRow(userSearchSelectQ, "%"+query+"%", "%"+query+"%").
+	if err := r.conn.QueryRowContext(ctx, userSearchSelectQ, "%"+query+"%", "%"+query+"%").
 		Scan(&count); err != nil {
 		return nil, err
 	}
 
-	rows, err := r.conn.Query(userSearchQ, "%"+query+"%", "%"+query+"%", size, (page-1)*size)
+	rows, err := r.conn.QueryContext(ctx, userSearchQ, "%"+query+"%", "%"+query+"%", size, (page-1)*size)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		if err := rows.Close(); err != nil {
+			zap.L().Debug(
+				"Failed to close rows",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+		}
+	}(rows)
 
 	res := make([]*md.User, 0, size)
 	for rows.Next() {
@@ -49,7 +58,7 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 			return nil, err
 		}
 
-		user.Permissions, err = utils.ScanPermissions(perms)
+		user.Permissions, err = ScanPermissions(perms)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +71,7 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 	}
 
 	totalPages := int((count + int64(size) - 1) / int64(size))
-	return &md.PaginatedUser{
+	return &dto.PaginatedUserResponse{
 		Data:        res,
 		Count:       count,
 		TotalPages:  totalPages,
@@ -71,21 +80,29 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 	}, nil
 }
 
-func (r *Repository) ListUsers(ctx context.Context, page, size int) (*md.PaginatedUser, error) {
-	const op = "sso.ListUsers.repo"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+func (r *Repository) ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error) {
+	const op = "users.ListUsers.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	var count int64
-	if err := r.conn.QueryRow(userSelectQ).Scan(&count); err != nil {
+	if err := r.conn.QueryRowContext(ctx, userSelectQ).Scan(&count); err != nil {
 		return nil, err
 	}
 
-	rows, err := r.conn.Query(userListQ, size, (page-1)*size)
+	rows, err := r.conn.QueryContext(ctx, userListQ, size, (page-1)*size)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		if err := rows.Close(); err != nil {
+			zap.L().Debug(
+				"Failed to close rows",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+		}
+	}(rows)
 
 	res := make([]*md.User, 0, size)
 	for rows.Next() {
@@ -106,7 +123,7 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int) (*md.Paginat
 			return nil, err
 		}
 
-		user.Permissions, err = utils.ScanPermissions(perms)
+		user.Permissions, err = ScanPermissions(perms)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +136,7 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int) (*md.Paginat
 	}
 
 	totalPages := int((count + int64(size) - 1) / int64(size))
-	return &md.PaginatedUser{
+	return &dto.PaginatedUserResponse{
 		Data:        res,
 		Count:       count,
 		TotalPages:  totalPages,
@@ -129,13 +146,13 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int) (*md.Paginat
 }
 
 func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error) {
-	const op = "sso.GetUserByID.repo"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+	const op = "users.GetUserByID.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	res := &md.User{}
 	perms := make([]string, 0, 5)
-	err := r.conn.QueryRow(userGetByIDQ, userID).Scan(
+	err := r.conn.QueryRowContext(ctx, userGetByIDQ, userID).Scan(
 		&res.ID,
 		&res.Name,
 		&res.Password,
@@ -148,13 +165,13 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		pq.Array(&perms),
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repo.ErrNotFound
 	} else if err != nil {
 		return nil, err
 	}
 
-	res.Permissions, err = utils.ScanPermissions(perms)
+	res.Permissions, err = ScanPermissions(perms)
 	if err != nil {
 		return nil, err
 	}
@@ -163,12 +180,12 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 }
 
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User, error) {
-	const op = "sso.GetUserByEmail.repo"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+	const op = "users.GetUserByEmail.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	res := &md.User{}
-	err := r.conn.QueryRow(userGetByEmailQ, email).
+	err := r.conn.QueryRowContext(ctx, userGetByEmailQ, email).
 		Scan(
 			&res.ID,
 			&res.Name,
@@ -181,7 +198,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 			&res.UpdatedAt,
 		)
 
-	if err == sql.ErrNoRows {
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, repo.ErrNotFound
 	} else if err != nil {
 		return nil, err
@@ -191,15 +208,9 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 }
 
 func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, error) {
-	const op = "sso.CreateUser.repo"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+	const op = "users.CreateUser.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
-
-	password, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return uuid.Nil, repo.ErrGeneratingPassword
-	}
-	req.Password = string(password)
 
 	tx, err := r.conn.Begin()
 	if err != nil {
@@ -241,16 +252,26 @@ func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, e
 }
 
 func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error {
-	const op = "sso.UpdateUser.repo"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+	const op = "users.UpdateUser.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	tx, err := r.conn.Begin()
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if rbErr := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			zap.L().Debug(
+				"Error while transaction rollback",
+				zap.String("op", op),
+				zap.Error(rbErr),
+			)
+		}
+	}()
 
-	res, err := tx.Exec(
+	res, err := tx.ExecContext(
+		ctx,
 		userUpdateQ,
 		req.Name,
 		req.Password,
@@ -264,21 +285,25 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User)
 		return err
 	}
 
-	if aff, _ := res.RowsAffected(); aff == 0 {
+	aff, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if aff == 0 {
 		return repo.ErrNotFound
 	}
 
-	if _, err = tx.Exec(userDeletePermQ, id); err != nil {
-		tx.Rollback()
+	if _, err = tx.ExecContext(ctx, userDeletePermQ, id); err != nil {
 		return err
 	}
 
 	for _, v := range req.Permissions {
-		if _, err = tx.Exec(
+		if _, err = tx.ExecContext(
+			ctx,
 			userCreatePermQ,
 			id, v.ID, v.Value,
 		); err != nil {
-			tx.Rollback()
 			return err
 		}
 	}
@@ -287,8 +312,8 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User)
 }
 
 func (r *Repository) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	const op = "sso.DeleteUser.repo"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
+	const op = "users.DeleteUser.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	res, err := r.conn.ExecContext(ctx, userDeleteQ, id)
@@ -296,7 +321,12 @@ func (r *Repository) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 
-	if aff, _ := res.RowsAffected(); aff == 0 {
+	aff, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if aff == 0 {
 		return repo.ErrNotFound
 	}
 	return nil

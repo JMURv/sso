@@ -40,14 +40,14 @@ func Auth(next http.Handler) http.Handler {
 				return
 			}
 
-			claims, err := auth.Au.VerifyToken(tokenStr)
+			claims, err := auth.Au.ParseClaims(tokenStr)
 			if err != nil {
 				log.Println(err, reflect.TypeOf(err))
 				utils.ErrResponse(w, http.StatusUnauthorized, err)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), "uid", claims["uid"])
+			ctx := context.WithValue(r.Context(), "uid", claims.UID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		},
 	)

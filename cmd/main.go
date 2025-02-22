@@ -10,6 +10,7 @@ import (
 	"github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/JMURv/sso/internal/observability/tracing/jaeger"
 	"github.com/JMURv/sso/internal/repo/db"
+	"github.com/JMURv/sso/internal/smtp"
 	"go.uber.org/zap"
 	"os"
 	"os/signal"
@@ -44,10 +45,10 @@ func main() {
 	go prometheus.New(conf.Server.Port + 5).Start(ctx)
 	go jaeger.Start(ctx, conf.ServiceName, conf.Jaeger)
 
-	auth.New(conf.Secret)
+	auth.New(conf.Auth)
 	cache := redis.New(conf.Redis)
 	repo := db.New(conf.DB)
-	svc := ctrl.New(repo, cache)
+	svc := ctrl.New(repo, cache, smtp.New(conf.Email, conf.Server))
 	h := http.New(svc)
 
 	go h.Start(conf.Server.Port)

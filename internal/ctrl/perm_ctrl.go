@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	repo "github.com/JMURv/sso/internal/repository"
-	"github.com/JMURv/sso/pkg/consts"
-	"github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/internal/config"
+	md "github.com/JMURv/sso/internal/models"
+	"github.com/JMURv/sso/internal/repo"
 	"github.com/goccy/go-json"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
@@ -17,20 +17,19 @@ const permListKey = "perms-list:%v:%v"
 const permPattern = "perms-*"
 
 type permRepo interface {
-	ListPermissions(ctx context.Context, page, size int) (*model.PaginatedPermission, error)
-	GetPermission(ctx context.Context, id uint64) (*model.Permission, error)
-	CreatePerm(ctx context.Context, req *model.Permission) (uint64, error)
-	UpdatePerm(ctx context.Context, id uint64, req *model.Permission) error
+	ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error)
+	GetPermission(ctx context.Context, id uint64) (*md.Permission, error)
+	CreatePerm(ctx context.Context, req *md.Permission) (uint64, error)
+	UpdatePerm(ctx context.Context, id uint64, req *md.Permission) error
 	DeletePerm(ctx context.Context, id uint64) error
 }
 
-func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*model.PaginatedPermission, error) {
-	const op = "sso.ListPermissions.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error) {
+	const op = "perms.ListPermissions.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &model.PaginatedPermission{}
+	cached := &md.PaginatedPermission{}
 	key := fmt.Sprintf(permListKey, page, size)
 	if err := c.cache.GetToStruct(ctx, key, &cached); err == nil {
 		return cached, nil
@@ -47,24 +46,17 @@ func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*mode
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, key, bytes); err != nil {
-			zap.L().Debug(
-				"failed to set to cache",
-				zap.Error(err), zap.String("op", op),
-				zap.Int("page", page), zap.Int("size", size),
-			)
-		}
+		c.cache.Set(ctx, config.DefaultCacheTime, key, bytes)
 	}
 	return res, nil
 }
 
-func (c *Controller) GetPermission(ctx context.Context, id uint64) (*model.Permission, error) {
-	const op = "sso.GetPermission.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permission, error) {
+	const op = "perms.GetPermission.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &model.Permission{}
+	cached := &md.Permission{}
 	cacheKey := fmt.Sprintf(permKey, id)
 	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
 		return cached, nil
@@ -88,21 +80,14 @@ func (c *Controller) GetPermission(ctx context.Context, id uint64) (*model.Permi
 	}
 
 	if bytes, err := json.Marshal(res); err == nil {
-		if err = c.cache.Set(ctx, consts.DefaultCacheTime, cacheKey, bytes); err != nil {
-			zap.L().Debug(
-				"failed to set to cache",
-				zap.Error(err), zap.String("op", op),
-				zap.Uint64("id", id),
-			)
-		}
+		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
 	}
 	return res, nil
 }
 
-func (c *Controller) CreatePerm(ctx context.Context, req *model.Permission) (uint64, error) {
-	const op = "sso.CreatePerm.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) CreatePerm(ctx context.Context, req *md.Permission) (uint64, error) {
+	const op = "perms.CreatePerm.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	res, err := c.repo.CreatePerm(ctx, req)
@@ -120,10 +105,9 @@ func (c *Controller) CreatePerm(ctx context.Context, req *model.Permission) (uin
 	return res, nil
 }
 
-func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *model.Permission) error {
-	const op = "sso.UpdatePerm.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *md.Permission) error {
+	const op = "perms.UpdatePerm.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	err := c.repo.UpdatePerm(ctx, id, req)
@@ -143,25 +127,18 @@ func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *model.Permi
 		return err
 	}
 
-	if err := c.cache.Delete(ctx, fmt.Sprintf(permKey, id)); err != nil {
-		zap.L().Debug(
-			"failed to delete from cache",
-			zap.Error(err), zap.String("op", op),
-			zap.Uint64("id", id),
-		)
-	}
-
+	c.cache.Delete(ctx, fmt.Sprintf(permKey, id))
 	go c.cache.InvalidateKeysByPattern(ctx, permPattern)
 	return nil
 }
 
 func (c *Controller) DeletePerm(ctx context.Context, id uint64) error {
-	const op = "sso.DeletePerm.ctrl"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
+	const op = "perms.DeletePerm.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	if err := c.repo.DeletePerm(ctx, id); err != nil && errors.Is(err, repo.ErrNotFound) {
+	err := c.repo.DeletePerm(ctx, id)
+	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to delete permission",
 			zap.Error(err), zap.String("op", op),
@@ -177,14 +154,7 @@ func (c *Controller) DeletePerm(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	if err := c.cache.Delete(ctx, fmt.Sprintf(permKey, id)); err != nil {
-		zap.L().Debug(
-			"failed to delete from cache",
-			zap.Error(err), zap.String("op", op),
-			zap.Uint64("id", id),
-		)
-	}
-
+	c.cache.Delete(ctx, fmt.Sprintf(permKey, id))
 	go c.cache.InvalidateKeysByPattern(ctx, permPattern)
 	return nil
 }

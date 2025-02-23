@@ -39,8 +39,10 @@ func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*md.P
 	if err != nil {
 		zap.L().Debug(
 			"failed to list permissions",
-			zap.Error(err), zap.String("op", op),
-			zap.Int("page", page), zap.Int("size", size),
+			zap.String("op", op),
+			zap.Int("page", page),
+			zap.Int("size", size),
+			zap.Error(err),
 		)
 		return nil, err
 	}
@@ -66,15 +68,17 @@ func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permissi
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find permission",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.Uint64("id", id),
+			zap.Error(err),
 		)
 		return nil, ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to get permission",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.Uint64("id", id),
+			zap.Error(err),
 		)
 		return nil, err
 	}
@@ -96,7 +100,8 @@ func (c *Controller) CreatePerm(ctx context.Context, req *md.Permission) (uint64
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to create permission",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
 		return 0, err
 	}
@@ -114,15 +119,17 @@ func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *md.Permissi
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to find permission",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.Uint64("id", id),
+			zap.Error(err),
 		)
 		return ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to update permission",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.Uint64("id", id),
+			zap.Error(err),
 		)
 		return err
 	}
@@ -141,15 +148,17 @@ func (c *Controller) DeletePerm(ctx context.Context, id uint64) error {
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
 			"failed to delete permission",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.Uint64("id", id),
+			zap.Error(err),
 		)
 		return ErrNotFound
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to delete permission",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
 			zap.Uint64("id", id),
+			zap.Error(err),
 		)
 		return err
 	}

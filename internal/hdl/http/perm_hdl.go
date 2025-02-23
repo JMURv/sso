@@ -132,8 +132,10 @@ func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
-			"failed to parse id",
+			ErrRetrievePathVars.Error(),
 			zap.String("op", op),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
 		)
 		utils.ErrResponse(w, c, ErrRetrievePathVars)
 		return
@@ -166,30 +168,29 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
-			"failed to parse id",
+			ErrRetrievePathVars.Error(),
 			zap.String("op", op),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
 		)
 		utils.ErrResponse(w, c, ErrRetrievePathVars)
 		return
 	}
 
 	req := &md.Permission{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op), zap.Error(err),
+			zap.String("op", op),
+			zap.Error(err),
 		)
 		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
 		return
 	}
 
-	if err := validation.PermValidation(req); err != nil {
+	if err = validation.PermValidation(req); err != nil {
 		c = http.StatusBadRequest
-		zap.L().Debug(
-			"failed to validate obj",
-			zap.String("op", op), zap.Error(err),
-		)
 		utils.ErrResponse(w, c, err)
 		return
 	}
@@ -221,8 +222,10 @@ func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
-			"failed to parse id",
+			ErrRetrievePathVars.Error(),
 			zap.String("op", op),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
 		)
 		utils.ErrResponse(w, c, ErrRetrievePathVars)
 		return

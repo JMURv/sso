@@ -2,6 +2,7 @@ package ctrl
 
 import (
 	"context"
+	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/google/uuid"
@@ -18,7 +19,7 @@ type AppRepo interface {
 type AppCtrl interface {
 	Authenticate(ctx context.Context, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error)
 	Refresh(ctx context.Context, req *dto.RefreshRequest) (*dto.RefreshResponse, error)
-	ParseClaims(ctx context.Context, token string) (map[string]any, error)
+	ParseClaims(ctx context.Context, token string) (*auth.Claims, error)
 	Logout(ctx context.Context, uid uuid.UUID) error
 
 	GetUserByToken(ctx context.Context, token string) (*md.User, error)

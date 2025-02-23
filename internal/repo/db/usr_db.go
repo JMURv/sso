@@ -216,9 +216,19 @@ func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, e
 	if err != nil {
 		return uuid.Nil, err
 	}
+	defer func() {
+		if rbErr := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			zap.L().Debug(
+				"Error while transaction rollback",
+				zap.String("op", op),
+				zap.Error(rbErr),
+			)
+		}
+	}()
 
 	var id uuid.UUID
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(
+		ctx,
 		userCreateQ,
 		req.Name,
 		req.Password,
@@ -229,7 +239,6 @@ func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, e
 	).Scan(&id)
 
 	if err != nil {
-		tx.Rollback()
 		if strings.Contains(err.Error(), "unique constraint") {
 			return uuid.Nil, repo.ErrAlreadyExists
 		}
@@ -238,8 +247,7 @@ func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, e
 
 	if len(req.Permissions) > 0 {
 		for _, v := range req.Permissions {
-			if _, err := tx.Exec(userCreatePermQ, id, v.ID, v.Value); err != nil {
-				tx.Rollback()
+			if _, err := tx.ExecContext(ctx, userCreatePermQ, id, v.ID, v.Value); err != nil {
 				return uuid.Nil, err
 			}
 		}

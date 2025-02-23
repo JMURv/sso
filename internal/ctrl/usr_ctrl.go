@@ -97,7 +97,8 @@ func (c *Controller) ListUsers(ctx context.Context, page, size int) (*dto.Pagina
 		zap.L().Debug(
 			"failed to list users",
 			zap.String("op", op),
-			zap.Int("page", page), zap.Int("size", size),
+			zap.Int("page", page),
+			zap.Int("size", size),
 			zap.Error(err),
 		)
 		return nil, err
@@ -211,6 +212,7 @@ func (c *Controller) CreateUser(ctx context.Context, u *md.User) (*dto.CreateUse
 	if bytes, err := json.Marshal(u); err == nil {
 		c.cache.Set(ctx, config.DefaultCacheTime, fmt.Sprintf(userCacheKey, id), bytes)
 	}
+
 	go c.cache.InvalidateKeysByPattern(ctx, userPattern)
 	return &dto.CreateUserResponse{
 		ID: id,

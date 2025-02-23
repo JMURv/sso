@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"github.com/JMURv/sso/internal/config"
 	md "github.com/JMURv/sso/internal/models"
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -18,11 +17,6 @@ const AccessTokenDuration = time.Minute * 30
 const RefreshTokenDuration = time.Hour * 24 * 7
 
 var Au *Auth
-var ErrInvalidCredentials = errors.New("invalid credentials")
-var ErrInvalidToken = errors.New("invalid token")
-var ErrWhileCreatingToken = errors.New("error while creating token")
-var ErrUnexpectedSignMethod = errors.New("unexpected signing method")
-var ErrTokenRevoked = errors.New("token revoked")
 
 type AuthService interface {
 	NewToken(ctx context.Context, uid uuid.UUID) (string, error)

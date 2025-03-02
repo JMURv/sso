@@ -15,22 +15,28 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"net/http"
+	"strings"
 	"time"
 )
 
 func RegisterAuthRoutes(mux *http.ServeMux, h *Handler) {
-	mux.HandleFunc("/api/auth/parse", h.parseClaims)
+	mux.HandleFunc("/api/auth/jwt", mid.Apply(h.authenticate, mid.Device))
+	mux.HandleFunc("/api/auth/jwt/parse", h.parseClaims)
+	mux.HandleFunc("/api/auth/jwt/refresh", mid.Apply(h.refresh, mid.Device))
 
-	mux.HandleFunc("/api/auth/token", h.authenticate)
-	mux.HandleFunc("/api/auth/refresh", h.refresh)
+	mux.HandleFunc("/api/auth/oauth2/{provider}/start", h.startOAuth2)
+	mux.HandleFunc("/api/auth/oauth2/{provider}/callback", mid.Apply(h.handleOAuth2Callback, mid.Device))
+
+	mux.HandleFunc("/api/auth/oidc/{provider}/start", h.startOIDC)
+	mux.HandleFunc("/api/auth/oidc/{provider}/callback", h.handleOIDCCallback)
 
 	mux.HandleFunc("/api/auth/email/send", h.sendLoginCode)
-	mux.HandleFunc("/api/auth/email/check", h.checkLoginCode)
+	mux.HandleFunc("/api/auth/email/check", mid.Apply(h.checkLoginCode, mid.Device))
 
 	mux.HandleFunc("/api/auth/recovery/send", h.sendForgotPasswordEmail)
 	mux.HandleFunc("/api/auth/recovery/check", h.checkForgotPasswordEmail)
 
-	mux.HandleFunc("/api/auth/logout", mid.Apply(h.logout, mid.Auth))
+	mux.HandleFunc("/api/auth/jwt/logout", mid.Apply(h.logout, mid.Auth))
 }
 
 func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +51,13 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		c = http.StatusMethodNotAllowed
 		utils.ErrResponse(w, c, ErrMethodNotAllowed)
+		return
+	}
+
+	d, ok := utils.ParseDeviceByRequest(r)
+	if !ok {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, hdl.ErrNoDeviceInfo)
 		return
 	}
 
@@ -66,9 +79,13 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.ctrl.Authenticate(ctx, req)
+	res, err := h.ctrl.Authenticate(ctx, &d, req)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil && errors.Is(err, auth.ErrInvalidCredentials) {
+		c = http.StatusUnauthorized
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
@@ -95,6 +112,13 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	d, ok := utils.ParseDeviceByRequest(r)
+	if !ok {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, hdl.ErrNoDeviceInfo)
+		return
+	}
+
 	req := &dto.RefreshRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
@@ -113,9 +137,13 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.ctrl.Refresh(ctx, req)
+	res, err := h.ctrl.Refresh(ctx, &d, req)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = http.StatusNotFound
+		utils.ErrResponse(w, c, err)
+		return
+	} else if err != nil && errors.Is(err, auth.ErrTokenRevoked) {
+		c = http.StatusUnauthorized
 		utils.ErrResponse(w, c, err)
 		return
 	} else if err != nil {
@@ -190,20 +218,19 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uidStr, ok := ctx.Value("uid").(string)
+	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
 		c = http.StatusInternalServerError
+		zap.L().Debug(
+			hdl.ErrFailedToGetUUID.Error(),
+			zap.String("op", op),
+			zap.Any("uid", ctx.Value("uid")),
+		)
 		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}
 
-	uid, err := uuid.Parse(uidStr)
-	if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
-	}
-
-	err = h.ctrl.Logout(ctx, uid)
+	err := h.ctrl.Logout(ctx, uid)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = http.StatusNotFound
 		utils.ErrResponse(w, c, err)
@@ -239,6 +266,93 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	)
 
 	utils.StatusResponse(w, c)
+}
+
+func (h *Handler) startOAuth2(w http.ResponseWriter, r *http.Request) {
+	const op = "auth.startOAuth2.hdl"
+	s, c := time.Now(), http.StatusOK
+	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
+	defer func() {
+		span.Finish()
+		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 6 {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, ErrInvalidURL)
+		return
+	}
+	provider := parts[4]
+
+	res, err := h.ctrl.GetOAuth2AuthURL(ctx, provider)
+	if err != nil {
+		c = http.StatusInternalServerError
+		utils.ErrResponse(w, c, err)
+		return
+	}
+
+	http.Redirect(w, r, res.URL, http.StatusTemporaryRedirect)
+}
+
+func (h *Handler) handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
+	const op = "auth.handleOAuth2Callback.hdl"
+	s, c := time.Now(), http.StatusOK
+	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
+	defer func() {
+		span.Finish()
+		metrics.ObserveRequest(time.Since(s), c, op)
+	}()
+
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 6 {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, ErrInvalidURL)
+		return
+	}
+	provider := parts[4]
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+
+	d, ok := utils.ParseDeviceByRequest(r)
+	if !ok {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, hdl.ErrNoDeviceInfo)
+		return
+	}
+
+	res, err := h.ctrl.HandleOAuth2Callback(ctx, &d, provider, code, state)
+	if err != nil {
+		c = http.StatusInternalServerError
+		utils.ErrResponse(w, c, err)
+		return
+	}
+
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "access",
+			Value:    res.Access,
+			Expires:  time.Now().Add(auth.AccessTokenDuration),
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		},
+	)
+
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "refresh",
+			Value:    res.Refresh,
+			Expires:  time.Now().Add(auth.RefreshTokenDuration),
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		},
+	)
+
+	utils.SuccessResponse(w, c, res)
 }
 
 func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
@@ -403,6 +517,13 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	d, ok := utils.ParseDeviceByRequest(r)
+	if !ok {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, hdl.ErrNoDeviceInfo)
+		return
+	}
+
 	req := &dto.CheckLoginCodeRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
@@ -422,7 +543,7 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.ctrl.CheckLoginCode(ctx, req)
+	res, err := h.ctrl.CheckLoginCode(ctx, &d, req)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		c = http.StatusNotFound
 		utils.ErrResponse(w, c, err)

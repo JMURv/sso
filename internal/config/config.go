@@ -6,19 +6,26 @@ import (
 )
 
 type Config struct {
-	Mode        string        `yaml:"mode" env-default:"dev"`
-	ServiceName string        `yaml:"serviceName" env-required:"true"`
-	Auth        *AuthConfig   `yaml:"auth"`
-	Server      *ServerConfig `yaml:"server"`
-	Email       *EmailConfig  `yaml:"email"`
-	DB          *DBConfig     `yaml:"db"`
-	Redis       *RedisConfig  `yaml:"redis"`
-	Jaeger      *JaegerConfig `yaml:"jaeger"`
+	Mode        string       `yaml:"mode" env-default:"dev"`
+	ServiceName string       `yaml:"serviceName" env-required:"true"`
+	Auth        AuthConfig   `yaml:"auth"`
+	Server      ServerConfig `yaml:"server"`
+	Email       EmailConfig  `yaml:"email"`
+	DB          DBConfig     `yaml:"db"`
+	Redis       RedisConfig  `yaml:"redis"`
+	Jaeger      JaegerConfig `yaml:"jaeger"`
 }
 
 type AuthConfig struct {
-	Secret        string `yaml:"secret" env-required:"true"`
-	RefreshSecret string `yaml:"refresh_secret" env-required:"true"`
+	Secret string `yaml:"secret" env-required:"true"`
+	Oauth  struct {
+		Google struct {
+			ClientID     string   `yaml:"clientID"`
+			ClientSecret string   `yaml:"clientSecret"`
+			CallbackURL  string   `yaml:"callbackURL"`
+			Scopes       []string `yaml:"scopes"`
+		} `yaml:"google"`
+	} `yaml:"oauth"`
 }
 
 type ServerConfig struct {
@@ -60,15 +67,15 @@ type JaegerConfig struct {
 	} `yaml:"reporter"`
 }
 
-func MustLoad(configPath string) *Config {
-	conf := &Config{}
+func MustLoad(configPath string) Config {
+	conf := Config{}
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		panic("failed to read config: " + err.Error())
 	}
 
-	if err = yaml.Unmarshal(data, conf); err != nil {
+	if err = yaml.Unmarshal(data, &conf); err != nil {
 		panic("failed to unmarshal config: " + err.Error())
 	}
 

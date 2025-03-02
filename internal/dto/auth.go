@@ -2,6 +2,11 @@ package dto
 
 import "github.com/google/uuid"
 
+type DeviceRequest struct {
+	IP string `json:"ip"`
+	UA string `json:"ua"`
+}
+
 type RefreshRequest struct {
 	Refresh string `json:"refresh"`
 }

@@ -1,10 +1,10 @@
 package validation
 
 import (
-	"github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/internal/models"
 )
 
-func PermValidation(u *model.Permission) error {
+func PermValidation(u *models.Permission) error {
 	if u.Name == "" {
 		return ErrMissingName
 	}

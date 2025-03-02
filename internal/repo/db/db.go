@@ -12,15 +12,15 @@ type Repository struct {
 	conn *sql.DB
 }
 
-func New(conf *conf.DBConfig) *Repository {
+func New(conf conf.Config) *Repository {
 	conn, err := sql.Open(
 		"postgres", fmt.Sprintf(
 			"postgres://%s:%s@%s:%d/%s?sslmode=disable",
-			conf.User,
-			conf.Password,
-			conf.Host,
-			conf.Port,
-			conf.Database,
+			conf.DB.User,
+			conf.DB.Password,
+			conf.DB.Host,
+			conf.DB.Port,
+			conf.DB.Database,
 		),
 	)
 	if err != nil {

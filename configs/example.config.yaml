@@ -2,8 +2,12 @@ mode: "dev"
 serviceName: "sso"
 
 auth:
-  access: "DYHlaJpPiZ"
-  refresh: "DYHlaJpPiZ"
+  secret: "DYHlaJpPiZ"
+  ouath:
+    google:
+      clientID: "id"
+      clientSecret: "secret"
+      callbackURL: "http://localhost:8080/api/auth/google/callback"
 
 server:
   port: 8080

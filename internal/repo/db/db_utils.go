@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	conf "github.com/JMURv/sso/internal/config"
+	md "github.com/JMURv/sso/internal/models"
+	"github.com/goccy/go-json"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -15,7 +17,7 @@ import (
 	"path/filepath"
 )
 
-func applyMigrations(db *sql.DB, conf *conf.DBConfig) error {
+func applyMigrations(db *sql.DB, conf conf.Config) error {
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		return err
@@ -30,7 +32,7 @@ func applyMigrations(db *sql.DB, conf *conf.DBConfig) error {
 		filepath.Join(rootDir, "internal", "repo", "db", "migration"),
 	)
 
-	m, err := migrate.NewWithDatabaseInstance("file://"+path, conf.Database, driver)
+	m, err := migrate.NewWithDatabaseInstance("file://"+path, conf.DB.Database, driver)
 	if err != nil {
 		return err
 	}
@@ -72,16 +74,19 @@ func mustPrecreate(db *sql.DB) {
 
 	if count == 0 {
 		type usrWithPerms struct {
-			Name     string             `json:"name"`
-			Password string             `json:"password"`
-			Email    string             `json:"email"`
-			Avatar   string             `json:"avatar"`
-			Address  string             `json:"address"`
-			Phone    string             `json:"phone"`
-			Perms    []model.Permission `json:"permissions"`
+			Name     string          `json:"name"`
+			Password string          `json:"password"`
+			Email    string          `json:"email"`
+			Avatar   string          `json:"avatar"`
+			Address  string          `json:"address"`
+			Phone    string          `json:"phone"`
+			Perms    []md.Permission `json:"permissions"`
 		}
 		bytes, err := os.ReadFile("precreate.json")
-		if err != nil {
+		if err != nil && errors.Is(err, os.ErrNotExist) {
+			zap.L().Info("precreate.json not found")
+			return
+		} else if err != nil {
 			panic(err)
 		}
 

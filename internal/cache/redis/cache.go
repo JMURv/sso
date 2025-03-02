@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/JMURv/sso/internal/cache"
-	cfg "github.com/JMURv/sso/internal/config"
+	"github.com/JMURv/sso/internal/config"
 	"github.com/go-redis/redis/v8"
 	ot "github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
@@ -15,11 +15,11 @@ type Cache struct {
 	cli *redis.Client
 }
 
-func New(conf *cfg.RedisConfig) *Cache {
+func New(conf config.Config) *Cache {
 	cli := redis.NewClient(
 		&redis.Options{
-			Addr:     conf.Addr,
-			Password: conf.Pass,
+			Addr:     conf.Redis.Addr,
+			Password: conf.Redis.Pass,
 			DB:       0,
 		},
 	)
@@ -74,7 +74,7 @@ func (c *Cache) GetToStruct(ctx context.Context, key string, dest any) error {
 }
 
 func (c *Cache) GetInt(ctx context.Context, key string) (int, error) {
-	const op = "cache.GetToStruct"
+	const op = "cache.GetInt"
 	span, ctx := ot.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
@@ -98,8 +98,16 @@ func (c *Cache) GetInt(ctx context.Context, key string) (int, error) {
 	return val, nil
 }
 
+func (c *Cache) GetStr(ctx context.Context, key string) string {
+	const op = "cache.GetStr"
+	span, ctx := ot.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	return c.cli.Get(ctx, key).String()
+}
+
 func (c *Cache) Set(ctx context.Context, t time.Duration, key string, val any) {
-	const op = "SetToCache"
+	const op = "cache.Set"
 	span, ctx := ot.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
@@ -116,6 +124,7 @@ func (c *Cache) Set(ctx context.Context, t time.Duration, key string, val any) {
 
 	zap.L().Debug(
 		"successfully set to cache",
+		zap.String("op", op),
 		zap.String("key", key),
 	)
 	return

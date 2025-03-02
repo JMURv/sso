@@ -6,9 +6,7 @@ import (
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	"go.uber.org/zap"
-	"log"
 	"net/http"
-	"reflect"
 	"strings"
 )
 
@@ -40,14 +38,29 @@ func Auth(next http.Handler) http.Handler {
 				return
 			}
 
-			claims, err := auth.Au.ParseClaims(tokenStr)
+			claims, err := auth.Au.ParseClaims(r.Context(), tokenStr)
 			if err != nil {
-				log.Println(err, reflect.TypeOf(err))
 				utils.ErrResponse(w, http.StatusUnauthorized, err)
 				return
 			}
 
 			ctx := context.WithValue(r.Context(), "uid", claims.UID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		},
+	)
+}
+
+func Device(next http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			ua := r.Header.Get("User-Agent")
+			ip := strings.Split(r.RemoteAddr, ":")[0]
+			if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+				ip = strings.Split(forwarded, ",")[0]
+			}
+
+			ctx := context.WithValue(r.Context(), "ip", ip)
+			ctx = context.WithValue(ctx, "ua", ua)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		},
 	)

@@ -2,13 +2,23 @@ package auth
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"fmt"
+	"github.com/JMURv/sso/internal/auth/providers/google"
 	"github.com/JMURv/sso/internal/config"
+	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/oauth2"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -25,6 +35,11 @@ type AuthService interface {
 	ComparePasswords(hashed, pswd []byte) error
 }
 
+type OAuth2Provider interface {
+	GetConfig() *oauth2.Config
+	GetUser(ctx context.Context, code string) (*dto.ProviderResponse, error)
+}
+
 type Claims struct {
 	UID   uuid.UUID       `json:"uid"`
 	Roles []md.Permission `json:"roles"`
@@ -32,20 +47,81 @@ type Claims struct {
 }
 
 type Auth struct {
-	secret        []byte
-	refreshSecret []byte
+	secret []byte
+	Google OAuth2Provider
 }
 
-func New(conf *config.AuthConfig) {
+func New(conf config.Config) {
 	Au = &Auth{
-		secret:        []byte(conf.Secret),
-		refreshSecret: []byte(conf.RefreshSecret),
+		secret: []byte(conf.Auth.Secret),
+		Google: google.New(conf),
 	}
 }
 
 func (a *Auth) Hash(val string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(val), bcrypt.DefaultCost)
 	return string(bytes), err
+}
+
+func (a *Auth) HashSHA256(val string) (string, error) {
+	shaHash := sha256.Sum256([]byte(val))
+	hexHash := hex.EncodeToString(shaHash[:])
+	bytes, err := bcrypt.GenerateFromPassword([]byte(hexHash), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+func (a *Auth) GenerateSignedState() (string, error) {
+	rawState := uuid.New().String()
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	data := rawState + "|" + timestamp
+
+	h := hmac.New(sha256.New, a.secret)
+	h.Write([]byte(data))
+	signature := h.Sum(nil)
+
+	signedState := base64.URLEncoding.EncodeToString([]byte(data)) + "." + base64.URLEncoding.EncodeToString(signature)
+	return signedState, nil
+}
+
+func (a *Auth) ValidateSignedState(signedState string, maxAge time.Duration) (bool, error) {
+	parts := strings.Split(signedState, ".")
+	if len(parts) != 2 {
+		return false, fmt.Errorf("invalid state format")
+	}
+
+	data, err := base64.URLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return false, err
+	}
+
+	expectedSignature, err := base64.URLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return false, err
+	}
+
+	h := hmac.New(sha256.New, a.secret)
+	h.Write(data)
+	actualSignature := h.Sum(nil)
+
+	if !hmac.Equal(expectedSignature, actualSignature) {
+		return false, fmt.Errorf("invalid signature")
+	}
+
+	dataParts := strings.Split(string(data), "|")
+	if len(dataParts) != 2 {
+		return false, fmt.Errorf("invalid data format")
+	}
+
+	timestamp, err := strconv.ParseInt(dataParts[1], 10, 64)
+	if err != nil {
+		return false, err
+	}
+
+	if time.Since(time.Unix(timestamp, 0)) > maxAge {
+		return false, fmt.Errorf("state expired")
+	}
+
+	return true, nil
 }
 
 func (a *Auth) ComparePasswords(hashed, pswd []byte) error {
@@ -88,8 +164,9 @@ func (a *Auth) ParseClaims(ctx context.Context, tokenStr string) (*Claims, error
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	token, err := jwt.Parse(
-		tokenStr, func(token *jwt.Token) (any, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(
+		tokenStr, claims, func(token *jwt.Token) (any, error) {
 			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 				return nil, ErrUnexpectedSignMethod
 			}
@@ -102,11 +179,6 @@ func (a *Auth) ParseClaims(ctx context.Context, tokenStr string) (*Claims, error
 	}
 
 	if !token.Valid {
-		return nil, ErrInvalidToken
-	}
-
-	claims, ok := token.Claims.(*Claims)
-	if !ok {
 		return nil, ErrInvalidToken
 	}
 
@@ -129,4 +201,17 @@ func (a *Auth) GenPair(ctx context.Context, uid uuid.UUID, perms []md.Permission
 	}
 
 	return access, refresh, nil
+}
+
+func (a *Auth) GetOAuth2Provider(ctx context.Context, provider string) (OAuth2Provider, error) {
+	const op = "auth.GetOAuth2Provider.auth"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	switch provider {
+	case "google":
+		return a.Google, nil
+	default:
+		return nil, fmt.Errorf("unknown provider: %s", provider)
+	}
 }

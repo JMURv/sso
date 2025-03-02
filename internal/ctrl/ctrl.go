@@ -17,17 +17,18 @@ type AppRepo interface {
 }
 
 type AppCtrl interface {
-	Authenticate(ctx context.Context, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error)
-	Refresh(ctx context.Context, req *dto.RefreshRequest) (*dto.RefreshResponse, error)
+	Authenticate(ctx context.Context, d *dto.DeviceRequest, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error)
+	Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto.RefreshRequest) (*dto.RefreshResponse, error)
 	ParseClaims(ctx context.Context, token string) (*auth.Claims, error)
 	Logout(ctx context.Context, uid uuid.UUID) error
 
-	GetUserByToken(ctx context.Context, token string) (*md.User, error)
-	SendSupportEmail(ctx context.Context, uid uuid.UUID, theme, text string) error
 	CheckForgotPasswordEmail(ctx context.Context, req *dto.CheckForgotPasswordEmailRequest) error
 	SendForgotPasswordEmail(ctx context.Context, email string) error
 	SendLoginCode(ctx context.Context, email, password string) error
-	CheckLoginCode(ctx context.Context, req *dto.CheckLoginCodeRequest) (*dto.CheckLoginCodeResponse, error)
+	CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, req *dto.CheckLoginCodeRequest) (*dto.CheckLoginCodeResponse, error)
+
+	GetOAuth2AuthURL(ctx context.Context, provider string) (*dto.StartOAuth2Response, error)
+	HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.OAuth2CallbackResponse, error)
 
 	IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error)
 	SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error)
@@ -48,6 +49,7 @@ type AppCtrl interface {
 type CacheService interface {
 	io.Closer
 	GetInt(ctx context.Context, key string) (int, error)
+	GetStr(ctx context.Context, key string) string
 	GetToStruct(ctx context.Context, key string, dest any) error
 	Set(ctx context.Context, t time.Duration, key string, val any)
 	Delete(ctx context.Context, key string)
@@ -57,7 +59,6 @@ type CacheService interface {
 type EmailService interface {
 	SendLoginEmail(ctx context.Context, code int, toEmail string) error
 	SendForgotPasswordEmail(ctx context.Context, token, uid64, toEmail string) error
-	SendSupportEmail(ctx context.Context, u *md.User, theme, text string) error
 	SendUserCredentials(_ context.Context, email, pass string) error
 }
 

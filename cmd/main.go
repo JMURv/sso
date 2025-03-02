@@ -43,12 +43,12 @@ func main() {
 	mustRegisterLogger(conf.Mode)
 
 	go prometheus.New(conf.Server.Port + 5).Start(ctx)
-	go jaeger.Start(ctx, conf.ServiceName, conf.Jaeger)
+	go jaeger.Start(ctx, conf.ServiceName, conf)
 
-	auth.New(conf.Auth)
-	cache := redis.New(conf.Redis)
-	repo := db.New(conf.DB)
-	svc := ctrl.New(repo, cache, smtp.New(conf.Email, conf.Server))
+	auth.New(conf)
+	cache := redis.New(conf)
+	repo := db.New(conf)
+	svc := ctrl.New(repo, cache, smtp.New(conf))
 	h := http.New(svc)
 
 	go h.Start(conf.Server.Port)

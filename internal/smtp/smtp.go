@@ -14,17 +14,17 @@ type EmailServer struct {
 	user         string
 	pass         string
 	admin        string
-	serverConfig *config.ServerConfig
+	serverConfig config.ServerConfig
 }
 
-func New(conf *config.EmailConfig, serverConfig *config.ServerConfig) *EmailServer {
+func New(conf config.Config) *EmailServer {
 	return &EmailServer{
-		server:       conf.Server,
-		port:         conf.Port,
-		user:         conf.User,
-		pass:         conf.Pass,
-		admin:        conf.Admin,
-		serverConfig: serverConfig,
+		server:       conf.Email.Server,
+		port:         conf.Email.Port,
+		user:         conf.Email.User,
+		pass:         conf.Email.Pass,
+		admin:        conf.Email.Admin,
+		serverConfig: conf.Server,
 	}
 }
 

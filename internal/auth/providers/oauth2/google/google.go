@@ -1,4 +1,4 @@
-package google
+package providers
 
 import (
 	"context"
@@ -14,15 +14,17 @@ import (
 )
 
 type GoogleProvider struct {
+	name   string
 	config *oauth2.Config
 }
 
-func New(config conf.Config) *GoogleProvider {
+func NewGoogleOAuth2(config conf.Config) *GoogleProvider {
 	return &GoogleProvider{
+		name: "google",
 		config: &oauth2.Config{
 			ClientID:     config.Auth.Oauth.Google.ClientID,
 			ClientSecret: config.Auth.Oauth.Google.ClientSecret,
-			RedirectURL:  config.Auth.Oauth.Google.CallbackURL,
+			RedirectURL:  config.Auth.Oauth.Google.RedirectURL,
 			Scopes:       config.Auth.Oauth.Google.Scopes,
 			Endpoint:     google.Endpoint,
 		},
@@ -39,6 +41,10 @@ type googleResponse struct {
 
 func (g *GoogleProvider) GetConfig() *oauth2.Config {
 	return g.config
+}
+
+func (g *GoogleProvider) GetName() string {
+	return g.name
 }
 
 func (g *GoogleProvider) GetUser(ctx context.Context, code string) (*dto.ProviderResponse, error) {

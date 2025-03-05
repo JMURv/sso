@@ -16,16 +16,22 @@ type Config struct {
 	Jaeger      JaegerConfig `yaml:"jaeger"`
 }
 
+type provider struct {
+	ClientID     string   `yaml:"clientID"`
+	ClientSecret string   `yaml:"clientSecret"`
+	RedirectURL  string   `yaml:"redirectURL"`
+	Scopes       []string `yaml:"scopes"`
+}
+
 type AuthConfig struct {
 	Secret string `yaml:"secret" env-required:"true"`
 	Oauth  struct {
-		Google struct {
-			ClientID     string   `yaml:"clientID"`
-			ClientSecret string   `yaml:"clientSecret"`
-			CallbackURL  string   `yaml:"callbackURL"`
-			Scopes       []string `yaml:"scopes"`
-		} `yaml:"google"`
+		Google provider `yaml:"google"`
 	} `yaml:"oauth"`
+
+	OIDC struct {
+		Google provider `yaml:"google"`
+	} `yaml:"oidc"`
 }
 
 type ServerConfig struct {

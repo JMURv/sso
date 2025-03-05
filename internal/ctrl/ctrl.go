@@ -11,7 +11,19 @@ import (
 )
 
 type AppRepo interface {
-	authRepo
+	CreateToken(
+		ctx context.Context,
+		userID uuid.UUID,
+		hashedT string,
+		expiresAt time.Time,
+		device *md.Device,
+	) error
+	IsTokenValid(ctx context.Context, userID uuid.UUID, d *md.Device, token string) (bool, error)
+	RevokeAllTokens(ctx context.Context, userID uuid.UUID) error
+
+	GetUserByOAuth2(ctx context.Context, provider, providerID string) (*md.User, error)
+	CreateOAuth2Connection(ctx context.Context, userID uuid.UUID, provider string, data *dto.ProviderResponse) error
+
 	userRepo
 	permRepo
 }

@@ -24,6 +24,7 @@ type ProviderResponse struct {
 	ProviderID   string    `json:"provider_id"`
 	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token"`
+	IDToken      string    `json:"id_token"`
 	Expiry       time.Time `json:"expiry"`
 	ExpiresIn    int64     `json:"expires_in"`
 	TokenType    string    `json:"token_type"`

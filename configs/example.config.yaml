@@ -7,7 +7,14 @@ auth:
     google:
       clientID: "id"
       clientSecret: "secret"
-      callbackURL: "http://localhost:8080/api/auth/google/callback"
+      redirectURL: "http://localhost:8080/api/auth/google/callback"
+
+  oidc:
+    google:
+      clientID: "id"
+      clientSecret: "secret"
+      redirectURL: "http://localhost:8080/api/auth/oidc/google/callback"
+      scopes: [ "openid", "email", "profile" ]
 
 server:
   port: 8080

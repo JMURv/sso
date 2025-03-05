@@ -7,7 +7,8 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/JMURv/sso/internal/auth/providers/google"
+	pr_oauth2 "github.com/JMURv/sso/internal/auth/providers/oauth2/google"
+	oidc "github.com/JMURv/sso/internal/auth/providers/oidc/google"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
@@ -36,6 +37,13 @@ type AuthService interface {
 }
 
 type OAuth2Provider interface {
+	GetName() string
+	GetConfig() *oauth2.Config
+	GetUser(ctx context.Context, code string) (*dto.ProviderResponse, error)
+}
+
+type OIDCProvider interface {
+	GetName() string
 	GetConfig() *oauth2.Config
 	GetUser(ctx context.Context, code string) (*dto.ProviderResponse, error)
 }
@@ -47,14 +55,28 @@ type Claims struct {
 }
 
 type Auth struct {
-	secret []byte
-	Google OAuth2Provider
+	secret          []byte
+	OAuth2Providers struct {
+		Google OAuth2Provider
+	}
+	OIDCProviders struct {
+		Google OIDCProvider
+	}
 }
 
 func New(conf config.Config) {
 	Au = &Auth{
 		secret: []byte(conf.Auth.Secret),
-		Google: google.New(conf),
+		OAuth2Providers: struct {
+			Google OAuth2Provider
+		}{
+			Google: pr_oauth2.NewGoogleOAuth2(conf),
+		},
+		OIDCProviders: struct {
+			Google OIDCProvider
+		}{
+			Google: oidc.NewGoogleOIDC(conf),
+		},
 	}
 }
 
@@ -210,7 +232,37 @@ func (a *Auth) GetOAuth2Provider(ctx context.Context, provider string) (OAuth2Pr
 
 	switch provider {
 	case "google":
-		return a.Google, nil
+		return a.OAuth2Providers.Google, nil
+	default:
+		return nil, fmt.Errorf("unknown provider: %s", provider)
+	}
+}
+
+type AuthFlow string
+
+const (
+	OIDC   AuthFlow = "oidc"
+	OAuth2 AuthFlow = "oauth2"
+)
+
+type AuthProviders string
+
+const (
+	Google AuthProviders = "google"
+	GitHub AuthProviders = "github"
+)
+
+func (a *Auth) GetProvider(ctx context.Context, provider AuthProviders, flow AuthFlow) (OIDCProvider, error) {
+	const op = "auth.GetOAuth2Provider.auth"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	switch provider {
+	case Google:
+		if flow == OIDC {
+			return a.OIDCProviders.Google, nil
+		}
+		return a.OAuth2Providers.Google, nil
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", provider)
 	}

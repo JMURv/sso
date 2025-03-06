@@ -30,6 +30,11 @@ func RegisterAuthRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("/api/auth/oidc/{provider}/start", h.startOIDC)
 	mux.HandleFunc("/api/auth/oidc/{provider}/callback", mid.Apply(h.handleOIDCCallback, mid.Device))
 
+	mux.HandleFunc("/api/auth/webauthn/register/start", mid.Apply(h.webauthnRegistrationStart, mid.Auth))
+	mux.HandleFunc("/api/auth/webauthn/register/finish", mid.Apply(h.webauthnRegistrationFinish, mid.Auth))
+	mux.HandleFunc("/api/auth/webauthn/login/start", h.webauthnLoginStart)
+	mux.HandleFunc("/api/auth/webauthn/login/finish", h.webauthnLoginFinish)
+
 	mux.HandleFunc("/api/auth/email/send", h.sendLoginCode)
 	mux.HandleFunc("/api/auth/email/check", mid.Apply(h.checkLoginCode, mid.Device))
 

@@ -4,12 +4,9 @@ CREATE TABLE IF NOT EXISTS users
 (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       VARCHAR(50)  NOT NULL,
-    password   VARCHAR(255) NOT NULL,
+    password   VARCHAR(255) NULL,
     email      VARCHAR(50)  NOT NULL UNIQUE,
-
     avatar     VARCHAR(255),
-    address    VARCHAR(255),
-    phone      VARCHAR(20),
 
     created_at TIMESTAMPTZ      DEFAULT NOW(),
     updated_at TIMESTAMPTZ      DEFAULT NOW()
@@ -99,6 +96,16 @@ CREATE INDEX IF NOT EXISTS idx_oauth2_user ON oauth2_connections (user_id);
 CREATE INDEX IF NOT EXISTS idx_oauth2_provider ON oauth2_connections (provider);
 CREATE INDEX IF NOT EXISTS idx_oauth2_provider_id ON oauth2_connections (provider_id);
 
+
+-- WebAuthn
+CREATE TABLE IF NOT EXISTS webauthn_credentials
+(
+    id               BYTEA PRIMARY KEY,
+    public_key       BYTEA NOT NULL,
+    attestation_type TEXT  NOT NULL,
+    authenticator    JSONB NOT NULL,
+    user_id          UUID REFERENCES users (id) ON DELETE CASCADE
+);
 
 INSERT INTO permission (name)
 VALUES ('admin'),

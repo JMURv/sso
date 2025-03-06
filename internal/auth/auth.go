@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/JMURv/sso/internal/auth/providers"
+	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/config"
 	md "github.com/JMURv/sso/internal/models"
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -21,7 +22,7 @@ const RefreshTokenDuration = time.Hour * 24 * 7
 
 var Au *Auth
 
-type AuthService interface {
+type Core interface {
 	NewToken(ctx context.Context, uid uuid.UUID) (string, error)
 	VerifyToken(ctx context.Context, tokenStr string) (map[string]any, error)
 	Hash(string) (string, error)
@@ -37,12 +38,14 @@ type Claims struct {
 type Auth struct {
 	secret   []byte
 	Provider *providers.Provider
+	Wa       *wa.WAuthn
 }
 
 func New(conf config.Config) {
 	Au = &Auth{
 		secret:   []byte(conf.Auth.Secret),
 		Provider: providers.New(conf),
+		Wa:       wa.New(conf),
 	}
 }
 

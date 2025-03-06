@@ -114,7 +114,8 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &dto.RefreshRequest{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
@@ -125,7 +126,7 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validation.RefreshRequest(req); err != nil {
+	if err = validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return
@@ -177,7 +178,7 @@ func (h *Handler) parseClaims(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validation.TokenRequest(req); err != nil {
+	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return

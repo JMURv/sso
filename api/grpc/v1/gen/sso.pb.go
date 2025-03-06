@@ -516,7 +516,7 @@ func (x *SSO_EmailAndPasswordRequest) GetPassword() string {
 	return ""
 }
 
-type SSO_EmailAndPasswordResponse struct {
+type SSO_TokenPair struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -524,8 +524,8 @@ type SSO_EmailAndPasswordResponse struct {
 	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 }
 
-func (x *SSO_EmailAndPasswordResponse) Reset() {
-	*x = SSO_EmailAndPasswordResponse{}
+func (x *SSO_TokenPair) Reset() {
+	*x = SSO_TokenPair{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_grpc_v1_gen_sso_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -533,13 +533,13 @@ func (x *SSO_EmailAndPasswordResponse) Reset() {
 	}
 }
 
-func (x *SSO_EmailAndPasswordResponse) String() string {
+func (x *SSO_TokenPair) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SSO_EmailAndPasswordResponse) ProtoMessage() {}
+func (*SSO_TokenPair) ProtoMessage() {}
 
-func (x *SSO_EmailAndPasswordResponse) ProtoReflect() protoreflect.Message {
+func (x *SSO_TokenPair) ProtoReflect() protoreflect.Message {
 	mi := &file_api_grpc_v1_gen_sso_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -551,12 +551,12 @@ func (x *SSO_EmailAndPasswordResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SSO_EmailAndPasswordResponse.ProtoReflect.Descriptor instead.
-func (*SSO_EmailAndPasswordResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use SSO_TokenPair.ProtoReflect.Descriptor instead.
+func (*SSO_TokenPair) Descriptor() ([]byte, []int) {
 	return file_api_grpc_v1_gen_sso_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *SSO_EmailAndPasswordResponse) GetToken() string {
+func (x *SSO_TokenPair) GetToken() string {
 	if x != nil {
 		return x.Token
 	}
@@ -1696,7 +1696,7 @@ var file_api_grpc_v1_gen_sso_proto_goTypes = []any{
 	(*SSO_Permission)(nil),                  // 5: gen.SSO_Permission
 	(*SSO_PermissionList)(nil),              // 6: gen.SSO_PermissionList
 	(*SSO_EmailAndPasswordRequest)(nil),     // 7: gen.SSO_EmailAndPasswordRequest
-	(*SSO_EmailAndPasswordResponse)(nil),    // 8: gen.SSO_EmailAndPasswordResponse
+	(*SSO_TokenPair)(nil),    // 8: gen.SSO_TokenPair
 	(*SSO_ParseClaimsRes)(nil),              // 9: gen.SSO_ParseClaimsRes
 	(*SSO_SendLoginCodeReq)(nil),            // 10: gen.SSO_SendLoginCodeReq
 	(*SSO_CheckLoginCodeReq)(nil),           // 11: gen.SSO_CheckLoginCodeReq
@@ -1750,7 +1750,7 @@ var file_api_grpc_v1_gen_sso_proto_depIdxs = []int32{
 	3,  // 32: gen.PermissionSvc.CreatePermission:output_type -> gen.SSO_Uint64Msg
 	0,  // 33: gen.PermissionSvc.UpdatePermission:output_type -> gen.SSO_Empty
 	0,  // 34: gen.PermissionSvc.DeletePermission:output_type -> gen.SSO_Empty
-	8,  // 35: gen.SSO.Authenticate:output_type -> gen.SSO_EmailAndPasswordResponse
+	8,  // 35: gen.SSO.Authenticate:output_type -> gen.SSO_TokenPair
 	9,  // 36: gen.SSO.ParseClaims:output_type -> gen.SSO_ParseClaimsRes
 	4,  // 37: gen.SSO.GetUserByToken:output_type -> gen.SSO_User
 	0,  // 38: gen.SSO.SendLoginCode:output_type -> gen.SSO_Empty
@@ -1878,7 +1878,7 @@ func file_api_grpc_v1_gen_sso_proto_init() {
 			}
 		}
 		file_api_grpc_v1_gen_sso_proto_msgTypes[8].Exporter = func(v any, i int) any {
-			switch v := v.(*SSO_EmailAndPasswordResponse); i {
+			switch v := v.(*SSO_TokenPair); i {
 			case 0:
 				return &v.state
 			case 1:

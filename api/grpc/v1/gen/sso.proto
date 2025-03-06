@@ -52,7 +52,7 @@ message SSO_PermissionList {
 }
 
 service SSO {
-  rpc Authenticate (SSO_EmailAndPasswordRequest) returns (SSO_EmailAndPasswordResponse);
+  rpc Authenticate (SSO_EmailAndPasswordRequest) returns (SSO_TokenPair);
   rpc ParseClaims (SSO_StringMsg) returns (SSO_ParseClaimsRes);
   rpc GetUserByToken(SSO_StringMsg) returns (SSO_User);
 
@@ -74,7 +74,7 @@ message SSO_EmailAndPasswordRequest {
   string password = 2;
 }
 
-message SSO_EmailAndPasswordResponse {
+message SSO_TokenPair {
   string token = 1;
 }
 

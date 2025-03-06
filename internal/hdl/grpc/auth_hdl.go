@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-func (h *Handler) Authenticate(ctx context.Context, req *pb.SSO_EmailAndPasswordRequest) (*pb.SSO_EmailAndPasswordResponse, error) {
+func (h *Handler) Authenticate(ctx context.Context, req *pb.SSO_EmailAndPasswordRequest) (*pb.SSO_TokenPair, error) {
 	const op = "sso.Authenticate.hdl"
 	s, c := time.Now(), codes.OK
 	span, ctx := ot.StartSpanFromContext(ctx, op)
@@ -53,7 +53,7 @@ func (h *Handler) Authenticate(ctx context.Context, req *pb.SSO_EmailAndPassword
 		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
 	}
 
-	return &pb.SSO_EmailAndPasswordResponse{
+	return &pb.SSO_TokenPair{
 		Token: res.Token,
 	}, nil
 }

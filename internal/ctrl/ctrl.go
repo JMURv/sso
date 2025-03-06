@@ -41,22 +41,22 @@ type AppRepo interface {
 }
 
 type AppCtrl interface {
-	GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Permission) (dto.GenPairResponse, error)
-	Authenticate(ctx context.Context, d *dto.DeviceRequest, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error)
-	Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto.RefreshRequest) (*dto.RefreshResponse, error)
+	GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Permission) (dto.TokenPair, error)
+	Authenticate(ctx context.Context, d *dto.DeviceRequest, req *dto.EmailAndPasswordRequest) (*dto.TokenPair, error)
+	Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto.RefreshRequest) (*dto.TokenPair, error)
 	ParseClaims(ctx context.Context, token string) (auth.Claims, error)
 	Logout(ctx context.Context, uid uuid.UUID) error
 
 	CheckForgotPasswordEmail(ctx context.Context, req *dto.CheckForgotPasswordEmailRequest) error
 	SendForgotPasswordEmail(ctx context.Context, email string) error
 	SendLoginCode(ctx context.Context, email, password string) error
-	CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, req *dto.CheckLoginCodeRequest) (*dto.CheckLoginCodeResponse, error)
+	CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, req *dto.CheckLoginCodeRequest) (*dto.TokenPair, error)
 
 	GetOAuth2AuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error)
-	HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.ProviderCallbackResponse, error)
+	HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.TokenPair, error)
 
 	GetOIDCAuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error)
-	HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.ProviderCallbackResponse, error)
+	HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.TokenPair, error)
 
 	GetUserForWA(ctx context.Context, uid uuid.UUID) (*md.WebauthnUser, error)
 	StoreWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID, req *webauthn.SessionData) error

@@ -34,7 +34,7 @@ func (c *Controller) GetOIDCAuthURL(ctx context.Context, provider string) (*dto.
 	}, nil
 }
 
-func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.ProviderCallbackResponse, error) {
+func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.TokenPair, error) {
 	const op = "auth.HandleOIDCCallback.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -115,7 +115,7 @@ func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceReques
 		return nil, err
 	}
 
-	return &dto.ProviderCallbackResponse{
+	return &dto.TokenPair{
 		Access:  access,
 		Refresh: refresh,
 	}, err

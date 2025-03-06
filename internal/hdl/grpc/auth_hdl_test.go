@@ -32,13 +32,13 @@ func TestHandler_Authenticate(t *testing.T) {
 	tests := []struct {
 		name       string
 		req        *pb.SSO_EmailAndPasswordRequest
-		assertions func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error)
+		assertions func(t *testing.T, res *pb.SSO_TokenPair, err error)
 		expect     func()
 	}{
 		{
 			name: "InvalidArgument",
 			req:  nil,
-			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+			assertions: func(t *testing.T, res *pb.SSO_TokenPair, err error) {
 				assert.Equal(t, codes.InvalidArgument, status.Code(err))
 				assert.Nil(t, res)
 				assert.Contains(t, err.Error(), ctrl.ErrDecodeRequest.Error())
@@ -51,7 +51,7 @@ func TestHandler_Authenticate(t *testing.T) {
 				Email:    "",
 				Password: "password",
 			},
-			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+			assertions: func(t *testing.T, res *pb.SSO_TokenPair, err error) {
 				assert.Equal(t, codes.InvalidArgument, status.Code(err))
 				assert.Nil(t, res)
 				assert.Contains(t, err.Error(), validation.ErrMissingEmail.Error())
@@ -64,7 +64,7 @@ func TestHandler_Authenticate(t *testing.T) {
 				Email:    "email",
 				Password: "",
 			},
-			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+			assertions: func(t *testing.T, res *pb.SSO_TokenPair, err error) {
 				assert.Equal(t, codes.InvalidArgument, status.Code(err))
 				assert.Nil(t, res)
 				assert.Contains(t, err.Error(), validation.ErrMissingPass.Error())
@@ -77,7 +77,7 @@ func TestHandler_Authenticate(t *testing.T) {
 				Email:    "email",
 				Password: "password",
 			},
-			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+			assertions: func(t *testing.T, res *pb.SSO_TokenPair, err error) {
 				assert.Equal(t, codes.NotFound, status.Code(err))
 				assert.Nil(t, res)
 				assert.Contains(t, err.Error(), ctrl.ErrNotFound.Error())
@@ -97,7 +97,7 @@ func TestHandler_Authenticate(t *testing.T) {
 				Email:    "email",
 				Password: "password",
 			},
-			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+			assertions: func(t *testing.T, res *pb.SSO_TokenPair, err error) {
 				assert.Equal(t, codes.Internal, status.Code(err))
 				assert.Nil(t, res)
 				assert.Contains(t, err.Error(), ctrl.ErrInternalError.Error())
@@ -117,7 +117,7 @@ func TestHandler_Authenticate(t *testing.T) {
 				Email:    "email",
 				Password: "password",
 			},
-			assertions: func(t *testing.T, res *pb.SSO_EmailAndPasswordResponse, err error) {
+			assertions: func(t *testing.T, res *pb.SSO_TokenPair, err error) {
 				assert.Equal(t, codes.OK, status.Code(err))
 				assert.Nil(t, err)
 				assert.Equal(t, "token", res.Token)
@@ -128,7 +128,7 @@ func TestHandler_Authenticate(t *testing.T) {
 						Email:    "email",
 						Password: "password",
 					},
-				).Return(&dto.EmailAndPasswordResponse{Token: "token"}, nil)
+				).Return(&dto.TokenPair{Token: "token"}, nil)
 			},
 		},
 	}

@@ -291,7 +291,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SSOClient interface {
-	Authenticate(ctx context.Context, in *SSO_EmailAndPasswordRequest, opts ...grpc.CallOption) (*SSO_EmailAndPasswordResponse, error)
+	Authenticate(ctx context.Context, in *SSO_EmailAndPasswordRequest, opts ...grpc.CallOption) (*SSO_TokenPair, error)
 	ParseClaims(ctx context.Context, in *SSO_StringMsg, opts ...grpc.CallOption) (*SSO_ParseClaimsRes, error)
 	GetUserByToken(ctx context.Context, in *SSO_StringMsg, opts ...grpc.CallOption) (*SSO_User, error)
 	SendLoginCode(ctx context.Context, in *SSO_SendLoginCodeReq, opts ...grpc.CallOption) (*SSO_Empty, error)
@@ -313,9 +313,9 @@ func NewSSOClient(cc grpc.ClientConnInterface) SSOClient {
 	return &sSOClient{cc}
 }
 
-func (c *sSOClient) Authenticate(ctx context.Context, in *SSO_EmailAndPasswordRequest, opts ...grpc.CallOption) (*SSO_EmailAndPasswordResponse, error) {
+func (c *sSOClient) Authenticate(ctx context.Context, in *SSO_EmailAndPasswordRequest, opts ...grpc.CallOption) (*SSO_TokenPair, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SSO_EmailAndPasswordResponse)
+	out := new(SSO_TokenPair)
 	err := c.cc.Invoke(ctx, SSO_Authenticate_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -437,7 +437,7 @@ func (c *sSOClient) SendSupportEmail(ctx context.Context, in *SSO_SendSupportEma
 // All implementations must embed UnimplementedSSOServer
 // for forward compatibility.
 type SSOServer interface {
-	Authenticate(context.Context, *SSO_EmailAndPasswordRequest) (*SSO_EmailAndPasswordResponse, error)
+	Authenticate(context.Context, *SSO_EmailAndPasswordRequest) (*SSO_TokenPair, error)
 	ParseClaims(context.Context, *SSO_StringMsg) (*SSO_ParseClaimsRes, error)
 	GetUserByToken(context.Context, *SSO_StringMsg) (*SSO_User, error)
 	SendLoginCode(context.Context, *SSO_SendLoginCodeReq) (*SSO_Empty, error)
@@ -459,7 +459,7 @@ type SSOServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSSOServer struct{}
 
-func (UnimplementedSSOServer) Authenticate(context.Context, *SSO_EmailAndPasswordRequest) (*SSO_EmailAndPasswordResponse, error) {
+func (UnimplementedSSOServer) Authenticate(context.Context, *SSO_EmailAndPasswordRequest) (*SSO_TokenPair, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
 }
 func (UnimplementedSSOServer) ParseClaims(context.Context, *SSO_StringMsg) (*SSO_ParseClaimsRes, error) {

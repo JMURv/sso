@@ -5,14 +5,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func RefreshRequest(req *dto.RefreshRequest) error {
-	if req.Refresh == "" {
-		return ErrMissingToken
-	}
-
-	return nil
-}
-
 func LoginAndPasswordRequest(req *dto.EmailAndPasswordRequest) error {
 	if req.Email == "" {
 		return ErrMissingEmail

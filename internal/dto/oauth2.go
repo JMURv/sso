@@ -9,11 +9,6 @@ type StartProviderResponse struct {
 	URL string `json:"url"`
 }
 
-type ProviderCallbackResponse struct {
-	Access  string `json:"access"`
-	Refresh string `json:"refresh"`
-}
-
 type ProviderResponse struct {
 	ID           int       `json:"id"`
 	UserID       uuid.UUID `json:"user_id"`

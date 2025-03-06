@@ -13,6 +13,14 @@ type PaginatedUserResponse struct {
 	HasNextPage bool       `json:"has_next_page"`
 }
 
+type CreateUserRequest struct {
+	Name        string       `json:"name"`
+	Password    string       `json:"password"`
+	Email       string       `json:"email"`
+	Avatar      string       `json:"avatar"`
+	Permissions []Permission `json:"permissions"`
+}
+
 type CreateUserResponse struct {
 	ID uuid.UUID `json:"id"`
 }

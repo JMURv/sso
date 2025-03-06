@@ -20,12 +20,12 @@ import (
 const codeCacheKey = "code:%v"
 const recoveryCacheKey = "recovery:%v"
 
-func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Permission) (dto.GenPairResponse, error) {
+func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Permission) (dto.TokenPair, error) {
 	const op = "auth.GenPair.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	var res dto.GenPairResponse
+	var res dto.TokenPair
 	access, refresh, err := auth.Au.GenPair(ctx, uid, p)
 	if err != nil {
 		return res, err
@@ -52,7 +52,7 @@ func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid
 	return res, nil
 }
 
-func (c *Controller) Authenticate(ctx context.Context, d *dto.DeviceRequest, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error) {
+func (c *Controller) Authenticate(ctx context.Context, d *dto.DeviceRequest, req *dto.EmailAndPasswordRequest) (*dto.TokenPair, error) {
 	const op = "auth.Authenticate.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -91,13 +91,13 @@ func (c *Controller) Authenticate(ctx context.Context, d *dto.DeviceRequest, req
 		return nil, err
 	}
 
-	return &dto.EmailAndPasswordResponse{
+	return &dto.TokenPair{
 		Access:  pair.Access,
 		Refresh: pair.Refresh,
 	}, nil
 }
 
-func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto.RefreshRequest) (*dto.RefreshResponse, error) {
+func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto.RefreshRequest) (*dto.TokenPair, error) {
 	const op = "auth.Refresh.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -149,7 +149,7 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 		return nil, err
 	}
 
-	return &dto.RefreshResponse{
+	return &dto.TokenPair{
 		Access:  access,
 		Refresh: refresh,
 	}, nil
@@ -328,7 +328,7 @@ func (c *Controller) SendLoginCode(ctx context.Context, email, password string) 
 	return nil
 }
 
-func (c *Controller) CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, req *dto.CheckLoginCodeRequest) (*dto.CheckLoginCodeResponse, error) {
+func (c *Controller) CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, req *dto.CheckLoginCodeRequest) (*dto.TokenPair, error) {
 	const op = "auth.CheckLoginCode.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -384,7 +384,7 @@ func (c *Controller) CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, r
 		return nil, err
 	}
 
-	return &dto.CheckLoginCodeResponse{
+	return &dto.TokenPair{
 		Access:  access,
 		Refresh: refresh,
 	}, nil

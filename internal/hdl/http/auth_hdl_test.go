@@ -161,7 +161,7 @@ func TestHandler_Authenticate(t *testing.T) {
 				"password": "password",
 			},
 			assertions: func(r io.ReadCloser) {
-				res := &dto.EmailAndPasswordResponse{Token: "token"}
+				res := &dto.TokenPair{Token: "token"}
 				err := json.NewDecoder(r).Decode(res)
 				assert.Nil(t, err)
 				assert.Equal(t, "token", res.Token)
@@ -172,7 +172,7 @@ func TestHandler_Authenticate(t *testing.T) {
 						Email:    "email",
 						Password: "password",
 					},
-				).Return(&dto.EmailAndPasswordResponse{Token: "token"}, nil)
+				).Return(&dto.TokenPair{Token: "token"}, nil)
 			},
 		},
 	}

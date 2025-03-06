@@ -34,7 +34,7 @@ func (c *Controller) GetOAuth2AuthURL(ctx context.Context, provider string) (*dt
 	}, nil
 }
 
-func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.ProviderCallbackResponse, error) {
+func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.TokenPair, error) {
 	const op = "auth.HandleOAuth2Callback.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -115,7 +115,7 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 		return nil, err
 	}
 
-	return &dto.ProviderCallbackResponse{
+	return &dto.TokenPair{
 		Access:  access,
 		Refresh: refresh,
 	}, err

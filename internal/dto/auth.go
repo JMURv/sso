@@ -7,28 +7,22 @@ type DeviceRequest struct {
 	UA string `json:"ua"`
 }
 
-type GenPairResponse struct {
+type TokenRequest struct {
+	Token string `json:"token" validate:"required"`
+}
+
+type TokenPair struct {
 	Access  string `json:"access"`
 	Refresh string `json:"refresh"`
 }
 
 type RefreshRequest struct {
-	Refresh string `json:"refresh"`
-}
-
-type RefreshResponse struct {
-	Access  string `json:"access"`
-	Refresh string `json:"refresh"`
+	Refresh string `json:"refresh" validate:"required"`
 }
 
 type EmailAndPasswordRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
-}
-
-type EmailAndPasswordResponse struct {
-	Access  string `json:"access"`
-	Refresh string `json:"refresh"`
 }
 
 type LoginCodeRequest struct {
@@ -39,11 +33,6 @@ type LoginCodeRequest struct {
 type CheckLoginCodeRequest struct {
 	Email string `json:"email"`
 	Code  int    `json:"code"`
-}
-
-type CheckLoginCodeResponse struct {
-	Access  string `json:"access"`
-	Refresh string `json:"refresh"`
 }
 
 type CheckEmailRequest struct {
@@ -67,8 +56,4 @@ type SendForgotPasswordEmail struct {
 type SendSupportEmailRequest struct {
 	Theme string `json:"theme"`
 	Text  string `json:"text"`
-}
-
-type TokenRequest struct {
-	Token string `json:"token"`
 }

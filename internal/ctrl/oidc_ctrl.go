@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/JMURv/sso/internal/auth"
+	"github.com/JMURv/sso/internal/auth/providers"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
@@ -13,37 +14,37 @@ import (
 	"time"
 )
 
-func (c *Controller) GetOIDCAuthURL(ctx context.Context, provider string) (*dto.StartOAuth2Response, error) {
+func (c *Controller) GetOIDCAuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error) {
 	const op = "auth.GetOIDCAuthURL.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	pr, err := auth.Au.GetOIDCProvider(ctx, provider)
+	pr, err := auth.Au.Provider.Get(ctx, providers.Providers(provider), providers.OIDC)
 	if err != nil {
 		return nil, err
 	}
 
-	signedState, err := auth.Au.GenerateSignedState()
+	signedState, err := auth.Au.Provider.GenerateSignedState()
 	if err != nil {
 		return nil, err
 	}
 
-	return &dto.StartOAuth2Response{
+	return &dto.StartProviderResponse{
 		URL: pr.GetConfig().AuthCodeURL(signedState),
 	}, nil
 }
 
-func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.OAuth2CallbackResponse, error) {
+func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.ProviderCallbackResponse, error) {
 	const op = "auth.HandleOIDCCallback.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	isValid, err := auth.Au.ValidateSignedState(state, 5*time.Minute)
+	isValid, err := auth.Au.Provider.ValidateSignedState(state, 5*time.Minute)
 	if !isValid || err != nil {
 		return nil, errors.New("invalid oauth state")
 	}
 
-	pr, err := auth.Au.GetOIDCProvider(ctx, provider)
+	pr, err := auth.Au.Provider.Get(ctx, providers.Providers(provider), providers.OIDC)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +115,7 @@ func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceReques
 		return nil, err
 	}
 
-	return &dto.OAuth2CallbackResponse{
+	return &dto.ProviderCallbackResponse{
 		Access:  access,
 		Refresh: refresh,
 	}, err

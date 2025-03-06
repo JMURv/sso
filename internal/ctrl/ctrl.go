@@ -39,8 +39,11 @@ type AppCtrl interface {
 	SendLoginCode(ctx context.Context, email, password string) error
 	CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, req *dto.CheckLoginCodeRequest) (*dto.CheckLoginCodeResponse, error)
 
-	GetOAuth2AuthURL(ctx context.Context, provider string) (*dto.StartOAuth2Response, error)
-	HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.OAuth2CallbackResponse, error)
+	GetOAuth2AuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error)
+	HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.ProviderCallbackResponse, error)
+
+	GetOIDCAuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error)
+	HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.ProviderCallbackResponse, error)
 
 	IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error)
 	SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error)

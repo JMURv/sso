@@ -3,6 +3,7 @@ serviceName: "sso"
 
 auth:
   secret: "DYHlaJpPiZ"
+  providerSignSecret: "DYHlaJpPiZ"
   ouath:
     google:
       clientID: "id"

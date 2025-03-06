@@ -24,8 +24,9 @@ type provider struct {
 }
 
 type AuthConfig struct {
-	Secret string `yaml:"secret" env-required:"true"`
-	Oauth  struct {
+	Secret             string `yaml:"secret" env-required:"true"`
+	ProviderSignSecret string `yaml:"providerSignSecret"`
+	Oauth              struct {
 		Google provider `yaml:"google"`
 	} `yaml:"oauth"`
 

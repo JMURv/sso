@@ -6,12 +6,7 @@ import (
 )
 
 type GoogleOIDC struct {
-	name string
 	*providers.OIDCProvider
-}
-
-func (g GoogleOIDC) GetName() string {
-	return g.name
 }
 
 func NewGoogleOIDC(conf config.Config) *GoogleOIDC {
@@ -27,5 +22,5 @@ func NewGoogleOIDC(conf config.Config) *GoogleOIDC {
 		return nil
 	}
 
-	return &GoogleOIDC{"google", provider}
+	return &GoogleOIDC{provider}
 }

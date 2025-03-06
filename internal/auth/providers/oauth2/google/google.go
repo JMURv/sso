@@ -2,33 +2,19 @@ package providers
 
 import (
 	"context"
-	"fmt"
+	providers "github.com/JMURv/sso/internal/auth/providers/oauth2"
 	conf "github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/goccy/go-json"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"io"
+	"net/http"
 )
 
 type GoogleProvider struct {
-	name   string
-	config *oauth2.Config
-}
-
-func NewGoogleOAuth2(config conf.Config) *GoogleProvider {
-	return &GoogleProvider{
-		name: "google",
-		config: &oauth2.Config{
-			ClientID:     config.Auth.Oauth.Google.ClientID,
-			ClientSecret: config.Auth.Oauth.Google.ClientSecret,
-			RedirectURL:  config.Auth.Oauth.Google.RedirectURL,
-			Scopes:       config.Auth.Oauth.Google.Scopes,
-			Endpoint:     google.Endpoint,
-		},
-	}
+	*providers.OAuth2Provider
 }
 
 type googleResponse struct {
@@ -39,48 +25,39 @@ type googleResponse struct {
 	VerifEmail bool   `json:"verified_email"`
 }
 
-func (g *GoogleProvider) GetConfig() *oauth2.Config {
-	return g.config
-}
+func NewGoogleOAuth2(config conf.Config) *GoogleProvider {
+	provider := providers.NewOAuth2Provider(
+		config.Auth.OIDC.Google.ClientID,
+		config.Auth.OIDC.Google.ClientSecret,
+		config.Auth.OIDC.Google.RedirectURL,
+		google.Endpoint,
+		config.Auth.OIDC.Google.Scopes,
+		func(ctx context.Context, token string, cli *http.Client) (*dto.ProviderResponse, error) {
+			const op = "provider.GetUser.google"
+			span, ctx := opentracing.StartSpanFromContext(ctx, op)
+			defer span.Finish()
 
-func (g *GoogleProvider) GetName() string {
-	return g.name
-}
+			resp, err := cli.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token)
+			if err != nil {
+				return nil, err
+			}
+			defer func(Body io.ReadCloser) {
+				if err := Body.Close(); err != nil {
+					zap.L().Debug("failed to close body", zap.Error(err))
+				}
+			}(resp.Body)
 
-func (g *GoogleProvider) GetUser(ctx context.Context, code string) (*dto.ProviderResponse, error) {
-	const op = "provider.GetUser.google"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
+			var gRes googleResponse
+			if err = json.NewDecoder(resp.Body).Decode(&gRes); err != nil {
+				return nil, err
+			}
 
-	token, err := g.config.Exchange(ctx, code)
-	if err != nil {
-		return nil, fmt.Errorf("failed to exchange token: %v", err)
-	}
-
-	cli := g.config.Client(ctx, token)
-	resp, err := cli.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
-	if err != nil {
-		return nil, err
-	}
-	defer func(Body io.ReadCloser) {
-		if err := Body.Close(); err != nil {
-			zap.L().Debug("failed to close body", zap.Error(err))
-		}
-	}(resp.Body)
-
-	var gRes googleResponse
-	if err = json.NewDecoder(resp.Body).Decode(&gRes); err != nil {
-		return nil, err
-	}
-
-	return &dto.ProviderResponse{
-		ProviderID:   gRes.ID,
-		Email:        gRes.Email,
-		Name:         gRes.Name,
-		AccessToken:  token.AccessToken,
-		RefreshToken: token.RefreshToken,
-		Expiry:       token.Expiry,
-		ExpiresIn:    token.ExpiresIn,
-		TokenType:    token.TokenType,
-	}, nil
+			return &dto.ProviderResponse{
+				ProviderID: gRes.ID,
+				Email:      gRes.Email,
+				Name:       gRes.Name,
+			}, nil
+		},
+	)
+	return &GoogleProvider{provider}
 }

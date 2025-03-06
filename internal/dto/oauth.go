@@ -5,11 +5,11 @@ import (
 	"time"
 )
 
-type StartOAuth2Response struct {
+type StartProviderResponse struct {
 	URL string `json:"url"`
 }
 
-type OAuth2CallbackResponse struct {
+type ProviderCallbackResponse struct {
 	Access  string `json:"access"`
 	Refresh string `json:"refresh"`
 }

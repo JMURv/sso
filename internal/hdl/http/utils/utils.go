@@ -2,8 +2,10 @@ package utils
 
 import (
 	"encoding/json"
+	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/dto"
 	"net/http"
+	"time"
 )
 
 type ErrorResponse struct {
@@ -27,6 +29,32 @@ func ErrResponse(w http.ResponseWriter, statusCode int, err error) {
 	json.NewEncoder(w).Encode(
 		&ErrorResponse{
 			Error: err.Error(),
+		},
+	)
+}
+
+func SetAuthCookies(w http.ResponseWriter, access, refresh string) {
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "access",
+			Value:    access,
+			Expires:  time.Now().Add(auth.AccessTokenDuration),
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		},
+	)
+
+	http.SetCookie(
+		w, &http.Cookie{
+			Name:     "refresh",
+			Value:    refresh,
+			Expires:  time.Now().Add(auth.RefreshTokenDuration),
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
 		},
 	)
 }

@@ -26,6 +26,10 @@ func (h *Handler) Start(port int) {
 	mux := http.NewServeMux()
 
 	RegisterAuthRoutes(mux, h)
+	RegisterOAuth2Routes(mux, h)
+	RegisterOIDCRoutes(mux, h)
+	RegisterWebAuthnRoutes(mux, h)
+
 	RegisterUserRoutes(mux, h)
 	RegisterPermRoutes(mux, h)
 	mux.HandleFunc(

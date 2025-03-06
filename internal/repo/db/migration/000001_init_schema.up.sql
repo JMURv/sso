@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS user_permission
     CONSTRAINT fk_permission FOREIGN KEY (permission_id) REFERENCES permission (id) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS users_email_idx ON users (email);
+CREATE INDEX IF NOT EXISTS permission_name_idx ON permission (name);
+
 -- USER DEVICES
 
 CREATE TABLE IF NOT EXISTS user_devices
@@ -112,5 +115,3 @@ VALUES ('admin'),
        ('staff')
 ON CONFLICT (name) DO NOTHING;
 
-CREATE INDEX IF NOT EXISTS users_email_idx ON users (email);
-CREATE INDEX IF NOT EXISTS permission_name_idx ON permission (name);

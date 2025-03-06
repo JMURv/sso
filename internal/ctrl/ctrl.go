@@ -3,8 +3,10 @@ package ctrl
 import (
 	"context"
 	"github.com/JMURv/sso/internal/auth"
+	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"io"
 	"time"
@@ -24,14 +26,25 @@ type AppRepo interface {
 	GetUserByOAuth2(ctx context.Context, provider, providerID string) (*md.User, error)
 	CreateOAuth2Connection(ctx context.Context, userID uuid.UUID, provider string, data *dto.ProviderResponse) error
 
+	CreateWACredential(
+		ctx context.Context,
+		userID uuid.UUID,
+		cred *md.WebauthnCredential,
+	) error
+	GetWACredentials(
+		ctx context.Context,
+		userID uuid.UUID,
+	) ([]webauthn.Credential, error)
+
 	userRepo
 	permRepo
 }
 
 type AppCtrl interface {
+	GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Permission) (dto.GenPairResponse, error)
 	Authenticate(ctx context.Context, d *dto.DeviceRequest, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error)
 	Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto.RefreshRequest) (*dto.RefreshResponse, error)
-	ParseClaims(ctx context.Context, token string) (*auth.Claims, error)
+	ParseClaims(ctx context.Context, token string) (auth.Claims, error)
 	Logout(ctx context.Context, uid uuid.UUID) error
 
 	CheckForgotPasswordEmail(ctx context.Context, req *dto.CheckForgotPasswordEmailRequest) error
@@ -44,6 +57,12 @@ type AppCtrl interface {
 
 	GetOIDCAuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error)
 	HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.ProviderCallbackResponse, error)
+
+	GetUserForWA(ctx context.Context, uid uuid.UUID) (*md.WebauthnUser, error)
+	StoreWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID, req *webauthn.SessionData) error
+	GetWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID) (*webauthn.SessionData, error)
+	StoreWACredential(ctx context.Context, userID uuid.UUID, credential *webauthn.Credential) error
+	GetUserByEmailForWA(ctx context.Context, email string) (*md.WebauthnUser, error)
 
 	IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error)
 	SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error)

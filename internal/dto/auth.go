@@ -7,6 +7,11 @@ type DeviceRequest struct {
 	UA string `json:"ua"`
 }
 
+type GenPairResponse struct {
+	Access  string `json:"access"`
+	Refresh string `json:"refresh"`
+}
+
 type RefreshRequest struct {
 	Refresh string `json:"refresh"`
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/cache"
 	"github.com/JMURv/sso/internal/dto"
+	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
@@ -18,6 +19,38 @@ import (
 
 const codeCacheKey = "code:%v"
 const recoveryCacheKey = "recovery:%v"
+
+func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Permission) (dto.GenPairResponse, error) {
+	const op = "auth.GenPair.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	var res dto.GenPairResponse
+	access, refresh, err := auth.Au.GenPair(ctx, uid, p)
+	if err != nil {
+		return res, err
+	}
+
+	hash, err := auth.Au.HashSHA256(refresh)
+	if err != nil {
+		return res, err
+	}
+
+	device := auth.GenerateDevice(d)
+	if err = c.repo.CreateToken(ctx, uid, hash, time.Now().Add(auth.RefreshTokenDuration), &device); err != nil {
+		zap.L().Debug(
+			"Failed to save token",
+			zap.String("op", op),
+			zap.String("refresh", refresh),
+			zap.Error(err),
+		)
+		return res, err
+	}
+
+	res.Access = access
+	res.Refresh = refresh
+	return res, nil
+}
 
 func (c *Controller) Authenticate(ctx context.Context, d *dto.DeviceRequest, req *dto.EmailAndPasswordRequest) (*dto.EmailAndPasswordResponse, error) {
 	const op = "auth.Authenticate.ctrl"
@@ -53,30 +86,14 @@ func (c *Controller) Authenticate(ctx context.Context, d *dto.DeviceRequest, req
 		return nil, auth.ErrInvalidCredentials
 	}
 
-	access, refresh, err := auth.Au.GenPair(ctx, res.ID, res.Permissions)
+	pair, err := c.GenPair(ctx, d, res.ID, res.Permissions)
 	if err != nil {
-		return nil, err
-	}
-
-	hash, err := auth.Au.HashSHA256(refresh)
-	if err != nil {
-		return nil, err
-	}
-
-	device := auth.GenerateDevice(d)
-	if err = c.repo.CreateToken(ctx, res.ID, hash, time.Now().Add(auth.RefreshTokenDuration), &device); err != nil {
-		zap.L().Debug(
-			"Failed to save token",
-			zap.String("op", op),
-			zap.String("refresh", refresh),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
 	return &dto.EmailAndPasswordResponse{
-		Access:  access,
-		Refresh: refresh,
+		Access:  pair.Access,
+		Refresh: pair.Refresh,
 	}, nil
 }
 
@@ -138,18 +155,18 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 	}, nil
 }
 
-func (c *Controller) ParseClaims(ctx context.Context, token string) (*auth.Claims, error) {
+func (c *Controller) ParseClaims(ctx context.Context, token string) (res auth.Claims, err error) {
 	const op = "auth.ParseClaims.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	claims, err := auth.Au.ParseClaims(ctx, token)
+	res, err = auth.Au.ParseClaims(ctx, token)
 	if err != nil {
 		zap.L().Debug("invalid token", zap.Error(err))
-		return nil, err
+		return res, err
 	}
 
-	return claims, nil
+	return res, nil
 }
 
 func (c *Controller) Logout(ctx context.Context, uid uuid.UUID) error {

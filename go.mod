@@ -5,6 +5,7 @@ go 1.23.1
 require (
 	github.com/JMURv/protos v1.7.3
 	github.com/coreos/go-oidc/v3 v3.12.0
+	github.com/go-playground/validator/v10 v10.25.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-webauthn/webauthn v0.12.1
 	github.com/goccy/go-json v0.10.5
@@ -42,7 +43,6 @@ require (
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.25.0 // indirect
 	github.com/go-webauthn/x v0.1.18 // indirect
 	github.com/google/go-tpm v0.9.3 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.1 // indirect

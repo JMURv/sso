@@ -66,7 +66,7 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validation.LoginAndPasswordRequest(req); err != nil {
+	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return
@@ -292,7 +292,7 @@ func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := validation.SendForgotPasswordEmail(req); err != nil {
+	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return
@@ -339,7 +339,7 @@ func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := validation.CheckForgotPasswordEmailRequest(req); err != nil {
+	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
@@ -391,7 +391,7 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validation.LoginCodeRequest(req); err != nil {
+	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return
@@ -446,7 +446,7 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validation.CheckLoginCodeRequest(req); err != nil {
+	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return

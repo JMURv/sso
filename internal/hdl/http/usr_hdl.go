@@ -81,7 +81,7 @@ func (h *Handler) existsUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Email == "" {
+	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, validation.ErrMissingEmail)
 		return

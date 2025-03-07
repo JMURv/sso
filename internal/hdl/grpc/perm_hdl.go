@@ -5,8 +5,8 @@ import (
 	"errors"
 	pb "github.com/JMURv/sso/api/grpc/v1/gen"
 	ctrl "github.com/JMURv/sso/internal/ctrl"
+	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl/validation"
-	md "github.com/JMURv/sso/internal/models"
 	utils "github.com/JMURv/sso/internal/models/mapper"
 	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/opentracing/opentracing-go"
@@ -93,12 +93,11 @@ func (h *Handler) CreatePermission(ctx context.Context, req *pb.SSO_Permission) 
 		metrics.ObserveRequest(time.Since(s), int(c), op)
 	}()
 
-	mdPerm := &md.Permission{
-		ID:   req.Id,
+	mdPerm := &dto.CreatePermissionRequest{
 		Name: req.Name,
 	}
 
-	if err := validation.PermValidation(mdPerm); err != nil {
+	if err := validation.V.Struct(mdPerm); err != nil {
 		c = codes.InvalidArgument
 		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(c, err.Error())

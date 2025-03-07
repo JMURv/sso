@@ -4,11 +4,11 @@ import (
 	"errors"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/ctrl"
+	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	"github.com/JMURv/sso/internal/hdl/validation"
-	md "github.com/JMURv/sso/internal/models"
 	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/goccy/go-json"
 	"github.com/opentracing/opentracing-go"
@@ -87,7 +87,7 @@ func (h *Handler) createPerm(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	req := &md.Permission{}
+	req := &dto.CreatePermissionRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
@@ -99,7 +99,7 @@ func (h *Handler) createPerm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validation.PermValidation(req); err != nil {
+	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return
@@ -177,7 +177,7 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := &md.Permission{}
+	req := &dto.UpdatePermissionRequest{}
 	if err = json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
@@ -189,7 +189,7 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = validation.PermValidation(req); err != nil {
+	if err = validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return

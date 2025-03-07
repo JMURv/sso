@@ -21,39 +21,34 @@ type RefreshRequest struct {
 }
 
 type EmailAndPasswordRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 
 type LoginCodeRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 
 type CheckLoginCodeRequest struct {
-	Email string `json:"email"`
-	Code  int    `json:"code"`
+	Email string `json:"email" validate:"required,email"`
+	Code  int    `json:"code" validate:"required"`
 }
 
 type CheckEmailRequest struct {
-	Email string `json:"email"`
+	Email string `json:"email" validate:"required,email"`
 }
 
 type CheckEmailResponse struct {
-	Exists bool `json:"exists"`
+	Exists bool `json:"exists" validate:"required"`
 }
 
 type CheckForgotPasswordEmailRequest struct {
-	Password string    `json:"password"`
-	ID       uuid.UUID `json:"uidb64"`
-	Code     int       `json:"token"`
+	Password string    `json:"password" validate:"required"`
+	ID       uuid.UUID `json:"uidb64" validate:"required"`
+	Code     int       `json:"token" validate:"required"`
 }
 
 type SendForgotPasswordEmail struct {
-	Email string `json:"email"`
-}
-
-type SendSupportEmailRequest struct {
-	Theme string `json:"theme"`
-	Text  string `json:"text"`
+	Email string `json:"email" validate:"required,email"`
 }

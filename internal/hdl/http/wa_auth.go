@@ -8,6 +8,7 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
+	"github.com/JMURv/sso/internal/hdl/validation"
 	md "github.com/JMURv/sso/internal/models"
 	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/goccy/go-json"
@@ -142,6 +143,12 @@ func (h *Handler) loginStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validation.V.Struct(req); err != nil {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, err)
+		return
+	}
+
 	user, err := h.ctrl.GetUserByEmailForWA(ctx, req.Email)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusNotFound, errors.New("user not found"))
@@ -183,6 +190,12 @@ func (h *Handler) loginFinish(w http.ResponseWriter, r *http.Request) {
 	var req dto.LoginFinishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
+		return
+	}
+
+	if err := validation.V.Struct(req); err != nil {
+		c = http.StatusBadRequest
+		utils.ErrResponse(w, c, err)
 		return
 	}
 

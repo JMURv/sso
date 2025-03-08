@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/opentracing/opentracing-go"
@@ -77,7 +78,7 @@ func (r *Repository) GetPermission(ctx context.Context, id uint64) (*md.Permissi
 	return res, nil
 }
 
-func (r *Repository) CreatePerm(ctx context.Context, req *md.Permission) (uint64, error) {
+func (r *Repository) CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error) {
 	const op = "sso.CreatePerm.repo"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -94,7 +95,7 @@ func (r *Repository) CreatePerm(ctx context.Context, req *md.Permission) (uint64
 	return id, nil
 }
 
-func (r *Repository) UpdatePerm(ctx context.Context, id uint64, req *md.Permission) error {
+func (r *Repository) UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error {
 	const op = "sso.UpdatePerm.repo"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()

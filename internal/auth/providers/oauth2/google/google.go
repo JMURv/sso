@@ -27,11 +27,11 @@ type googleResponse struct {
 
 func NewGoogleOAuth2(config conf.Config) *GoogleProvider {
 	provider := providers.NewOAuth2Provider(
-		config.Auth.OIDC.Google.ClientID,
-		config.Auth.OIDC.Google.ClientSecret,
-		config.Auth.OIDC.Google.RedirectURL,
+		config.Auth.Oauth.Google.ClientID,
+		config.Auth.Oauth.Google.ClientSecret,
+		config.Auth.Oauth.Google.RedirectURL,
 		google.Endpoint,
-		config.Auth.OIDC.Google.Scopes,
+		config.Auth.Oauth.Google.Scopes,
 		func(ctx context.Context, token string, cli *http.Client) (*dto.ProviderResponse, error) {
 			const op = "provider.GetUser.google"
 			span, ctx := opentracing.StartSpanFromContext(ctx, op)

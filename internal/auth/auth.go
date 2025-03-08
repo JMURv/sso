@@ -20,13 +20,13 @@ const issuer = "SSO"
 const AccessTokenDuration = time.Minute * 30
 const RefreshTokenDuration = time.Hour * 24 * 7
 
-var Au *Auth
-
 type Core interface {
-	NewToken(ctx context.Context, uid uuid.UUID) (string, error)
-	VerifyToken(ctx context.Context, tokenStr string) (map[string]any, error)
-	Hash(string) (string, error)
+	Hash(val string) (string, error)
+	HashSHA256(val string) (string, error)
 	ComparePasswords(hashed, pswd []byte) error
+	NewToken(ctx context.Context, uid uuid.UUID, perms []md.Permission, d time.Duration) (string, error)
+	ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
+	GenPair(ctx context.Context, uid uuid.UUID, perms []md.Permission) (string, string, error)
 }
 
 type Claims struct {
@@ -41,8 +41,8 @@ type Auth struct {
 	Wa       *wa.WAuthn
 }
 
-func New(conf config.Config) {
-	Au = &Auth{
+func New(conf config.Config) *Auth {
+	return &Auth{
 		secret:   []byte(conf.Auth.Secret),
 		Provider: providers.New(conf),
 		Wa:       wa.New(conf),

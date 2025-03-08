@@ -26,12 +26,12 @@ func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid
 	defer span.Finish()
 
 	var res dto.TokenPair
-	access, refresh, err := auth.Au.GenPair(ctx, uid, p)
+	access, refresh, err := c.au.GenPair(ctx, uid, p)
 	if err != nil {
 		return res, err
 	}
 
-	hash, err := auth.Au.HashSHA256(refresh)
+	hash, err := c.au.HashSHA256(refresh)
 	if err != nil {
 		return res, err
 	}
@@ -76,7 +76,7 @@ func (c *Controller) Authenticate(ctx context.Context, d *dto.DeviceRequest, req
 		return nil, err
 	}
 
-	if err = auth.Au.ComparePasswords([]byte(res.Password), []byte(req.Password)); err != nil {
+	if err = c.au.ComparePasswords([]byte(res.Password), []byte(req.Password)); err != nil {
 		zap.L().Debug(
 			"failed to compare password",
 			zap.String("op", op),
@@ -102,7 +102,7 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	claims, err := auth.Au.ParseClaims(ctx, req.Refresh)
+	claims, err := c.au.ParseClaims(ctx, req.Refresh)
 	if err != nil {
 		return nil, err
 	}
@@ -117,12 +117,12 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 		return nil, auth.ErrTokenRevoked
 	}
 
-	access, refresh, err := auth.Au.GenPair(ctx, claims.UID, claims.Roles)
+	access, refresh, err := c.au.GenPair(ctx, claims.UID, claims.Roles)
 	if err != nil {
 		return nil, err
 	}
 
-	hash, err := auth.Au.HashSHA256(refresh)
+	hash, err := c.au.HashSHA256(refresh)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (c *Controller) ParseClaims(ctx context.Context, token string) (res auth.Cl
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res, err = auth.Au.ParseClaims(ctx, token)
+	res, err = c.au.ParseClaims(ctx, token)
 	if err != nil {
 		zap.L().Debug("invalid token", zap.Error(err))
 		return res, err
@@ -220,13 +220,19 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, req *dto.Chec
 		return err
 	}
 
-	newPass, err := auth.Au.Hash(req.Password)
+	newPass, err := c.au.Hash(req.Password)
 	if err != nil {
 		return err
 	}
 
-	u.Password = newPass
-	if err = c.repo.UpdateUser(ctx, req.ID, u); err != nil {
+	if err = c.repo.UpdateUser(
+		ctx, req.ID, &dto.UpdateUserRequest{
+			Name:     u.Name,
+			Email:    u.Email,
+			Password: newPass,
+			Avatar:   u.Avatar,
+		},
+	); err != nil {
 		zap.L().Debug(
 			"Error updating user",
 			zap.Error(err), zap.String("op", op),
@@ -308,7 +314,7 @@ func (c *Controller) SendLoginCode(ctx context.Context, email, password string) 
 		return err
 	}
 
-	if err = auth.Au.ComparePasswords([]byte(res.Password), []byte(password)); err != nil {
+	if err = c.au.ComparePasswords([]byte(res.Password), []byte(password)); err != nil {
 		return err
 	}
 
@@ -363,12 +369,12 @@ func (c *Controller) CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, r
 		return nil, err
 	}
 
-	access, refresh, err := auth.Au.GenPair(ctx, res.ID, res.Permissions)
+	access, refresh, err := c.au.GenPair(ctx, res.ID, res.Permissions)
 	if err != nil {
 		return nil, ErrWhileGeneratingToken
 	}
 
-	hash, err := auth.Au.Hash(refresh)
+	hash, err := c.au.Hash(refresh)
 	if err != nil {
 		return nil, err
 	}

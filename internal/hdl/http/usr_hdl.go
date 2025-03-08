@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
@@ -9,7 +10,6 @@ import (
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	"github.com/JMURv/sso/internal/hdl/validation"
-	md "github.com/JMURv/sso/internal/models"
 	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-func RegisterUserRoutes(mux *http.ServeMux, h *Handler) {
+func RegisterUserRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 	mux.HandleFunc("/api/users/search", h.searchUser)
 	mux.HandleFunc("/api/users/exists", h.existsUser)
 
@@ -44,9 +44,9 @@ func RegisterUserRoutes(mux *http.ServeMux, h *Handler) {
 			case http.MethodGet:
 				h.getUser(w, r)
 			case http.MethodPut:
-				mid.Apply(h.updateUser, mid.Auth)(w, r)
+				mid.Apply(h.updateUser, mid.Auth(au))(w, r)
 			case http.MethodDelete:
-				mid.Apply(h.deleteUser, mid.Auth)(w, r)
+				mid.Apply(h.deleteUser, mid.Auth(au))(w, r)
 			default:
 				utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 			}
@@ -83,7 +83,7 @@ func (h *Handler) existsUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, validation.ErrMissingEmail)
+		utils.ErrResponse(w, c, err)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	req := &md.User{}
+	req := &dto.CreateUserRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
@@ -122,7 +122,7 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validation.NewUserValidation(req); err != nil {
+	if err := validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return
@@ -270,7 +270,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := &md.User{}
+	req := &dto.UpdateUserRequest{}
 	if err = json.NewDecoder(r.Body).Decode(req); err != nil {
 		c = http.StatusBadRequest
 		zap.L().Debug(
@@ -282,7 +282,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = validation.UserValidation(req); err != nil {
+	if err = validation.V.Struct(req); err != nil {
 		c = http.StatusBadRequest
 		utils.ErrResponse(w, c, err)
 		return

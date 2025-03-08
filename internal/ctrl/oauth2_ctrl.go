@@ -19,12 +19,12 @@ func (c *Controller) GetOAuth2AuthURL(ctx context.Context, provider string) (*dt
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	pr, err := auth.Au.Provider.Get(ctx, providers.Providers(provider), providers.OAuth2)
+	pr, err := c.au.Provider.Get(ctx, providers.Providers(provider), providers.OAuth2)
 	if err != nil {
 		return nil, err
 	}
 
-	signedState, err := auth.Au.Provider.GenerateSignedState()
+	signedState, err := c.au.Provider.GenerateSignedState()
 	if err != nil {
 		return nil, err
 	}
@@ -39,12 +39,12 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	isValid, err := auth.Au.Provider.ValidateSignedState(state, 5*time.Minute)
+	isValid, err := c.au.Provider.ValidateSignedState(state, 5*time.Minute)
 	if !isValid || err != nil {
 		return nil, errors.New("invalid oauth state")
 	}
 
-	pr, err := auth.Au.Provider.Get(ctx, providers.Providers(provider), providers.OAuth2)
+	pr, err := c.au.Provider.Get(ctx, providers.Providers(provider), providers.OAuth2)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 	if errors.Is(err, repo.ErrNotFound) {
 		user, err = c.repo.GetUserByEmail(ctx, oauthUser.Email)
 		if errors.Is(err, repo.ErrNotFound) {
-			hash, err := auth.Au.Hash(uuid.NewString())
+			hash, err := c.au.Hash(uuid.NewString())
 			if err != nil {
 				return nil, err
 			}
@@ -70,7 +70,14 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 				Avatar:   oauthUser.Picture,
 			}
 
-			id, err := c.repo.CreateUser(ctx, user)
+			id, err := c.repo.CreateUser(
+				ctx, &dto.CreateUserRequest{
+					Name:     oauthUser.Name,
+					Email:    oauthUser.Email,
+					Password: hash,
+					Avatar:   oauthUser.Picture,
+				},
+			)
 			if err != nil {
 				zap.L().Debug(
 					"failed to create user",
@@ -98,8 +105,8 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 		}
 	}
 
-	access, refresh, err := auth.Au.GenPair(ctx, user.ID, user.Permissions)
-	hash, err := auth.Au.HashSHA256(refresh)
+	access, refresh, err := c.au.GenPair(ctx, user.ID, user.Permissions)
+	hash, err := c.au.HashSHA256(refresh)
 	if err != nil {
 		return nil, err
 	}

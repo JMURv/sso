@@ -20,7 +20,7 @@ func (r *Repository) GetUserByOAuth2(ctx context.Context, provider, providerID s
 	var res md.User
 	err := r.conn.QueryRowContext(
 		ctx, `
-        SELECT u.id, u.email, u.name, u.avatar, u.address, u.phone 
+        SELECT u.id, u.email, u.name, u.avatar
         FROM users u
         JOIN oauth2_connections oc ON u.id = oc.user_id
         WHERE oc.provider = $1 AND oc.provider_id = $2`,
@@ -30,8 +30,6 @@ func (r *Repository) GetUserByOAuth2(ctx context.Context, provider, providerID s
 		&res.Email,
 		&res.Name,
 		&res.Avatar,
-		&res.Address,
-		&res.Phone,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

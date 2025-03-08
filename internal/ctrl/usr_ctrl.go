@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
@@ -20,8 +19,8 @@ type userRepo interface {
 	ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
-	CreateUser(ctx context.Context, req *md.User) (uuid.UUID, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error
+	CreateUser(ctx context.Context, req *dto.CreateUserRequest) (uuid.UUID, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -182,12 +181,12 @@ func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*md.User
 	return res, nil
 }
 
-func (c *Controller) CreateUser(ctx context.Context, u *md.User) (*dto.CreateUserResponse, error) {
+func (c *Controller) CreateUser(ctx context.Context, u *dto.CreateUserRequest) (*dto.CreateUserResponse, error) {
 	const op = "users.CreateUser.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	hash, err := auth.Au.Hash(u.Password)
+	hash, err := c.au.Hash(u.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -208,18 +207,13 @@ func (c *Controller) CreateUser(ctx context.Context, u *md.User) (*dto.CreateUse
 		return nil, err
 	}
 
-	u.ID = id
-	if bytes, err := json.Marshal(u); err == nil {
-		c.cache.Set(ctx, config.DefaultCacheTime, fmt.Sprintf(userCacheKey, id), bytes)
-	}
-
 	go c.cache.InvalidateKeysByPattern(ctx, userPattern)
 	return &dto.CreateUserResponse{
 		ID: id,
 	}, nil
 }
 
-func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error {
+func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error {
 	const op = "users.UpdateUser.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()

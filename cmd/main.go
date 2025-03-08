@@ -31,8 +31,7 @@ func mustRegisterLogger(mode string) {
 func main() {
 	defer func() {
 		if err := recover(); err != nil {
-			zap.L().Panic("panic occurred", zap.Any("error", err))
-			os.Exit(1)
+			zap.L().Panic("unexpected panic occurred", zap.Any("error", err))
 		}
 	}()
 
@@ -45,11 +44,11 @@ func main() {
 	go prometheus.New(conf.Server.Port + 5).Start(ctx)
 	go jaeger.Start(ctx, conf.ServiceName, conf)
 
-	auth.New(conf)
+	au := auth.New(conf)
 	cache := redis.New(conf)
 	repo := db.New(conf)
-	svc := ctrl.New(repo, cache, smtp.New(conf))
-	h := http.New(svc)
+	svc := ctrl.New(repo, au, cache, smtp.New(conf))
+	h := http.New(svc, au)
 
 	go h.Start(conf.Server.Port)
 
@@ -69,6 +68,4 @@ func main() {
 	if err := repo.Close(); err != nil {
 		zap.L().Warn("Error closing repository", zap.Error(err))
 	}
-
-	os.Exit(0)
 }

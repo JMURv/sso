@@ -3,13 +3,12 @@ package http
 import (
 	"errors"
 	"github.com/JMURv/sso/internal/auth"
-	wa "github.com/JMURv/sso/internal/auth/webauthn"
+	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	"github.com/JMURv/sso/internal/hdl/validation"
-	md "github.com/JMURv/sso/internal/models"
 	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
@@ -19,9 +18,9 @@ import (
 	"time"
 )
 
-func RegisterWebAuthnRoutes(mux *http.ServeMux, h *Handler) {
-	mux.HandleFunc("/api/auth/webauthn/register/start", mid.Apply(h.registrationStart, mid.Auth))
-	mux.HandleFunc("/api/auth/webauthn/register/finish", mid.Apply(h.registrationFinish, mid.Auth))
+func RegisterWebAuthnRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
+	mux.HandleFunc("/api/auth/webauthn/register/start", mid.Apply(h.registrationStart, mid.Auth(au)))
+	mux.HandleFunc("/api/auth/webauthn/register/finish", mid.Apply(h.registrationFinish, mid.Auth(au)))
 	mux.HandleFunc("/api/auth/webauthn/login/start", h.loginStart)
 	mux.HandleFunc("/api/auth/webauthn/login/finish", h.loginFinish)
 }
@@ -35,19 +34,20 @@ func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {
 		metrics.ObserveRequest(time.Since(s), c, op)
 	}()
 
-	uid, ok := r.Context().Value("uid").(uuid.UUID)
+	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		c = http.StatusUnauthorized
+		c = http.StatusInternalServerError
 		zap.L().Debug(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.String("op", op),
+			zap.Any("uid", ctx.Value("uid")),
 			zap.Error(hdl.ErrFailedToParseUUID),
 		)
 		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}
 
-	user, err := h.ctrl.GetUserForWA(ctx, uid)
+	res, err := h.ctrl.StartRegistration(ctx, uid)
 	if err != nil {
 		c = http.StatusInternalServerError
 		zap.L().Debug(
@@ -59,30 +59,7 @@ func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	options, sessionData, err := auth.Au.Wa.BeginRegistration(user)
-	if err != nil {
-		c = http.StatusInternalServerError
-		zap.L().Debug(
-			hdl.ErrInternal.Error(),
-			zap.String("op", op),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, c, err)
-		return
-	}
-
-	if err := h.ctrl.StoreWASession(ctx, wa.Register, uid, sessionData); err != nil {
-		c = http.StatusInternalServerError
-		zap.L().Debug(
-			hdl.ErrInternal.Error(),
-			zap.String("op", op),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, c, err)
-		return
-	}
-
-	utils.SuccessResponse(w, c, options)
+	utils.SuccessResponse(w, c, res)
 }
 
 func (h *Handler) registrationFinish(w http.ResponseWriter, r *http.Request) {
@@ -96,32 +73,26 @@ func (h *Handler) registrationFinish(w http.ResponseWriter, r *http.Request) {
 
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		utils.ErrResponse(w, http.StatusUnauthorized, hdl.ErrInternal)
+		c = http.StatusInternalServerError
+		zap.L().Debug(
+			hdl.ErrFailedToParseUUID.Error(),
+			zap.String("op", op),
+			zap.Any("uid", ctx.Value("uid")),
+			zap.Error(hdl.ErrFailedToParseUUID),
+		)
+		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}
 
-	user, err := h.ctrl.GetUserForWA(ctx, uid)
+	err := h.ctrl.FinishRegistration(ctx, uid, r)
 	if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
-	}
-
-	sessionData, err := h.ctrl.GetWASession(ctx, wa.Register, uid)
-	if err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, errors.New("invalid session"))
-		return
-	}
-
-	credential, err := auth.Au.Wa.FinishRegistration(user, *sessionData, r)
-	if err != nil {
-		zap.L().Error("failed to finish registration", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, http.StatusBadRequest, errors.New("invalid registration"))
-		return
-	}
-
-	if err := h.ctrl.StoreWACredential(ctx, uid, credential); err != nil {
-		zap.L().Error("failed to store credential", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+		c = http.StatusInternalServerError
+		zap.L().Debug(
+			hdl.ErrInternal.Error(),
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		utils.ErrResponse(w, c, err)
 		return
 	}
 
@@ -149,26 +120,19 @@ func (h *Handler) loginStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.ctrl.GetUserByEmailForWA(ctx, req.Email)
+	res, err := h.ctrl.BeginLogin(ctx, req.Email)
 	if err != nil {
-		utils.ErrResponse(w, http.StatusNotFound, errors.New("user not found"))
+		if errors.Is(err, ctrl.ErrNotFound) {
+			c = http.StatusNotFound
+			utils.ErrResponse(w, c, err)
+			return
+		}
+		c = http.StatusInternalServerError
+		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}
 
-	options, sessionData, err := auth.Au.Wa.BeginLogin(user)
-	if err != nil {
-		zap.L().Error("failed to begin login", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
-	}
-
-	if err := h.ctrl.StoreWASession(ctx, wa.Login, user.ID, sessionData); err != nil {
-		zap.L().Error("failed to store session", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
-	}
-
-	utils.SuccessResponse(w, c, options)
+	utils.SuccessResponse(w, c, res)
 }
 
 func (h *Handler) loginFinish(w http.ResponseWriter, r *http.Request) {
@@ -199,26 +163,7 @@ func (h *Handler) loginFinish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.ctrl.GetUserByEmailForWA(ctx, req.Email)
-	if err != nil {
-		utils.ErrResponse(w, http.StatusNotFound, errors.New("user not found"))
-		return
-	}
-
-	sessionData, err := h.ctrl.GetWASession(ctx, wa.Login, user.ID)
-	if err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, errors.New("invalid session"))
-		return
-	}
-
-	_, err = auth.Au.Wa.FinishLogin(user, *sessionData, r)
-	if err != nil {
-		zap.L().Error("failed to finish login", zap.String("op", op), zap.Error(err))
-		utils.ErrResponse(w, http.StatusUnauthorized, errors.New("authentication failed"))
-		return
-	}
-
-	res, err := h.ctrl.GenPair(ctx, &d, user.ID, []md.Permission{})
+	res, err := h.ctrl.FinishLogin(ctx, req.Email, d, r)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return

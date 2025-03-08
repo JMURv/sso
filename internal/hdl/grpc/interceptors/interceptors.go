@@ -2,7 +2,6 @@ package interceptors
 
 import (
 	"context"
-	"github.com/JMURv/sso/internal/auth"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -27,7 +26,7 @@ func AuthUnaryInterceptor() grpc.UnaryServerInterceptor {
 			tokenStr = tokenStr[7:]
 		}
 
-		claims, err := auth.Au.ParseClaims(tokenStr)
+		claims, err := c.au.ParseClaims(tokenStr)
 		if err != nil {
 			return handler(ctx, req)
 		}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/JMURv/sso/internal/config"
+	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/goccy/go-json"
@@ -19,8 +20,8 @@ const permPattern = "perms-*"
 type permRepo interface {
 	ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error)
 	GetPermission(ctx context.Context, id uint64) (*md.Permission, error)
-	CreatePerm(ctx context.Context, req *md.Permission) (uint64, error)
-	UpdatePerm(ctx context.Context, id uint64, req *md.Permission) error
+	CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error)
+	UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error
 	DeletePerm(ctx context.Context, id uint64) error
 }
 
@@ -89,7 +90,7 @@ func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permissi
 	return res, nil
 }
 
-func (c *Controller) CreatePerm(ctx context.Context, req *md.Permission) (uint64, error) {
+func (c *Controller) CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error) {
 	const op = "perms.CreatePerm.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -110,7 +111,7 @@ func (c *Controller) CreatePerm(ctx context.Context, req *md.Permission) (uint64
 	return res, nil
 }
 
-func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *md.Permission) error {
+func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error {
 	const op = "perms.UpdatePerm.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()

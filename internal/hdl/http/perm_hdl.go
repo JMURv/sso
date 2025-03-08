@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
@@ -19,7 +20,7 @@ import (
 	"time"
 )
 
-func RegisterPermRoutes(mux *http.ServeMux, h *Handler) {
+func RegisterPermRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 	mux.HandleFunc(
 		"/api/perm", func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -39,9 +40,9 @@ func RegisterPermRoutes(mux *http.ServeMux, h *Handler) {
 			case http.MethodGet:
 				h.getPerm(w, r)
 			case http.MethodPut:
-				mid.Apply(h.updatePerm, mid.Auth)(w, r)
+				mid.Apply(h.updatePerm, mid.Auth(au))(w, r)
 			case http.MethodDelete:
-				mid.Apply(h.deletePerm, mid.Auth)(w, r)
+				mid.Apply(h.deletePerm, mid.Auth(au))(w, r)
 			default:
 				utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 			}

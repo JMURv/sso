@@ -49,8 +49,6 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 			&user.Password,
 			&user.Email,
 			&user.Avatar,
-			&user.Address,
-			&user.Phone,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 			pq.Array(&perms),
@@ -114,8 +112,6 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int) (*dto.Pagina
 			&user.Password,
 			&user.Email,
 			&user.Avatar,
-			&user.Address,
-			&user.Phone,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 			pq.Array(&perms),
@@ -158,8 +154,6 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		&res.Password,
 		&res.Email,
 		&res.Avatar,
-		&res.Address,
-		&res.Phone,
 		&res.CreatedAt,
 		&res.UpdatedAt,
 		pq.Array(&perms),
@@ -192,8 +186,6 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 			&res.Password,
 			&res.Email,
 			&res.Avatar,
-			&res.Address,
-			&res.Phone,
 			&res.CreatedAt,
 			&res.UpdatedAt,
 		)
@@ -207,7 +199,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 	return res, nil
 }
 
-func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, error) {
+func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (uuid.UUID, error) {
 	const op = "users.CreateUser.repo"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -234,8 +226,6 @@ func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, e
 		req.Password,
 		req.Email,
 		req.Avatar,
-		req.Address,
-		req.Phone,
 	).Scan(&id)
 
 	if err != nil {
@@ -246,8 +236,14 @@ func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, e
 	}
 
 	if len(req.Permissions) > 0 {
-		for _, v := range req.Permissions {
-			if _, err := tx.ExecContext(ctx, userCreatePermQ, id, v.ID, v.Value); err != nil {
+		for i := 0; i < len(req.Permissions); i++ {
+			if _, err := tx.ExecContext(
+				ctx,
+				userCreatePermQ,
+				id,
+				req.Permissions[i].ID,
+				req.Permissions[i].Value,
+			); err != nil {
 				return uuid.Nil, err
 			}
 		}
@@ -259,7 +255,7 @@ func (r *Repository) CreateUser(ctx context.Context, req *md.User) (uuid.UUID, e
 	return id, nil
 }
 
-func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error {
+func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error {
 	const op = "users.UpdateUser.repo"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -285,8 +281,6 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User)
 		req.Password,
 		req.Email,
 		req.Avatar,
-		req.Address,
-		req.Phone,
 		id,
 	)
 	if err != nil {
@@ -306,11 +300,13 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *md.User)
 		return err
 	}
 
-	for _, v := range req.Permissions {
+	for i := 0; i < len(req.Permissions); i++ {
 		if _, err = tx.ExecContext(
 			ctx,
 			userCreatePermQ,
-			id, v.ID, v.Value,
+			id,
+			req.Permissions[i].ID,
+			req.Permissions[i].Value,
 		); err != nil {
 			return err
 		}

@@ -106,7 +106,7 @@ func (h *Handler) CreateUser(ctx context.Context, req *pb.SSO_CreateUserReq) (*p
 		return nil, status.Errorf(c, err.Error())
 	}
 
-	uid, access, refresh, err := h.ctrl.CreateUser(ctx, protoUser, req.File.Filename, req.File.File)
+	uid, err := h.ctrl.CreateUser(ctx, protoUser, req.File.Filename, req.File.File)
 	if err != nil && errors.Is(err, ctrl.ErrAlreadyExists) {
 		c = codes.AlreadyExists
 		return nil, status.Errorf(c, err.Error())

@@ -23,31 +23,33 @@ func Apply(h http.HandlerFunc, middleware ...func(http.Handler) http.Handler) ht
 	}
 }
 
-func Auth(next http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				utils.ErrResponse(w, http.StatusUnauthorized, ErrAuthHeaderIsMissing)
-				return
-			}
+func Auth(au auth.Core) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				header := r.Header.Get("Authorization")
+				if header == "" {
+					utils.ErrResponse(w, http.StatusUnauthorized, ErrAuthHeaderIsMissing)
+					return
+				}
 
-			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-			if tokenStr == authHeader {
-				utils.ErrResponse(w, http.StatusUnauthorized, ErrInvalidTokenFormat)
-				return
-			}
+				token := strings.TrimPrefix(header, "Bearer ")
+				if token == header {
+					utils.ErrResponse(w, http.StatusUnauthorized, ErrInvalidTokenFormat)
+					return
+				}
 
-			claims, err := auth.Au.ParseClaims(r.Context(), tokenStr)
-			if err != nil {
-				utils.ErrResponse(w, http.StatusUnauthorized, err)
-				return
-			}
+				claims, err := au.ParseClaims(r.Context(), token)
+				if err != nil {
+					utils.ErrResponse(w, http.StatusUnauthorized, err)
+					return
+				}
 
-			ctx := context.WithValue(r.Context(), "uid", claims.UID)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		},
-	)
+				ctx := context.WithValue(r.Context(), "uid", claims.UID)
+				next.ServeHTTP(w, r.WithContext(ctx))
+			},
+		)
+	}
 }
 
 func Device(next http.Handler) http.Handler {

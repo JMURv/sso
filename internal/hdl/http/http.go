@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/ctrl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
@@ -14,24 +15,26 @@ import (
 type Handler struct {
 	srv  *http.Server
 	ctrl ctrl.AppCtrl
+	au   auth.Core
 }
 
-func New(ctrl ctrl.AppCtrl) *Handler {
+func New(ctrl ctrl.AppCtrl, au auth.Core) *Handler {
 	return &Handler{
 		ctrl: ctrl,
+		au:   au,
 	}
 }
 
 func (h *Handler) Start(port int) {
 	mux := http.NewServeMux()
 
-	RegisterAuthRoutes(mux, h)
+	RegisterAuthRoutes(mux, h.au, h)
 	RegisterOAuth2Routes(mux, h)
 	RegisterOIDCRoutes(mux, h)
-	RegisterWebAuthnRoutes(mux, h)
+	RegisterWebAuthnRoutes(mux, h.au, h)
 
-	RegisterUserRoutes(mux, h)
-	RegisterPermRoutes(mux, h)
+	RegisterUserRoutes(mux, h.au, h)
+	RegisterPermRoutes(mux, h.au, h)
 	mux.HandleFunc(
 		"/health", func(w http.ResponseWriter, r *http.Request) {
 			utils.SuccessResponse(w, http.StatusOK, "OK")
@@ -52,6 +55,7 @@ func (h *Handler) Start(port int) {
 		"Starting HTTP server",
 		zap.String("addr", h.srv.Addr),
 	)
+
 	err := h.srv.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		zap.L().Debug("Server error", zap.Error(err))

@@ -13,12 +13,25 @@ type PaginatedUserResponse struct {
 	HasNextPage bool       `json:"has_next_page"`
 }
 
+type permission struct {
+	ID    uint64 `json:"id" validate:"required"`
+	Value bool   `json:"value" validate:"required"`
+}
+
 type CreateUserRequest struct {
-	Name        string       `json:"name"`
-	Password    string       `json:"password"`
-	Email       string       `json:"email"`
+	Name        string       `json:"name" validate:"required"`
+	Email       string       `json:"email" validate:"required,email"`
+	Password    string       `json:"password" validate:"required"`
 	Avatar      string       `json:"avatar"`
-	Permissions []Permission `json:"permissions"`
+	Permissions []permission `json:"permissions" validate:"required"`
+}
+
+type UpdateUserRequest struct {
+	Name        string       `json:"name" validate:"required"`
+	Email       string       `json:"email" validate:"required,email"`
+	Password    string       `json:"password" validate:"required"`
+	Avatar      string       `json:"avatar"`
+	Permissions []permission `json:"permissions" validate:"required"`
 }
 
 type CreateUserResponse struct {

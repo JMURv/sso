@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-func RegisterAuthRoutes(mux *http.ServeMux, h *Handler) {
+func RegisterAuthRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 	mux.HandleFunc("/api/auth/jwt", mid.Apply(h.authenticate, mid.Device))
 	mux.HandleFunc("/api/auth/jwt/parse", h.parseClaims)
 	mux.HandleFunc("/api/auth/jwt/refresh", mid.Apply(h.refresh, mid.Device))
@@ -29,7 +29,7 @@ func RegisterAuthRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("/api/auth/recovery/send", h.sendForgotPasswordEmail)
 	mux.HandleFunc("/api/auth/recovery/check", h.checkForgotPasswordEmail)
 
-	mux.HandleFunc("/api/auth/logout", mid.Apply(h.logout, mid.Auth))
+	mux.HandleFunc("/api/auth/logout", mid.Apply(h.logout, mid.Auth(au)))
 }
 
 func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {

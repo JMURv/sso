@@ -6,9 +6,11 @@ import (
 	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"io"
+	"net/http"
 	"time"
 )
 
@@ -58,6 +60,11 @@ type AppCtrl interface {
 	GetOIDCAuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error)
 	HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.TokenPair, error)
 
+	StartRegistration(ctx context.Context, uid uuid.UUID) (*protocol.CredentialCreation, error)
+	FinishRegistration(ctx context.Context, uid uuid.UUID, r *http.Request) error
+	BeginLogin(ctx context.Context, email string) (*protocol.CredentialAssertion, error)
+	FinishLogin(ctx context.Context, email string, d dto.DeviceRequest, r *http.Request) (dto.TokenPair, error)
+
 	GetUserForWA(ctx context.Context, uid uuid.UUID) (*md.WebauthnUser, error)
 	StoreWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID, req *webauthn.SessionData) error
 	GetWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID) (*webauthn.SessionData, error)
@@ -69,14 +76,14 @@ type AppCtrl interface {
 	ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
-	CreateUser(ctx context.Context, u *md.User) (*dto.CreateUserResponse, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, req *md.User) error
+	CreateUser(ctx context.Context, u *dto.CreateUserRequest) (*dto.CreateUserResponse, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
 	ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error)
 	GetPermission(ctx context.Context, id uint64) (*md.Permission, error)
-	CreatePerm(ctx context.Context, req *md.Permission) (uint64, error)
-	UpdatePerm(ctx context.Context, id uint64, req *md.Permission) error
+	CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error)
+	UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error
 	DeletePerm(ctx context.Context, id uint64) error
 }
 
@@ -98,13 +105,15 @@ type EmailService interface {
 
 type Controller struct {
 	repo  AppRepo
+	au    *auth.Auth
 	cache CacheService
 	smtp  EmailService
 }
 
-func New(repo AppRepo, cache CacheService, smtp EmailService) *Controller {
+func New(repo AppRepo, au *auth.Auth, cache CacheService, smtp EmailService) *Controller {
 	return &Controller{
 		repo:  repo,
+		au:    au,
 		cache: cache,
 		smtp:  smtp,
 	}

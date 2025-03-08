@@ -9,7 +9,10 @@ auth:
       clientID: "id"
       clientSecret: "secret"
       redirectURL: "http://localhost:8080/api/auth/google/callback"
-
+      scopes: [
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/userinfo.email"
+      ]
   oidc:
     google:
       clientID: "id"

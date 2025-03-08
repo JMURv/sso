@@ -30,7 +30,6 @@ func Start(ctx context.Context, serviceName string, conf config.Config) {
 	zap.L().Info(
 		"Jaeger has been started",
 		zap.String("local agent", cfg.Reporter.LocalAgentHostPort),
-		zap.String("collector", cfg.Reporter.CollectorEndpoint),
 	)
 	<-ctx.Done()
 

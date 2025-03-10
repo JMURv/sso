@@ -36,7 +36,7 @@ services:
       context: ../../
       dockerfile: build/docker/Dockerfile
     volumes:
-      - ../../configs/dev.config.yaml:/app/configs/local.config.yaml
+      - ../../configs/dev.config.yaml:/configs/local.config.yaml
     ports:
       - "${APP_PORT}:${APP_PORT}"
       - "${APP_METRICS_PORT}:${APP_METRICS_PORT}"

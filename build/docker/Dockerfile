@@ -1,23 +1,24 @@
 FROM golang:1.23.1-alpine3.20 as builder
 
+ENV GOOS=linux
+ENV GOARCH=amd64
+ENV CGO_ENABLED=0
+
 WORKDIR /app
 
 COPY go.mod go.sum ./
-
 RUN go mod download
 
 COPY . .
 
-RUN go build -o main ./cmd/main.go
+RUN go build -ldflags "-s -w -extldflags '-static'" -o ./main ./cmd/main.go
+RUN apk add upx
+RUN upx ./main
 
-FROM alpine:3.19
+FROM scratch
 
-WORKDIR /app
-
-COPY ./internal/repo/db/migration /app/internal/repo/db/migration
+COPY ./internal/repo/db/migration ./internal/repo/db/migration
 COPY --from=builder /app/go.mod ./go.mod
 COPY --from=builder /app/main ./
 
-EXPOSE 8080
-
-CMD ["./main"]
+ENTRYPOINT ["/main"]

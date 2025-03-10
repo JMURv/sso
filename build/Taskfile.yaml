@@ -9,6 +9,11 @@ tasks:
   dc-dev:
     desc: Run dev compose
     cmds:
+      - "docker compose --env-file {{.DEV_ENV_FILE}} -f compose/dc.dev.yaml up"
+
+  dc-dev-build:
+    desc: Run dev compose
+    cmds:
       - "docker compose --env-file {{.DEV_ENV_FILE}} -f compose/dc.dev.yaml up --build"
 
   dc-dev-down:

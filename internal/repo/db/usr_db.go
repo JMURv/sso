@@ -11,7 +11,6 @@ import (
 	"github.com/lib/pq"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"strings"
 )
 
 func (r *Repository) SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error) {
@@ -209,7 +208,7 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 		return uuid.Nil, err
 	}
 	defer func() {
-		if rbErr := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+		if rbErr := tx.Rollback(); rbErr != nil && !errors.Is(rbErr, sql.ErrTxDone) {
 			zap.L().Debug(
 				"Error while transaction rollback",
 				zap.String("op", op),
@@ -229,7 +228,7 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 	).Scan(&id)
 
 	if err != nil {
-		if strings.Contains(err.Error(), "unique constraint") {
+		if err, ok := err.(*pq.Error); ok && err.Code == "23505" {
 			return uuid.Nil, repo.ErrAlreadyExists
 		}
 		return uuid.Nil, err

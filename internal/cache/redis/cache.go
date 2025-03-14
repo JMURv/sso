@@ -149,6 +149,7 @@ func (c *Cache) Delete(ctx context.Context, key string) {
 }
 
 func (c *Cache) InvalidateKeysByPattern(ctx context.Context, pattern string) {
+	ctx = context.Background()
 	var cursor uint64
 	for {
 		var err error

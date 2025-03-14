@@ -23,7 +23,7 @@ type CreateUserRequest struct {
 	Email       string       `json:"email" validate:"required,email"`
 	Password    string       `json:"password" validate:"required"`
 	Avatar      string       `json:"avatar"`
-	Permissions []permission `json:"permissions" validate:"required"`
+	Permissions []permission `json:"permissions"`
 }
 
 type UpdateUserRequest struct {

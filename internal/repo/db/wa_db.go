@@ -2,8 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"github.com/JMURv/sso/internal/config"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -63,9 +61,6 @@ func (r *Repository) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]
 		userID,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return []webauthn.Credential{}, nil
-		}
 		zap.L().Error(
 			"Failed to query WebAuthn credentials",
 			zap.String("op", op),

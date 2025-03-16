@@ -25,6 +25,7 @@ func New(conf config.Config) *WAuthn {
 			RPID:          conf.Server.Domain,
 			RPOrigins: []string{
 				fmt.Sprintf("%v://%v", conf.Server.Scheme, conf.Server.Domain),
+				"http://localhost:3000",
 			},
 		},
 	)

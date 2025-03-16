@@ -12,6 +12,7 @@ import (
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
@@ -37,7 +38,7 @@ func (c *Controller) StartRegistration(ctx context.Context, uid uuid.UUID) (*pro
 		return nil, err
 	}
 
-	if err := c.StoreWASession(ctx, wa.Register, uid, sessionData); err != nil {
+	if err = c.StoreWASession(ctx, wa.Register, uid, sessionData); err != nil {
 		return nil, err
 	}
 
@@ -51,20 +52,24 @@ func (c *Controller) FinishRegistration(ctx context.Context, uid uuid.UUID, r *h
 
 	user, err := c.GetUserForWA(ctx, uid)
 	if err != nil {
+		zap.L().Debug("Failed to get user", zap.String("op", op), zap.Error(err))
 		return err
 	}
 
 	sessionData, err := c.GetWASession(ctx, wa.Register, uid)
 	if err != nil {
+		zap.L().Debug("Failed to get WASession", zap.String("op", op), zap.Error(err))
 		return err
 	}
 
 	credential, err := c.au.Wa.FinishRegistration(user, *sessionData, r)
 	if err != nil {
+		zap.L().Debug("Failed to finish registration", zap.String("op", op), zap.Error(err))
 		return err
 	}
 
-	if err := c.StoreWACredential(ctx, uid, credential); err != nil {
+	if err = c.StoreWACredential(ctx, uid, credential); err != nil {
+		zap.L().Debug("Failed to store credential", zap.String("op", op), zap.Error(err))
 		return err
 	}
 
@@ -81,16 +86,18 @@ func (c *Controller) BeginLogin(ctx context.Context, email string) (*protocol.Cr
 		if errors.Is(err, repo.ErrNotFound) {
 			return nil, ErrNotFound
 		}
-		return nil, ErrNotFound
+		return nil, err
 	}
 
 	options, sessionData, err := c.au.Wa.BeginLogin(user)
 	if err != nil {
+		zap.L().Error("Failed to begin login", zap.String("op", op), zap.Error(err))
 		return nil, err
 	}
 
 	err = c.StoreWASession(ctx, wa.Login, user.ID, sessionData)
 	if err != nil {
+		zap.L().Error("Failed to StoreWASession", zap.String("op", op), zap.Error(err))
 		return nil, err
 	}
 
@@ -162,7 +169,12 @@ func (c *Controller) StoreWASession(ctx context.Context, sessionType wa.SessionT
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	c.cache.Set(ctx, config.MinCacheTime, fmt.Sprintf(webauthnSessionKey, sessionType, userID), req)
+	d, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	c.cache.Set(ctx, config.MinCacheTime, fmt.Sprintf(webauthnSessionKey, sessionType, userID), d)
 	return nil
 }
 
@@ -229,6 +241,9 @@ func (c *Controller) GetUserByEmailForWA(ctx context.Context, email string) (*md
 
 	credentials, err := c.repo.GetWACredentials(ctx, user.ID)
 	if err != nil {
+		if errors.Is(err, repo.ErrNotFound) {
+			return nil, ErrNotFound
+		}
 		zap.L().Error(
 			"Failed to get credentials",
 			zap.String("op", op),

@@ -49,6 +49,12 @@ func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.ctrl.StartRegistration(ctx, uid)
 	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			c = http.StatusNotFound
+			utils.ErrResponse(w, c, err)
+			return
+		}
+
 		c = http.StatusInternalServerError
 		zap.L().Debug(
 			hdl.ErrInternal.Error(),
@@ -87,11 +93,6 @@ func (h *Handler) registrationFinish(w http.ResponseWriter, r *http.Request) {
 	err := h.ctrl.FinishRegistration(ctx, uid, r)
 	if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug(
-			hdl.ErrInternal.Error(),
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		utils.ErrResponse(w, c, err)
 		return
 	}

@@ -49,12 +49,6 @@ func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.ctrl.StartRegistration(ctx, uid)
 	if err != nil {
-		if errors.Is(err, ctrl.ErrNotFound) {
-			c = http.StatusNotFound
-			utils.ErrResponse(w, c, err)
-			return
-		}
-
 		c = http.StatusInternalServerError
 		zap.L().Debug(
 			hdl.ErrInternal.Error(),

@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	g_oauth2 "github.com/JMURv/sso/internal/auth/providers/oauth2/google"
 	g_oidc "github.com/JMURv/sso/internal/auth/providers/oidc/google"
@@ -12,6 +13,7 @@ import (
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"strconv"
 	"strings"
@@ -63,6 +65,8 @@ func New(conf config.Config) *Provider {
 	}
 }
 
+var ErrUnknownProvider = errors.New("unknown provider")
+
 func (p *Provider) Get(ctx context.Context, provider Providers, flow Flow) (OAuth2Provider, error) {
 	const op = "providers.Get.auth"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
@@ -75,11 +79,16 @@ func (p *Provider) Get(ctx context.Context, provider Providers, flow Flow) (OAut
 		}
 		return p.OAuth2Providers.Google, nil
 	default:
-		return nil, fmt.Errorf("unknown provider: %s", provider)
+		zap.L().Error(
+			"Unknown provider",
+			zap.String("op", op),
+			zap.Any("provider", provider),
+		)
+		return nil, ErrUnknownProvider
 	}
 }
 
-func (p *Provider) GenerateSignedState() (string, error) {
+func (p *Provider) GenerateSignedState() string {
 	rawState := uuid.New().String()
 	timestamp := fmt.Sprintf("%d", time.Now().Unix())
 	data := rawState + "|" + timestamp
@@ -89,23 +98,42 @@ func (p *Provider) GenerateSignedState() (string, error) {
 	signature := h.Sum(nil)
 
 	signedState := base64.URLEncoding.EncodeToString([]byte(data)) + "." + base64.URLEncoding.EncodeToString(signature)
-	return signedState, nil
+	return signedState
 }
 
-func (p *Provider) ValidateSignedState(signedState string, maxAge time.Duration) (bool, error) {
+var ErrInvalidState = errors.New("invalid oauth state")
+var ErrInvalidStateFormat = errors.New("invalid oauth state format")
+var ErrInvalidSignature = errors.New("invalid signature")
+var ErrInvalidDataFormat = errors.New("invalid data format")
+var ErrStateExpired = errors.New("state expired")
+
+func (p *Provider) ValidateSignedState(signedState string, maxAge time.Duration) error {
 	parts := strings.Split(signedState, ".")
 	if len(parts) != 2 {
-		return false, fmt.Errorf("invalid state format")
+		zap.L().Debug(
+			"Invalid state format",
+			zap.String("state", signedState),
+			zap.Duration("maxAge", maxAge),
+		)
+		return ErrInvalidStateFormat
 	}
 
 	data, err := base64.URLEncoding.DecodeString(parts[0])
 	if err != nil {
-		return false, err
+		zap.L().Error(
+			"Failed to decode string",
+			zap.Any("parts", parts),
+		)
+		return err
 	}
 
 	expectedSignature, err := base64.URLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return false, err
+		zap.L().Error(
+			"Failed to decode string",
+			zap.Any("parts", parts),
+		)
+		return err
 	}
 
 	h := hmac.New(sha256.New, p.secret)
@@ -113,22 +141,40 @@ func (p *Provider) ValidateSignedState(signedState string, maxAge time.Duration)
 	actualSignature := h.Sum(nil)
 
 	if !hmac.Equal(expectedSignature, actualSignature) {
-		return false, fmt.Errorf("invalid signature")
+		zap.L().Debug(
+			"Invalid signature",
+			zap.ByteString("exp", expectedSignature),
+			zap.ByteString("actual", actualSignature),
+		)
+		return ErrInvalidSignature
 	}
 
 	dataParts := strings.Split(string(data), "|")
 	if len(dataParts) != 2 {
-		return false, fmt.Errorf("invalid data format")
+		zap.L().Debug(
+			"Invalid data format",
+			zap.Any("data", dataParts),
+		)
+		return ErrInvalidDataFormat
 	}
 
 	timestamp, err := strconv.ParseInt(dataParts[1], 10, 64)
 	if err != nil {
-		return false, err
+		zap.L().Error(
+			"failed to parse timestamp",
+			zap.Any("data", dataParts[1]),
+		)
+		return err
 	}
 
 	if time.Since(time.Unix(timestamp, 0)) > maxAge {
-		return false, fmt.Errorf("state expired")
+		zap.L().Debug(
+			"state has been expired",
+			zap.Int64("tm", timestamp),
+			zap.Duration("age", maxAge),
+		)
+		return ErrStateExpired
 	}
 
-	return true, nil
+	return nil
 }

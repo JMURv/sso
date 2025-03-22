@@ -32,11 +32,11 @@ func (r *Repository) CreateToken(
 		return err
 	}
 	defer func() {
-		if rbErr := tx.Rollback(); rbErr != nil && !errors.Is(rbErr, sql.ErrTxDone) {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			zap.L().Debug(
-				"Error while transaction rollback",
+				"error while transaction rollback",
 				zap.String("op", op),
-				zap.Error(rbErr),
+				zap.Error(err),
 			)
 		}
 	}()
@@ -159,7 +159,7 @@ func (r *Repository) GetUserDevices(ctx context.Context, userID uuid.UUID) ([]md
 	defer func(rows *sql.Rows) {
 		if err := rows.Close(); err != nil {
 			zap.L().Debug(
-				"Failed to close rows",
+				"failed to close rows",
 				zap.String("op", op),
 				zap.Error(err),
 			)

@@ -3,11 +3,15 @@ package middleware
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
+	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
+	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
+	"time"
 )
 
 var ErrAuthHeaderIsMissing = errors.New("authorization header is missing")
@@ -96,19 +100,24 @@ func (lrw *loggingResponseWriter) WriteHeader(code int) {
 	lrw.ResponseWriter.WriteHeader(code)
 }
 
-func Logging(next http.Handler) http.Handler {
+func LogTraceMetrics(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
+			s := time.Now()
+			op := fmt.Sprintf("%s %s", r.Method, r.RequestURI)
+			span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
+			defer span.Finish()
+
 			lrw := NewLoggingResponseWriter(w)
-			next.ServeHTTP(lrw, r)
+			next.ServeHTTP(lrw, r.WithContext(ctx))
+			metrics.ObserveRequest(time.Since(s), lrw.statusCode, op)
 
 			zap.L().Info(
-				"Request",
+				"-->",
 				zap.String("method", r.Method),
 				zap.String("uri", r.RequestURI),
 				zap.Int("status", lrw.statusCode),
 			)
-
 		},
 	)
 }

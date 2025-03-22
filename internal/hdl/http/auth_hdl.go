@@ -33,122 +33,90 @@ func RegisterAuthRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 }
 
 func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.authenticate.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
 	if r.Method != http.MethodPost {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
+		utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 		return
 	}
 
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, hdl.ErrNoDeviceInfo)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
 		return
 	}
 
 	req := &dto.EmailAndPasswordRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err := validation.V.Struct(req); err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
-	res, err := h.ctrl.Authenticate(ctx, &d, req)
+	res, err := h.ctrl.Authenticate(r.Context(), &d, req)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil && errors.Is(err, auth.ErrInvalidCredentials) {
-		c = http.StatusUnauthorized
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusUnauthorized, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, c, res)
+	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
 func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.refresh.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
 	if r.Method != http.MethodPost {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
+		utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 		return
 	}
 
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, hdl.ErrNoDeviceInfo)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
 		return
 	}
 
 	req := &dto.RefreshRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err = validation.V.Struct(req); err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
-	res, err := h.ctrl.Refresh(ctx, &d, req)
+	res, err := h.ctrl.Refresh(r.Context(), &d, req)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil && errors.Is(err, auth.ErrTokenRevoked) {
-		c = http.StatusUnauthorized
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusUnauthorized, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, c, res)
+	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
 func (h *Handler) parseClaims(w http.ResponseWriter, r *http.Request) {
@@ -217,7 +185,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
 		c = http.StatusInternalServerError
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToGetUUID.Error(),
 			zap.String("op", op),
 			zap.Any("uid", ctx.Value("uid")),

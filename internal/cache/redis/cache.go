@@ -87,7 +87,7 @@ func (c *Cache) GetInt(ctx context.Context, key string) (int, error) {
 		return 0, cache.ErrNotFoundInCache
 	} else if err != nil {
 		span.SetTag("error", true)
-		zap.L().Debug(
+		zap.L().Error(
 			"failed to get from cache",
 			zap.String("op", op), zap.String("key", key),
 			zap.Error(err),

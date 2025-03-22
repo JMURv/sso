@@ -29,7 +29,7 @@ func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*md.P
 	defer func(rows *sql.Rows) {
 		if err := rows.Close(); err != nil {
 			zap.L().Debug(
-				"Failed to close rows",
+				"failed to close rows",
 				zap.String("op", op),
 				zap.Error(err),
 			)

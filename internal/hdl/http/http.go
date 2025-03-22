@@ -41,7 +41,7 @@ func (h *Handler) Start(port int) {
 		},
 	)
 
-	handler := mid.Logging(mux)
+	handler := mid.LogTraceMetrics(mux)
 	handler = mid.RecoverPanic(handler)
 	h.srv = &http.Server{
 		Handler:      handler,
@@ -58,7 +58,7 @@ func (h *Handler) Start(port int) {
 
 	err := h.srv.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
-		zap.L().Debug("Server error", zap.Error(err))
+		zap.L().Error("Server error", zap.Error(err))
 	}
 }
 

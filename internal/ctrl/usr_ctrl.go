@@ -39,7 +39,7 @@ func (c *Controller) IsUserExist(ctx context.Context, email string) (*dto.Exists
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		return res, nil
 	} else if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			"failed to get user",
 			zap.String("op", op),
 			zap.Error(err),
@@ -64,7 +64,7 @@ func (c *Controller) SearchUser(ctx context.Context, query string, page, size in
 
 	res, err := c.repo.SearchUser(ctx, query, page, size)
 	if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			"failed to search users",
 			zap.String("op", op),
 			zap.String("query", query),
@@ -196,13 +196,15 @@ func (c *Controller) CreateUser(ctx context.Context, u *dto.CreateUserRequest) (
 	if err != nil && errors.Is(err, repo.ErrAlreadyExists) {
 		zap.L().Debug(
 			"user already exists",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
 		return nil, ErrAlreadyExists
 	} else if err != nil {
 		zap.L().Debug(
 			"failed to create user",
-			zap.Error(err), zap.String("op", op),
+			zap.String("op", op),
+			zap.Error(err),
 		)
 		return nil, err
 	}

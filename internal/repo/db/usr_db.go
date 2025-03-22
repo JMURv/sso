@@ -31,7 +31,7 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 	defer func(rows *sql.Rows) {
 		if err := rows.Close(); err != nil {
 			zap.L().Debug(
-				"Failed to close rows",
+				"failed to close rows",
 				zap.String("op", op),
 				zap.Error(err),
 			)
@@ -94,7 +94,7 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int) (*dto.Pagina
 	defer func(rows *sql.Rows) {
 		if err := rows.Close(); err != nil {
 			zap.L().Debug(
-				"Failed to close rows",
+				"failed to close rows",
 				zap.String("op", op),
 				zap.Error(err),
 			)
@@ -208,11 +208,11 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 		return uuid.Nil, err
 	}
 	defer func() {
-		if rbErr := tx.Rollback(); rbErr != nil && !errors.Is(rbErr, sql.ErrTxDone) {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			zap.L().Debug(
-				"Error while transaction rollback",
+				"error while transaction rollback",
 				zap.String("op", op),
-				zap.Error(rbErr),
+				zap.Error(err),
 			)
 		}
 	}()
@@ -264,11 +264,11 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 		return err
 	}
 	defer func() {
-		if rbErr := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			zap.L().Debug(
-				"Error while transaction rollback",
+				"error while transaction rollback",
 				zap.String("op", op),
-				zap.Error(rbErr),
+				zap.Error(err),
 			)
 		}
 	}()

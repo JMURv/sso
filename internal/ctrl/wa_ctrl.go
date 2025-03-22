@@ -35,6 +35,13 @@ func (c *Controller) StartRegistration(ctx context.Context, uid uuid.UUID) (*pro
 
 	res, sessionData, err := c.au.Wa.BeginRegistration(user)
 	if err != nil {
+		zap.L().Error(
+			"Failed to begin registration",
+			zap.String("op", op),
+			zap.String("uid", uid.String()),
+			zap.Any("user", user),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
@@ -52,24 +59,28 @@ func (c *Controller) FinishRegistration(ctx context.Context, uid uuid.UUID, r *h
 
 	user, err := c.GetUserForWA(ctx, uid)
 	if err != nil {
-		zap.L().Debug("Failed to get user", zap.String("op", op), zap.Error(err))
 		return err
 	}
 
 	sessionData, err := c.GetWASession(ctx, wa.Register, uid)
 	if err != nil {
-		zap.L().Debug("Failed to get WASession", zap.String("op", op), zap.Error(err))
 		return err
 	}
 
 	credential, err := c.au.Wa.FinishRegistration(user, *sessionData, r)
 	if err != nil {
-		zap.L().Debug("Failed to finish registration", zap.String("op", op), zap.Error(err))
+		zap.L().Error(
+			"failed to finish registration",
+			zap.String("op", op),
+			zap.String("uid", uid.String()),
+			zap.Any("user", user),
+			zap.Any("sess", sessionData),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if err = c.StoreWACredential(ctx, uid, credential); err != nil {
-		zap.L().Debug("Failed to store credential", zap.String("op", op), zap.Error(err))
 		return err
 	}
 
@@ -91,16 +102,19 @@ func (c *Controller) BeginLogin(ctx context.Context, email string) (*protocol.Cr
 
 	options, sessionData, err := c.au.Wa.BeginLogin(user)
 	if err != nil {
-		zap.L().Error("Failed to begin login", zap.String("op", op), zap.Error(err))
+		zap.L().Error(
+			"failed to begin login",
+			zap.String("op", op),
+			zap.String("email", email),
+			zap.Any("user", user),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
-	err = c.StoreWASession(ctx, wa.Login, user.ID, sessionData)
-	if err != nil {
-		zap.L().Error("Failed to StoreWASession", zap.String("op", op), zap.Error(err))
+	if err = c.StoreWASession(ctx, wa.Login, user.ID, sessionData); err != nil {
 		return nil, err
 	}
-
 	return options, nil
 }
 
@@ -110,12 +124,13 @@ func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.Device
 	defer span.Finish()
 
 	var res dto.TokenPair
+
 	user, err := c.GetUserByEmailForWA(ctx, email)
 	if err != nil {
 		if errors.Is(err, repo.ErrNotFound) {
 			return res, ErrNotFound
 		}
-		return res, ErrNotFound
+		return res, err
 	}
 
 	sess, err := c.GetWASession(ctx, wa.Login, user.ID)
@@ -125,6 +140,13 @@ func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.Device
 
 	_, err = c.au.Wa.FinishLogin(user, *sess, r)
 	if err != nil {
+		zap.L().Error(
+			"Failed to finish login",
+			zap.String("op", op),
+			zap.String("email", email),
+			zap.Any("user", user),
+			zap.Any("sess", sess),
+		)
 		return res, err
 	}
 
@@ -144,16 +166,30 @@ func (c *Controller) GetUserForWA(ctx context.Context, uid uuid.UUID) (*md.Webau
 	user, err := c.repo.GetUserByID(ctx, uid)
 	if err != nil {
 		if errors.Is(err, repo.ErrNotFound) {
-			zap.L().Debug("User not found", zap.String("op", op), zap.Any("uid", uid))
+			zap.L().Debug(
+				"user not found",
+				zap.String("op", op),
+				zap.Any("uid", uid),
+			)
 			return nil, ErrNotFound
 		}
-		zap.L().Error("Failed to get user", zap.String("op", op), zap.Error(err))
+		zap.L().Error(
+			"failed to get user",
+			zap.String("op", op),
+			zap.Any("uid", uid),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
 	credentials, err := c.repo.GetWACredentials(ctx, uid)
 	if err != nil {
-		zap.L().Error("Failed to get credentials", zap.String("op", op), zap.Error(err))
+		zap.L().Error(
+			"failed to get credentials",
+			zap.String("op", op),
+			zap.Any("uid", uid),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
@@ -171,6 +207,12 @@ func (c *Controller) StoreWASession(ctx context.Context, sessionType wa.SessionT
 
 	d, err := json.Marshal(req)
 	if err != nil {
+		zap.L().Error(
+			"failed to marshall req",
+			zap.Any("sessType", sessionType),
+			zap.String("uid", userID.String()),
+			zap.Any("req", req),
+		)
 		return err
 	}
 
@@ -189,7 +231,11 @@ func (c *Controller) GetWASession(ctx context.Context, sessionType wa.SessionTyp
 		if errors.Is(err, cache.ErrNotFoundInCache) {
 			return nil, ErrNotFound
 		}
-		zap.L().Error("Failed to get session", zap.String("op", op), zap.Error(err))
+		zap.L().Error(
+			"failed to get session",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 	return &session, nil
@@ -209,7 +255,11 @@ func (c *Controller) StoreWACredential(ctx context.Context, userID uuid.UUID, cr
 			UserID:          userID,
 		},
 	); err != nil {
-		zap.L().Error("Failed to store credential", zap.String("op", op), zap.Error(err))
+		zap.L().Error(
+			"failed to create webAuthn credential",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
 	return nil
@@ -231,7 +281,7 @@ func (c *Controller) GetUserByEmailForWA(ctx context.Context, email string) (*md
 			return nil, ErrNotFound
 		}
 		zap.L().Error(
-			"Failed to get user",
+			"failed to get user",
 			zap.String("op", op),
 			zap.String("email", email),
 			zap.Error(err),
@@ -245,7 +295,7 @@ func (c *Controller) GetUserByEmailForWA(ctx context.Context, email string) (*md
 			return nil, ErrNotFound
 		}
 		zap.L().Error(
-			"Failed to get credentials",
+			"failed to get webAuthn credentials",
 			zap.String("op", op),
 			zap.Error(err),
 		)

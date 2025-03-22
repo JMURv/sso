@@ -75,7 +75,7 @@ func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permissi
 		)
 		return nil, ErrNotFound
 	} else if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			"failed to get permission",
 			zap.String("op", op),
 			zap.Uint64("id", id),
@@ -97,9 +97,14 @@ func (c *Controller) CreatePerm(ctx context.Context, req *dto.CreatePermissionRe
 
 	res, err := c.repo.CreatePerm(ctx, req)
 	if err != nil && errors.Is(err, repo.ErrAlreadyExists) {
+		zap.L().Debug(
+			"permission already exists",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return 0, ErrAlreadyExists
 	} else if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			"failed to create permission",
 			zap.String("op", op),
 			zap.Error(err),
@@ -126,7 +131,7 @@ func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *dto.UpdateP
 		)
 		return ErrNotFound
 	} else if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			"failed to update permission",
 			zap.String("op", op),
 			zap.Uint64("id", id),

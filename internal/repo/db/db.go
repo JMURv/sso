@@ -24,15 +24,15 @@ func New(conf conf.Config) *Repository {
 		),
 	)
 	if err != nil {
-		zap.L().Fatal("Failed to connect to the database", zap.Error(err))
+		zap.L().Fatal("failed to connect to the database", zap.Error(err))
 	}
 
 	if err = conn.Ping(); err != nil {
-		zap.L().Fatal("Failed to ping the database", zap.Error(err))
+		zap.L().Fatal("failed to ping the database", zap.Error(err))
 	}
 
 	if err = applyMigrations(conn, conf); err != nil {
-		zap.L().Fatal("Failed to apply migrations", zap.Error(err))
+		zap.L().Fatal("failed to apply migrations", zap.Error(err))
 	}
 
 	mustPrecreate(conn)

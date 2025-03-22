@@ -2,14 +2,20 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/dto"
+	"github.com/go-playground/validator/v10"
 	"net/http"
 	"time"
 )
 
 type ErrorResponse struct {
 	Error string `json:"error"`
+}
+
+type ErrorsResponse struct {
+	Errors []string `json:"errors"`
 }
 
 func StatusResponse(w http.ResponseWriter, statusCode int) {
@@ -26,9 +32,20 @@ func SuccessResponse(w http.ResponseWriter, statusCode int, data any) {
 func ErrResponse(w http.ResponseWriter, statusCode int, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
+
+	msgs := make([]string, 0, 1)
+	if errs, ok := err.(validator.ValidationErrors); ok {
+		msgs = make([]string, 0, len(errs))
+		for _, fe := range errs {
+			msgs = append(msgs, fmt.Sprintf("%s failed on the %s rule", fe.Field(), fe.Tag()))
+		}
+	} else {
+		msgs = append(msgs, err.Error())
+	}
+
 	json.NewEncoder(w).Encode(
-		&ErrorResponse{
-			Error: err.Error(),
+		&ErrorsResponse{
+			Errors: msgs,
 		},
 	)
 }

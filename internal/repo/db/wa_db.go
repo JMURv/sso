@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"github.com/JMURv/sso/internal/config"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -61,14 +62,17 @@ func (r *Repository) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]
 		userID,
 	)
 	if err != nil {
-		zap.L().Error(
-			"Failed to query WebAuthn credentials",
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		if err := rows.Close(); err != nil {
+			zap.L().Debug(
+				"failed to close rows",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+		}
+	}(rows)
 
 	creds := make([]webauthn.Credential, 0, config.DefaultSize)
 	for rows.Next() {
@@ -81,20 +85,10 @@ func (r *Repository) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]
 		)
 
 		if err := rows.Scan(&id, &publicKey, &attestationType, &authJSON); err != nil {
-			zap.L().Error(
-				"Failed to scan WebAuthn credential",
-				zap.String("op", op),
-				zap.Error(err),
-			)
 			return nil, err
 		}
 
 		if err := json.Unmarshal(authJSON, &authenticator); err != nil {
-			zap.L().Error(
-				"Failed to unmarshal authenticator",
-				zap.String("op", op),
-				zap.Error(err),
-			)
 			return nil, err
 		}
 
@@ -109,11 +103,6 @@ func (r *Repository) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]
 	}
 
 	if err := rows.Err(); err != nil {
-		zap.L().Error(
-			"Row iteration error",
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 

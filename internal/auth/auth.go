@@ -112,10 +112,22 @@ func (a *Auth) ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
 	)
 
 	if err != nil {
+		zap.L().Error(
+			"Failed to parse claims",
+			zap.String("op", op),
+			zap.String("token", tokenStr),
+			zap.String("alg", token.Method.Alg()),
+			zap.Error(err),
+		)
 		return claims, err
 	}
 
 	if !token.Valid {
+		zap.L().Debug(
+			"Token is invalid",
+			zap.String("op", op),
+			zap.String("token", tokenStr),
+		)
 		return claims, ErrInvalidToken
 	}
 
@@ -129,11 +141,23 @@ func (a *Auth) GenPair(ctx context.Context, uid uuid.UUID, perms []md.Permission
 
 	access, err := a.NewToken(ctx, uid, perms, AccessTokenDuration)
 	if err != nil {
+		zap.L().Error(
+			"Failed to generate token pair",
+			zap.String("uid", uid.String()),
+			zap.Any("perms", perms),
+			zap.Error(err),
+		)
 		return "", "", err
 	}
 
 	refresh, err := a.NewToken(ctx, uid, perms, RefreshTokenDuration)
 	if err != nil {
+		zap.L().Error(
+			"Failed to generate token pair",
+			zap.String("uid", uid.String()),
+			zap.Any("perms", perms),
+			zap.Error(err),
+		)
 		return "", "", err
 	}
 

@@ -38,13 +38,13 @@ func applyMigrations(db *sql.DB, conf conf.Config) error {
 	}
 
 	if err = m.Up(); err != nil && errors.Is(err, migrate.ErrNoChange) {
-		zap.L().Info("No migrations to apply")
+		zap.L().Info("no migrations to apply")
 		return nil
 	} else if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return err
 	}
 
-	zap.L().Info("Applied migrations")
+	zap.L().Info("applied migrations")
 	return nil
 }
 
@@ -147,8 +147,8 @@ func mustPrecreate(db *sql.DB) {
 			}
 		}
 
-		zap.L().Debug("Users and permissions have been created")
+		zap.L().Info("users and permissions have been created")
 	} else {
-		zap.L().Debug("Users and permissions already exist")
+		zap.L().Info("users and permissions already exist")
 	}
 }

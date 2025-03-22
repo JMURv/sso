@@ -6,7 +6,6 @@ import (
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/opentracing/opentracing-go"
-	"go.uber.org/zap"
 	"net/http"
 	"strings"
 	"time"
@@ -85,11 +84,6 @@ func (h *Handler) handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	res, err := h.ctrl.HandleOAuth2Callback(ctx, &d, provider, code, state)
 	if err != nil {
 		c = http.StatusInternalServerError
-		zap.L().Debug(
-			hdl.ErrInternal.Error(),
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		utils.ErrResponse(w, c, hdl.ErrInternal)
 		return
 	}

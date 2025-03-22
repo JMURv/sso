@@ -1,43 +1,35 @@
 package http
 
 import (
-	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
-	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
-	"github.com/opentracing/opentracing-go"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func RegisterOIDCRoutes(mux *http.ServeMux, h *Handler) {
-	mux.HandleFunc("/api/auth/oidc/{provider}/start", h.startOIDC)
-	mux.HandleFunc("/api/auth/oidc/{provider}/callback", mid.Apply(h.handleOIDCCallback, mid.Device))
+	mux.HandleFunc("/api/auth/oidc/{provider}/start", mid.Apply(
+		h.startOIDC,
+		mid.AllowedMethods(http.MethodGet),
+	))
+	mux.HandleFunc("/api/auth/oidc/{provider}/callback", mid.Apply(
+		h.handleOIDCCallback,
+		mid.AllowedMethods(http.MethodGet),
+		mid.Device,
+	))
 }
 
 func (h *Handler) startOIDC(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.startOIDC.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 6 {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, ErrInvalidURL)
+		utils.ErrResponse(w, http.StatusBadRequest, ErrInvalidURL)
 		return
 	}
-	provider := parts[4]
 
-	res, err := h.ctrl.GetOIDCAuthURL(ctx, provider)
+	res, err := h.ctrl.GetOIDCAuthURL(r.Context(), parts[4])
 	if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -45,61 +37,26 @@ func (h *Handler) startOIDC(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.handleOIDCCallback.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 6 {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, ErrInvalidURL)
+		utils.ErrResponse(w, http.StatusBadRequest, ErrInvalidURL)
 		return
 	}
-	provider := parts[4]
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, hdl.ErrNoDeviceInfo)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
 		return
 	}
 
-	res, err := h.ctrl.HandleOIDCCallback(ctx, &d, provider, code, state)
+	res, err := h.ctrl.HandleOIDCCallback(r.Context(), &d, parts[4], code, state)
 	if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	http.SetCookie(
-		w, &http.Cookie{
-			Name:     "access",
-			Value:    res.Access,
-			Expires:  time.Now().Add(auth.AccessTokenDuration),
-			HttpOnly: true,
-			Secure:   true,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-		},
-	)
-
-	http.SetCookie(
-		w, &http.Cookie{
-			Name:     "refresh",
-			Value:    res.Refresh,
-			Expires:  time.Now().Add(auth.RefreshTokenDuration),
-			HttpOnly: true,
-			Secure:   true,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-		},
-	)
-
-	utils.SuccessResponse(w, c, res)
+	utils.SetAuthCookies(w, res.Access, res.Refresh)
+	utils.SuccessResponse(w, http.StatusOK, res)
 }

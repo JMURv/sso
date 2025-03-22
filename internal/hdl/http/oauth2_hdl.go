@@ -4,45 +4,33 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
-	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
-	"github.com/opentracing/opentracing-go"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func RegisterOAuth2Routes(mux *http.ServeMux, h *Handler) {
-	mux.HandleFunc("/api/auth/oauth2/{provider}/start", h.startOAuth2)
-	mux.HandleFunc("/api/auth/oauth2/{provider}/callback", mid.Apply(h.handleOAuth2Callback, mid.Device))
+	mux.HandleFunc("/api/auth/oauth2/{provider}/start", mid.Apply(
+		h.startOAuth2,
+		mid.AllowedMethods(http.MethodGet),
+	))
+	mux.HandleFunc("/api/auth/oauth2/{provider}/callback", mid.Apply(
+		h.handleOAuth2Callback,
+		mid.AllowedMethods(http.MethodGet),
+		mid.Device,
+	))
 }
 
 func (h *Handler) startOAuth2(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.startOAuth2.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	if r.Method != http.MethodGet {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
-		return
-	}
-
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 6 {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, ErrInvalidURL)
+		utils.ErrResponse(w, http.StatusBadRequest, ErrInvalidURL)
 		return
 	}
 	provider := parts[4]
 
-	res, err := h.ctrl.GetOAuth2AuthURL(ctx, provider)
+	res, err := h.ctrl.GetOAuth2AuthURL(r.Context(), provider)
 	if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -50,44 +38,26 @@ func (h *Handler) startOAuth2(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.handleOAuth2Callback.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	if r.Method != http.MethodGet {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
-		return
-	}
-
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 6 {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, ErrInvalidURL)
+		utils.ErrResponse(w, http.StatusBadRequest, ErrInvalidURL)
 		return
 	}
-	provider := parts[4]
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, hdl.ErrNoDeviceInfo)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
 		return
 	}
 
-	res, err := h.ctrl.HandleOAuth2Callback(ctx, &d, provider, code, state)
+	res, err := h.ctrl.HandleOAuth2Callback(r.Context(), &d, parts[4], code, state)
 	if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, c, res)
+	utils.SuccessResponse(w, http.StatusOK, res)
 }

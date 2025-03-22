@@ -10,6 +10,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
@@ -84,6 +85,22 @@ func RecoverPanic(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		},
 	)
+}
+
+var ErrMethodNotAllowed = errors.New("method not allowed")
+
+func AllowedMethods(methods ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				if ok := slices.Contains(methods, r.Method); !ok {
+					utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+					return
+				}
+				next.ServeHTTP(w, r)
+			},
+		)
+	}
 }
 
 type loggingResponseWriter struct {

@@ -10,14 +10,11 @@ import (
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	"github.com/JMURv/sso/internal/hdl/validation"
-	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/goccy/go-json"
-	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func RegisterPermRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
@@ -51,14 +48,6 @@ func RegisterPermRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 }
 
 func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {
-	const op = "perm.listPerms.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
 	if err != nil || page < 1 {
 		page = config.DefaultPage
@@ -69,179 +58,126 @@ func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {
 		size = config.DefaultSize
 	}
 
-	res, err := h.ctrl.ListPermissions(ctx, page, size)
+	res, err := h.ctrl.ListPermissions(r.Context(), page, size)
 	if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
-	utils.SuccessResponse(w, c, res)
+	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
 func (h *Handler) createPerm(w http.ResponseWriter, r *http.Request) {
-	const op = "perm.createPerm.hdl"
-	s, c := time.Now(), http.StatusCreated
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
 	req := &dto.CreatePermissionRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err := validation.V.Struct(req); err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
-	res, err := h.ctrl.CreatePerm(ctx, req)
+	res, err := h.ctrl.CreatePerm(r.Context(), req)
 	if err != nil && errors.Is(err, ctrl.ErrAlreadyExists) {
-		c = http.StatusConflict
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusConflict, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
-	utils.SuccessResponse(w, c, res)
+	utils.SuccessResponse(w, http.StatusCreated, res)
 }
 
 func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
-	const op = "perm.getPerm.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
 	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
 	if err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			ErrRetrievePathVars.Error(),
-			zap.String("op", op),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, ErrRetrievePathVars)
+		utils.ErrResponse(w, http.StatusBadRequest, ErrRetrievePathVars)
 		return
 	}
 
-	res, err := h.ctrl.GetPermission(ctx, uid)
+	res, err := h.ctrl.GetPermission(r.Context(), uid)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
-	utils.SuccessResponse(w, c, res)
+	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
 func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
-	const op = "perm.updatePerm.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
 	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
 	if err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			ErrRetrievePathVars.Error(),
-			zap.String("op", op),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, ErrRetrievePathVars)
+		utils.ErrResponse(w, http.StatusBadRequest, ErrRetrievePathVars)
 		return
 	}
 
 	req := &dto.UpdatePermissionRequest{}
 	if err = json.NewDecoder(r.Body).Decode(req); err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err = validation.V.Struct(req); err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
-	err = h.ctrl.UpdatePerm(ctx, uid, req)
+	err = h.ctrl.UpdatePerm(r.Context(), uid, req)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
-	utils.StatusResponse(w, c)
+	utils.StatusResponse(w, http.StatusOK)
 }
 
 func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
-	const op = "perm.deletePerm.hdl"
-	s, c := time.Now(), http.StatusNoContent
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
 	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
 	if err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			ErrRetrievePathVars.Error(),
-			zap.String("op", op),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, ErrRetrievePathVars)
+		utils.ErrResponse(w, http.StatusBadRequest, ErrRetrievePathVars)
 		return
 	}
 
-	err = h.ctrl.DeletePerm(ctx, uid)
+	err = h.ctrl.DeletePerm(r.Context(), uid)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
-	utils.StatusResponse(w, c)
+	utils.StatusResponse(w, http.StatusNoContent)
 }

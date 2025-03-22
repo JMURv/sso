@@ -9,35 +9,27 @@ import (
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	"github.com/JMURv/sso/internal/hdl/validation"
-	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
-	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"net/http"
-	"time"
 )
 
 func RegisterAuthRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
-	mux.HandleFunc("/api/auth/jwt", mid.Apply(h.authenticate, mid.Device))
-	mux.HandleFunc("/api/auth/jwt/parse", h.parseClaims)
-	mux.HandleFunc("/api/auth/jwt/refresh", mid.Apply(h.refresh, mid.Device))
+	mux.HandleFunc("/api/auth/jwt", mid.Apply(h.authenticate, mid.AllowedMethods(http.MethodPost), mid.Device))
+	mux.HandleFunc("/api/auth/jwt/parse", mid.Apply(h.parseClaims, mid.AllowedMethods(http.MethodPost)))
+	mux.HandleFunc("/api/auth/jwt/refresh", mid.Apply(h.refresh, mid.AllowedMethods(http.MethodPost), mid.Device))
 
-	mux.HandleFunc("/api/auth/email/send", h.sendLoginCode)
-	mux.HandleFunc("/api/auth/email/check", mid.Apply(h.checkLoginCode, mid.Device))
+	mux.HandleFunc("/api/auth/email/send", mid.Apply(h.sendLoginCode, mid.AllowedMethods(http.MethodPost)))
+	mux.HandleFunc("/api/auth/email/check", mid.Apply(h.checkLoginCode, mid.AllowedMethods(http.MethodPost), mid.Device))
 
-	mux.HandleFunc("/api/auth/recovery/send", h.sendForgotPasswordEmail)
-	mux.HandleFunc("/api/auth/recovery/check", h.checkForgotPasswordEmail)
+	mux.HandleFunc("/api/auth/recovery/send", mid.Apply(h.sendForgotPasswordEmail, mid.AllowedMethods(http.MethodPost)))
+	mux.HandleFunc("/api/auth/recovery/check", mid.Apply(h.checkForgotPasswordEmail, mid.AllowedMethods(http.MethodPost)))
 
-	mux.HandleFunc("/api/auth/logout", mid.Apply(h.logout, mid.Auth(au)))
+	mux.HandleFunc("/api/auth/logout", mid.Apply(h.logout, mid.AllowedMethods(http.MethodPost), mid.Auth(au)))
 }
 
 func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-		return
-	}
-
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
 		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
@@ -76,11 +68,6 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-		return
-	}
-
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
 		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
@@ -120,88 +107,50 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) parseClaims(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.parseClaims.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	if r.Method != http.MethodPost {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
-		return
-	}
-
 	req := &dto.TokenRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err := validation.V.Struct(req); err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
-	res, err := h.ctrl.ParseClaims(ctx, req.Token)
+	res, err := h.ctrl.ParseClaims(r.Context(), req.Token)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
-	utils.SuccessResponse(w, c, res)
-
+	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.logout.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	if r.Method != http.MethodPost {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
-		return
-	}
-
-	uid, ok := ctx.Value("uid").(uuid.UUID)
+	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if !ok {
-		c = http.StatusInternalServerError
 		zap.L().Error(
 			hdl.ErrFailedToGetUUID.Error(),
-			zap.String("op", op),
-			zap.Any("uid", ctx.Value("uid")),
+			zap.Any("uid", r.Context().Value("uid")),
 		)
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
-	err := h.ctrl.Logout(ctx, uid)
+	err := h.ctrl.Logout(r.Context(), uid)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
@@ -229,208 +178,128 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 
-	utils.StatusResponse(w, c)
+	utils.StatusResponse(w, http.StatusOK)
 }
 
 func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.sendForgotPasswordEmail.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	if r.Method != http.MethodPost {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
-		return
-	}
-
 	req := &dto.SendForgotPasswordEmail{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op),
-			zap.Any("req", req),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err := validation.V.Struct(req); err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
-	err := h.ctrl.SendForgotPasswordEmail(ctx, req.Email)
+	err := h.ctrl.SendForgotPasswordEmail(r.Context(), req.Email)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
-	utils.StatusResponse(w, c)
+	utils.StatusResponse(w, http.StatusOK)
 }
 
 func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.checkForgotPasswordEmail.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	if r.Method != http.MethodPost {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
-		return
-	}
-
 	req := &dto.CheckForgotPasswordEmailRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err := validation.V.Struct(req); err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrInternal)
 		return
 	}
 
-	err := h.ctrl.CheckForgotPasswordEmail(ctx, req)
+	err := h.ctrl.CheckForgotPasswordEmail(r.Context(), req)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil && errors.Is(err, ctrl.ErrCodeIsNotValid) {
-		c = http.StatusUnauthorized
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusUnauthorized, hdl.ErrInternal)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
-	utils.StatusResponse(w, c)
+	utils.StatusResponse(w, http.StatusOK)
 }
 
 func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.sendLoginCode.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	if r.Method != http.MethodPost {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
-		return
-	}
-
 	req := &dto.LoginCodeRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op),
-			zap.Any("req", req),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
+
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err := validation.V.Struct(req); err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
-	err := h.ctrl.SendLoginCode(ctx, req.Email, req.Password)
+	err := h.ctrl.SendLoginCode(r.Context(), req.Email, req.Password)
 	if err != nil && errors.Is(err, auth.ErrInvalidCredentials) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	utils.StatusResponse(w, c)
+	utils.StatusResponse(w, http.StatusOK)
 }
 
 func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
-	const op = "auth.checkLoginCode.hdl"
-	s, c := time.Now(), http.StatusOK
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), c, op)
-	}()
-
-	if r.Method != http.MethodPost {
-		c = http.StatusMethodNotAllowed
-		utils.ErrResponse(w, c, ErrMethodNotAllowed)
-		return
-	}
-
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, hdl.ErrNoDeviceInfo)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
 		return
 	}
 
 	req := &dto.CheckLoginCodeRequest{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		c = http.StatusBadRequest
 		zap.L().Debug(
 			hdl.ErrDecodeRequest.Error(),
-			zap.String("op", op),
-			zap.Any("req", req),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, c, hdl.ErrDecodeRequest)
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
 	if err := validation.V.Struct(req); err != nil {
-		c = http.StatusBadRequest
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
-	res, err := h.ctrl.CheckLoginCode(ctx, &d, req)
+	res, err := h.ctrl.CheckLoginCode(r.Context(), &d, req)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = http.StatusNotFound
-		utils.ErrResponse(w, c, err)
+		utils.ErrResponse(w, http.StatusNotFound, err)
 		return
 	} else if err != nil {
-		c = http.StatusInternalServerError
-		utils.ErrResponse(w, c, hdl.ErrInternal)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, c, res)
+	utils.SuccessResponse(w, http.StatusOK, res)
 }

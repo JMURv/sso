@@ -13,6 +13,7 @@ func RegisterOIDCRoutes(mux *http.ServeMux, h *Handler) {
 		h.startOIDC,
 		mid.AllowedMethods(http.MethodGet),
 	))
+
 	mux.HandleFunc("/api/auth/oidc/{provider}/callback", mid.Apply(
 		h.handleOIDCCallback,
 		mid.AllowedMethods(http.MethodGet),

@@ -311,7 +311,10 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 		}
 	}
 
-	return tx.Commit()
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *Repository) DeleteUser(ctx context.Context, id uuid.UUID) error {

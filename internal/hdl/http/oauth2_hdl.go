@@ -13,6 +13,7 @@ func RegisterOAuth2Routes(mux *http.ServeMux, h *Handler) {
 		h.startOAuth2,
 		mid.AllowedMethods(http.MethodGet),
 	))
+
 	mux.HandleFunc("/api/auth/oauth2/{provider}/callback", mid.Apply(
 		h.handleOAuth2Callback,
 		mid.AllowedMethods(http.MethodGet),

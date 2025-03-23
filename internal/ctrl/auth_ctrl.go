@@ -33,18 +33,13 @@ func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid
 
 	hash, err := c.au.HashSHA256(refresh)
 	if err != nil {
-		zap.L().Error(
-			"Failed to generate sah256 hash",
-			zap.String("token", refresh),
-			zap.Error(err),
-		)
 		return res, err
 	}
 
 	device := auth.GenerateDevice(d)
 	if err = c.repo.CreateToken(ctx, uid, hash, time.Now().Add(auth.RefreshTokenDuration), &device); err != nil {
 		zap.L().Error(
-			"failed to save token",
+			"failed to create token",
 			zap.String("op", op),
 			zap.String("refresh", refresh),
 			zap.Error(err),
@@ -82,25 +77,11 @@ func (c *Controller) Authenticate(ctx context.Context, d *dto.DeviceRequest, req
 	}
 
 	if err = c.au.ComparePasswords([]byte(res.Password), []byte(req.Password)); err != nil {
-		zap.L().Debug(
-			"failed to compare password",
-			zap.String("op", op),
-			zap.Any("req", req),
-			zap.Error(err),
-		)
 		return nil, auth.ErrInvalidCredentials
 	}
 
 	pair, err := c.GenPair(ctx, d, res.ID, res.Permissions)
 	if err != nil {
-		zap.L().Error(
-			"failed to compare password",
-			zap.String("op", op),
-			zap.Any("device", d),
-			zap.Any("res", res),
-			zap.Any("req", req),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 

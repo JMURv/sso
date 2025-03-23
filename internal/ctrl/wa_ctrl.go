@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	webauthnSessionKey = "webauthn:%s:%s" // format: type:userID
+	webauthnSessionKey = "webauthn:%s:%s"
 )
 
 func (c *Controller) StartRegistration(ctx context.Context, uid uuid.UUID) (*protocol.CredentialCreation, error) {

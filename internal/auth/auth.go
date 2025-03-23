@@ -51,14 +51,21 @@ func New(conf config.Config) *Auth {
 
 func (a *Auth) Hash(val string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(val), bcrypt.DefaultCost)
-	return string(bytes), err
+	if err != nil {
+		zap.L().Error(
+			"Failed to generate hash",
+			zap.String("val", val),
+			zap.Error(err),
+		)
+		return "", err
+	}
+	return string(bytes), nil
 }
 
 func (a *Auth) HashSHA256(val string) (string, error) {
 	shaHash := sha256.Sum256([]byte(val))
 	hexHash := hex.EncodeToString(shaHash[:])
-	bytes, err := bcrypt.GenerateFromPassword([]byte(hexHash), bcrypt.DefaultCost)
-	return string(bytes), err
+	return a.Hash(hexHash)
 }
 
 func (a *Auth) ComparePasswords(hashed, pswd []byte) error {

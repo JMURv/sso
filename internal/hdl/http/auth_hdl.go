@@ -14,17 +14,48 @@ import (
 )
 
 func RegisterAuthRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
-	mux.HandleFunc("/api/auth/jwt", mid.Apply(h.authenticate, mid.AllowedMethods(http.MethodPost), mid.Device))
-	mux.HandleFunc("/api/auth/jwt/parse", mid.Apply(h.parseClaims, mid.AllowedMethods(http.MethodPost)))
-	mux.HandleFunc("/api/auth/jwt/refresh", mid.Apply(h.refresh, mid.AllowedMethods(http.MethodPost), mid.Device))
+	mux.HandleFunc("/api/auth/jwt", mid.Apply(
+		h.authenticate,
+		mid.AllowedMethods(http.MethodPost),
+		mid.Device,
+	))
 
-	mux.HandleFunc("/api/auth/email/send", mid.Apply(h.sendLoginCode, mid.AllowedMethods(http.MethodPost)))
-	mux.HandleFunc("/api/auth/email/check", mid.Apply(h.checkLoginCode, mid.AllowedMethods(http.MethodPost), mid.Device))
+	mux.HandleFunc("/api/auth/jwt/parse", mid.Apply(
+		h.parseClaims,
+		mid.AllowedMethods(http.MethodPost),
+	))
 
-	mux.HandleFunc("/api/auth/recovery/send", mid.Apply(h.sendForgotPasswordEmail, mid.AllowedMethods(http.MethodPost)))
-	mux.HandleFunc("/api/auth/recovery/check", mid.Apply(h.checkForgotPasswordEmail, mid.AllowedMethods(http.MethodPost)))
+	mux.HandleFunc("/api/auth/jwt/refresh", mid.Apply(
+		h.refresh,
+		mid.AllowedMethods(http.MethodPost),
+		mid.Device,
+	))
 
-	mux.HandleFunc("/api/auth/logout", mid.Apply(h.logout, mid.AllowedMethods(http.MethodPost), mid.Auth(au)))
+	mux.HandleFunc("/api/auth/email/send", mid.Apply(
+		h.sendLoginCode,
+		mid.AllowedMethods(http.MethodPost),
+	))
+
+	mux.HandleFunc("/api/auth/email/check", mid.Apply(
+		h.checkLoginCode,
+		mid.AllowedMethods(http.MethodPost),
+		mid.Device,
+	))
+
+	mux.HandleFunc("/api/auth/recovery/send", mid.Apply(
+		h.sendForgotPasswordEmail,
+		mid.AllowedMethods(http.MethodPost),
+	))
+	mux.HandleFunc("/api/auth/recovery/check", mid.Apply(
+		h.checkForgotPasswordEmail,
+		mid.AllowedMethods(http.MethodPost),
+	))
+
+	mux.HandleFunc("/api/auth/logout", mid.Apply(
+		h.logout,
+		mid.AllowedMethods(http.MethodPost),
+		mid.Auth(au),
+	))
 }
 
 func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
@@ -47,10 +78,9 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 		} else if errors.Is(err, auth.ErrInvalidCredentials) {
 			utils.ErrResponse(w, http.StatusUnauthorized, err)
 			return
-		} else {
-			utils.ErrResponse(w, http.StatusInternalServerError, err)
-			return
 		}
+		utils.ErrResponse(w, http.StatusInternalServerError, err)
+		return
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)

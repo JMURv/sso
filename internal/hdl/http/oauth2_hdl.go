@@ -9,16 +9,20 @@ import (
 )
 
 func RegisterOAuth2Routes(mux *http.ServeMux, h *Handler) {
-	mux.HandleFunc("/api/auth/oauth2/{provider}/start", mid.Apply(
-		h.startOAuth2,
-		mid.AllowedMethods(http.MethodGet),
-	))
+	mux.HandleFunc(
+		"/api/auth/oauth2/{provider}/start", mid.Apply(
+			h.startOAuth2,
+			mid.AllowedMethods(http.MethodGet),
+		),
+	)
 
-	mux.HandleFunc("/api/auth/oauth2/{provider}/callback", mid.Apply(
-		h.handleOAuth2Callback,
-		mid.AllowedMethods(http.MethodGet),
-		mid.Device,
-	))
+	mux.HandleFunc(
+		"/api/auth/oauth2/{provider}/callback", mid.Apply(
+			h.handleOAuth2Callback,
+			mid.AllowedMethods(http.MethodGet),
+			mid.Device,
+		),
+	)
 }
 
 func (h *Handler) startOAuth2(w http.ResponseWriter, r *http.Request) {
@@ -60,5 +64,6 @@ func (h *Handler) handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, http.StatusOK, res)
+	http.Redirect(w, r, "http://localhost:3000/", http.StatusTemporaryRedirect)
+	//utils.SuccessResponse(w, http.StatusOK, res)
 }

@@ -70,15 +70,17 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.ctrl.Refresh(r.Context(), &d, req)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		utils.ErrResponse(w, http.StatusNotFound, err)
-		return
-	} else if err != nil && errors.Is(err, auth.ErrTokenRevoked) {
-		utils.ErrResponse(w, http.StatusUnauthorized, err)
-		return
-	} else if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, err)
-		return
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else if errors.Is(err, auth.ErrTokenRevoked) {
+			utils.ErrResponse(w, http.StatusUnauthorized, err)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
@@ -92,12 +94,14 @@ func (h *Handler) parseClaims(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.ctrl.ParseClaims(r.Context(), req.Token)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		utils.ErrResponse(w, http.StatusNotFound, err)
-		return
-	} else if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+			return
+		}
 	}
 
 	utils.SuccessResponse(w, http.StatusOK, res)
@@ -115,12 +119,14 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := h.ctrl.Logout(r.Context(), uid)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		utils.ErrResponse(w, http.StatusNotFound, err)
-		return
-	} else if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+			return
+		}
 	}
 
 	http.SetCookie(
@@ -157,12 +163,14 @@ func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request
 	}
 
 	err := h.ctrl.SendForgotPasswordEmail(r.Context(), req.Email)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		utils.ErrResponse(w, http.StatusNotFound, err)
-		return
-	} else if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+			return
+		}
 	}
 
 	utils.StatusResponse(w, http.StatusOK)
@@ -175,15 +183,17 @@ func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Reques
 	}
 
 	err := h.ctrl.CheckForgotPasswordEmail(r.Context(), req)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		utils.ErrResponse(w, http.StatusNotFound, err)
-		return
-	} else if err != nil && errors.Is(err, ctrl.ErrCodeIsNotValid) {
-		utils.ErrResponse(w, http.StatusUnauthorized, hdl.ErrInternal)
-		return
-	} else if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else if errors.Is(err, ctrl.ErrCodeIsNotValid) {
+			utils.ErrResponse(w, http.StatusUnauthorized, hdl.ErrInternal)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+			return
+		}
 	}
 
 	utils.StatusResponse(w, http.StatusOK)
@@ -196,12 +206,14 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := h.ctrl.SendLoginCode(r.Context(), req.Email, req.Password)
-	if err != nil && errors.Is(err, auth.ErrInvalidCredentials) {
-		utils.ErrResponse(w, http.StatusNotFound, err)
-		return
-	} else if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, err)
-		return
+	if err != nil {
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	utils.StatusResponse(w, http.StatusOK)
@@ -220,12 +232,14 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.ctrl.CheckLoginCode(r.Context(), &d, req)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		utils.ErrResponse(w, http.StatusNotFound, err)
-		return
-	} else if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+			return
+		}
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)

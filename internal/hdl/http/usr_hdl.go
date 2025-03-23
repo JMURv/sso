@@ -9,8 +9,6 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
-	"github.com/JMURv/sso/internal/hdl/validation"
-	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"net/http"
@@ -60,17 +58,7 @@ func RegisterUserRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 
 func (h *Handler) existsUser(w http.ResponseWriter, r *http.Request) {
 	req := &dto.CheckEmailRequest{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err := validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 
@@ -88,17 +76,7 @@ func (h *Handler) existsUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	req := &dto.CreateUserRequest{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err := validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 
@@ -141,16 +119,7 @@ func (h *Handler) searchUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
-	page, err := strconv.Atoi(r.URL.Query().Get("page"))
-	if err != nil || page < 1 {
-		page = config.DefaultPage
-	}
-
-	size, err := strconv.Atoi(r.URL.Query().Get("size"))
-	if err != nil || size < 1 {
-		size = config.DefaultSize
-	}
-
+	page, size := utils.ParsePaginationValues(r)
 	res, err := h.ctrl.ListUsers(r.Context(), page, size)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
@@ -197,17 +166,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &dto.UpdateUserRequest{}
-	if err = json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err = validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 

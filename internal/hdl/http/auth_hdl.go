@@ -8,8 +8,6 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
-	"github.com/JMURv/sso/internal/hdl/validation"
-	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"net/http"
@@ -37,30 +35,22 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &dto.EmailAndPasswordRequest{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err := validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok = utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 
 	res, err := h.ctrl.Authenticate(r.Context(), &d, req)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		utils.ErrResponse(w, http.StatusNotFound, err)
-		return
-	} else if err != nil && errors.Is(err, auth.ErrInvalidCredentials) {
-		utils.ErrResponse(w, http.StatusUnauthorized, err)
-		return
-	} else if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, err)
-		return
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else if errors.Is(err, auth.ErrInvalidCredentials) {
+			utils.ErrResponse(w, http.StatusUnauthorized, err)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
@@ -75,18 +65,7 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &dto.RefreshRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err = validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok = utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 
@@ -108,17 +87,7 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) parseClaims(w http.ResponseWriter, r *http.Request) {
 	req := &dto.TokenRequest{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err := validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 
@@ -183,17 +152,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
 	req := &dto.SendForgotPasswordEmail{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err := validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 
@@ -211,17 +170,7 @@ func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request
 
 func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
 	req := &dto.CheckForgotPasswordEmailRequest{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err := validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrInternal)
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 
@@ -242,18 +191,7 @@ func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Reques
 
 func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 	req := &dto.LoginCodeRequest{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err := validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 
@@ -277,17 +215,7 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &dto.CheckLoginCodeRequest{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err := validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok = utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 

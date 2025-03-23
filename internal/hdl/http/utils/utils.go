@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/JMURv/sso/internal/auth"
+	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
+	"github.com/JMURv/sso/internal/hdl"
+	"github.com/JMURv/sso/internal/hdl/validation"
 	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
 	"net/http"
+	"strconv"
 	"time"
 )
-
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
 
 type ErrorsResponse struct {
 	Errors []string `json:"errors"`
@@ -48,6 +49,39 @@ func ErrResponse(w http.ResponseWriter, statusCode int, err error) {
 			Errors: msgs,
 		},
 	)
+}
+
+func ParsePaginationValues(r *http.Request) (int, int) {
+	page, err := strconv.Atoi(r.URL.Query().Get("page"))
+	if err != nil || page < 1 {
+		page = config.DefaultPage
+	}
+
+	size, err := strconv.Atoi(r.URL.Query().Get("size"))
+	if err != nil || size < 1 {
+		size = config.DefaultSize
+	}
+
+	return page, size
+}
+
+func ParseAndValidate(w http.ResponseWriter, r *http.Request, dst any) bool {
+	var err error
+	if err = json.NewDecoder(r.Body).Decode(dst); err != nil {
+		zap.L().Debug(
+			hdl.ErrDecodeRequest.Error(),
+			zap.Error(err),
+		)
+		ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
+		return false
+	}
+
+	if err = validation.V.Struct(dst); err != nil {
+		ErrResponse(w, http.StatusBadRequest, err)
+		return false
+	}
+
+	return true
 }
 
 func SetAuthCookies(w http.ResponseWriter, access, refresh string) {

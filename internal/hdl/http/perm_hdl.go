@@ -3,14 +3,11 @@ package http
 import (
 	"errors"
 	"github.com/JMURv/sso/internal/auth"
-	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
-	"github.com/JMURv/sso/internal/hdl/validation"
-	"github.com/goccy/go-json"
 	"go.uber.org/zap"
 	"net/http"
 	"strconv"
@@ -48,16 +45,7 @@ func RegisterPermRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 }
 
 func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {
-	page, err := strconv.Atoi(r.URL.Query().Get("page"))
-	if err != nil || page < 1 {
-		page = config.DefaultPage
-	}
-
-	size, err := strconv.Atoi(r.URL.Query().Get("size"))
-	if err != nil || size < 1 {
-		size = config.DefaultSize
-	}
-
+	page, size := utils.ParsePaginationValues(r)
 	res, err := h.ctrl.ListPermissions(r.Context(), page, size)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
@@ -69,17 +57,7 @@ func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) createPerm(w http.ResponseWriter, r *http.Request) {
 	req := &dto.CreatePermissionRequest{}
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err := validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 
@@ -132,17 +110,7 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &dto.UpdatePermissionRequest{}
-	if err = json.NewDecoder(r.Body).Decode(req); err != nil {
-		zap.L().Debug(
-			hdl.ErrDecodeRequest.Error(),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
-		return
-	}
-
-	if err = validation.V.Struct(req); err != nil {
-		utils.ErrResponse(w, http.StatusBadRequest, err)
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 

@@ -50,7 +50,7 @@ func New(conf config.Config) *Auth {
 }
 
 func (a *Auth) Hash(val string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(val), bcrypt.DefaultCost)
+	bytes, err := bcrypt.GenerateFromPassword([]byte(val), bcrypt.MinCost)
 	if err != nil {
 		zap.L().Error(
 			"Failed to generate hash",

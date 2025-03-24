@@ -12,7 +12,6 @@ import (
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/google/uuid"
-	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"strconv"
@@ -67,11 +66,7 @@ func New(conf config.Config) *Provider {
 
 var ErrUnknownProvider = errors.New("unknown provider")
 
-func (p *Provider) Get(ctx context.Context, provider Providers, flow Flow) (OAuth2Provider, error) {
-	const op = "providers.Get.auth"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
-
+func (p *Provider) Get(_ context.Context, provider Providers, flow Flow) (OAuth2Provider, error) {
 	switch provider {
 	case Google:
 		if flow == OIDC {
@@ -81,7 +76,6 @@ func (p *Provider) Get(ctx context.Context, provider Providers, flow Flow) (OAut
 	default:
 		zap.L().Error(
 			"Unknown provider",
-			zap.String("op", op),
 			zap.Any("provider", provider),
 		)
 		return nil, ErrUnknownProvider

@@ -41,6 +41,7 @@ func RegisterAuthRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 		"/api/auth/email/send", mid.Apply(
 			h.sendLoginCode,
 			mid.AllowedMethods(http.MethodPost),
+			mid.Device,
 		),
 	)
 
@@ -86,7 +87,6 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Check if user use his device
 	res, err := h.ctrl.Authenticate(r.Context(), &d, req)
 	if err != nil {
 		if errors.Is(err, ctrl.ErrNotFound) {
@@ -203,6 +203,62 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	utils.StatusResponse(w, http.StatusOK)
 }
 
+func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
+	d, ok := utils.ParseDeviceByRequest(r)
+	if !ok {
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
+		return
+	}
+
+	req := &dto.LoginCodeRequest{}
+	if ok = utils.ParseAndValidate(w, r, req); !ok {
+		return
+	}
+
+	res, err := h.ctrl.SendLoginCode(r.Context(), &d, req.Email, req.Password)
+	if err != nil {
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	if res.Access != "" {
+		utils.SetAuthCookies(w, res.Access, res.Refresh)
+	}
+	utils.SuccessResponse(w, http.StatusOK, res)
+}
+
+func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
+	d, ok := utils.ParseDeviceByRequest(r)
+	if !ok {
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
+		return
+	}
+
+	req := &dto.CheckLoginCodeRequest{}
+	if ok = utils.ParseAndValidate(w, r, req); !ok {
+		return
+	}
+
+	res, err := h.ctrl.CheckLoginCode(r.Context(), &d, req)
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		} else {
+			utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+			return
+		}
+	}
+
+	utils.SetAuthCookies(w, res.Access, res.Refresh)
+	utils.SuccessResponse(w, http.StatusOK, res)
+}
+
 func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
 	req := &dto.SendForgotPasswordEmail{}
 	if ok := utils.ParseAndValidate(w, r, req); !ok {
@@ -244,52 +300,4 @@ func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Reques
 	}
 
 	utils.StatusResponse(w, http.StatusOK)
-}
-
-func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
-	req := &dto.LoginCodeRequest{}
-	if ok := utils.ParseAndValidate(w, r, req); !ok {
-		return
-	}
-
-	// TODO: Check if user use his device
-	err := h.ctrl.SendLoginCode(r.Context(), req.Email, req.Password)
-	if err != nil {
-		if errors.Is(err, auth.ErrInvalidCredentials) {
-			utils.ErrResponse(w, http.StatusNotFound, err)
-			return
-		} else {
-			utils.ErrResponse(w, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	utils.StatusResponse(w, http.StatusOK)
-}
-
-func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
-	d, ok := utils.ParseDeviceByRequest(r)
-	if !ok {
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
-		return
-	}
-
-	req := &dto.CheckLoginCodeRequest{}
-	if ok = utils.ParseAndValidate(w, r, req); !ok {
-		return
-	}
-
-	res, err := h.ctrl.CheckLoginCode(r.Context(), &d, req)
-	if err != nil {
-		if errors.Is(err, ctrl.ErrNotFound) {
-			utils.ErrResponse(w, http.StatusNotFound, err)
-			return
-		} else {
-			utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-			return
-		}
-	}
-
-	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, http.StatusOK, res)
 }

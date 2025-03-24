@@ -146,6 +146,7 @@ func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.Device
 			zap.String("email", email),
 			zap.Any("user", user),
 			zap.Any("sess", sess),
+			zap.Error(err),
 		)
 		return res, err
 	}

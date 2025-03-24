@@ -38,6 +38,11 @@ type AppRepo interface {
 		userID uuid.UUID,
 	) ([]webauthn.Credential, error)
 
+	GetByDevice(ctx context.Context, userID uuid.UUID, deviceID string) (*md.RefreshToken, error)
+	RevokeByDevice(ctx context.Context, userID uuid.UUID, deviceID string) error
+	GetUserDevices(ctx context.Context, userID uuid.UUID) ([]md.Device, error)
+	DeleteDevice(ctx context.Context, userID uuid.UUID, deviceID string) error
+
 	userRepo
 	permRepo
 }
@@ -51,7 +56,7 @@ type AppCtrl interface {
 
 	CheckForgotPasswordEmail(ctx context.Context, req *dto.CheckForgotPasswordEmailRequest) error
 	SendForgotPasswordEmail(ctx context.Context, email string) error
-	SendLoginCode(ctx context.Context, email, password string) error
+	SendLoginCode(ctx context.Context, d *dto.DeviceRequest, email, password string) (dto.TokenPair, error)
 	CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, req *dto.CheckLoginCodeRequest) (*dto.TokenPair, error)
 
 	GetOAuth2AuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error)
@@ -98,7 +103,7 @@ type CacheService interface {
 }
 
 type EmailService interface {
-	SendLoginEmail(ctx context.Context, code int, toEmail string) error
+	SendLoginEmail(_ context.Context, code int, toEmail string)
 	SendForgotPasswordEmail(ctx context.Context, token, uid64, toEmail string) error
 	SendUserCredentials(_ context.Context, email, pass string) error
 }

@@ -5,6 +5,7 @@ auth:
   secret: "DYHlaJpPiZ"
   providerSignSecret: "DYHlaJpPiZ"
   ouath:
+    successURL: "http://localhost:3000/"
     google:
       clientID: "id"
       clientSecret: "secret"
@@ -14,6 +15,7 @@ auth:
         "https://www.googleapis.com/auth/userinfo.email"
       ]
   oidc:
+    successURL: "http://localhost:3000/"
     google:
       clientID: "id"
       clientSecret: "secret"

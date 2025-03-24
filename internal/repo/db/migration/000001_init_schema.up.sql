@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS user_devices
     browser     VARCHAR(50),
     user_agent  TEXT,
     ip          VARCHAR(45),
-    last_active TIMESTAMPTZ,
+    last_active TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_user

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/JMURv/sso/internal/config"
 	md "github.com/JMURv/sso/internal/models"
+	"go.uber.org/zap"
 	"gopkg.in/gomail.v2"
 )
 
@@ -39,15 +40,19 @@ func (s *EmailServer) GetMessageBase(subject string, toEmail string) *gomail.Mes
 func (s *EmailServer) Send(m *gomail.Message) error {
 	d := gomail.NewDialer(s.server, s.port, s.user, s.pass)
 	if err := d.DialAndSend(m); err != nil {
+		zap.L().Error(
+			"Failed to send an email",
+			zap.Error(err),
+		)
 		return err
 	}
 	return nil
 }
 
-func (s *EmailServer) SendLoginEmail(_ context.Context, code int, toEmail string) error {
+func (s *EmailServer) SendLoginEmail(_ context.Context, code int, toEmail string) {
 	m := s.GetMessageBase("Login Code", toEmail)
 	m.SetBody("text/plain", fmt.Sprintf("Login code: %v", code))
-	return s.Send(m)
+	_ = s.Send(m)
 }
 
 func (s *EmailServer) SendActivationCodeEmail(_ context.Context, code uint64, toEmail string) error {

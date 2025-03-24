@@ -130,7 +130,7 @@ func LogTraceMetrics(next http.Handler) http.Handler {
 			metrics.ObserveRequest(time.Since(s), lrw.statusCode, op)
 
 			zap.L().Info(
-				"-->",
+				"<--",
 				zap.String("method", r.Method),
 				zap.Int("status", lrw.statusCode),
 				zap.Any("duration", time.Since(s)),

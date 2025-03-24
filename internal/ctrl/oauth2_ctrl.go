@@ -111,13 +111,8 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 		return nil, err
 	}
 
-	hash, err := c.au.HashSHA256(refresh)
-	if err != nil {
-		return nil, err
-	}
-
 	device := auth.GenerateDevice(d)
-	if err = c.repo.CreateToken(ctx, user.ID, hash, time.Now().Add(auth.RefreshTokenDuration), &device); err != nil {
+	if err = c.repo.CreateToken(ctx, user.ID, refresh, time.Now().Add(auth.RefreshTokenDuration), &device); err != nil {
 		zap.L().Error(
 			"Failed to save token",
 			zap.String("op", op),

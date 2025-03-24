@@ -14,21 +14,27 @@ import (
 )
 
 func RegisterWebAuthnRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
-	mux.HandleFunc("/api/auth/webauthn/register/start", mid.Apply(
-		h.registrationStart,
-		mid.Auth(au),
-	))
+	mux.HandleFunc(
+		"/api/auth/webauthn/register/start", mid.Apply(
+			h.registrationStart,
+			mid.Auth(au),
+		),
+	)
 
-	mux.HandleFunc("/api/auth/webauthn/register/finish", mid.Apply(
-		h.registrationFinish,
-		mid.Auth(au),
-	))
+	mux.HandleFunc(
+		"/api/auth/webauthn/register/finish", mid.Apply(
+			h.registrationFinish,
+			mid.Auth(au),
+		),
+	)
 
 	mux.HandleFunc("/api/auth/webauthn/login/start", h.loginStart)
-	mux.HandleFunc("/api/auth/webauthn/login/finish", mid.Apply(
-		h.loginFinish,
-		mid.Device,
-	))
+	mux.HandleFunc(
+		"/api/auth/webauthn/login/finish", mid.Apply(
+			h.loginFinish,
+			mid.Device,
+		),
+	)
 }
 
 func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {
@@ -93,18 +99,19 @@ func (h *Handler) loginStart(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) loginFinish(w http.ResponseWriter, r *http.Request) {
+	email := r.Header.Get("X-User-Email")
+	if email == "" {
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
+		return
+	}
+
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
 		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrNoDeviceInfo)
 		return
 	}
 
-	req := &dto.LoginFinishRequest{}
-	if ok = utils.ParseAndValidate(w, r, req); !ok {
-		return
-	}
-
-	res, err := h.ctrl.FinishLogin(r.Context(), req.Email, d, r)
+	res, err := h.ctrl.FinishLogin(r.Context(), email, d, r)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return

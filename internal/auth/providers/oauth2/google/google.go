@@ -32,6 +32,7 @@ func NewGoogleOAuth2(config conf.Config) *GoogleProvider {
 		config.Auth.Oauth.Google.RedirectURL,
 		google.Endpoint,
 		config.Auth.Oauth.Google.Scopes,
+		config.Auth.Oauth.SuccessURL,
 		func(ctx context.Context, token string, cli *http.Client) (*dto.ProviderResponse, error) {
 			const op = "provider.GetUser.google"
 			span, ctx := opentracing.StartSpanFromContext(ctx, op)

@@ -64,8 +64,5 @@ func (h *Handler) handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-
-	// TODO: get redirect from config
-	http.Redirect(w, r, "http://localhost:3000/", http.StatusTemporaryRedirect)
-	//utils.SuccessResponse(w, http.StatusOK, res)
+	http.Redirect(w, r, res.SuccessURL, http.StatusTemporaryRedirect)
 }

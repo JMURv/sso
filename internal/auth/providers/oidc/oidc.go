@@ -9,18 +9,20 @@ import (
 )
 
 type OIDCProvider struct {
+	successURL string
 	config     *oauth2.Config
 	provider   *oidc.Provider
 	oidcConfig *oidc.Config
 }
 
-func NewOIDCProvider(issuer, clientID, clientSecret, redirectURL string, scopes []string) (*OIDCProvider, error) {
+func NewOIDCProvider(issuer, clientID, clientSecret, redirectURL string, scopes []string, successURL string) (*OIDCProvider, error) {
 	provider, err := oidc.NewProvider(context.Background(), issuer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OIDC provider: %v", err)
 	}
 
 	return &OIDCProvider{
+		successURL: successURL,
 		config: &oauth2.Config{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
@@ -33,6 +35,10 @@ func NewOIDCProvider(issuer, clientID, clientSecret, redirectURL string, scopes 
 			ClientID: clientID,
 		},
 	}, nil
+}
+
+func (p *OIDCProvider) GetSuccessURL() string {
+	return p.successURL
 }
 
 func (p *OIDCProvider) GetConfig() *oauth2.Config {

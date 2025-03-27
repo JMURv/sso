@@ -10,8 +10,9 @@ import (
 )
 
 type OAuth2Provider struct {
-	config    *oauth2.Config
-	parseFunc func(ctx context.Context, token string, cli *http.Client) (*dto.ProviderResponse, error)
+	successURL string
+	config     *oauth2.Config
+	parseFunc  func(ctx context.Context, token string, cli *http.Client) (*dto.ProviderResponse, error)
 }
 
 func NewOAuth2Provider(
@@ -20,10 +21,12 @@ func NewOAuth2Provider(
 	redirectURL string,
 	endpoint oauth2.Endpoint,
 	scopes []string,
+	successURL string,
 	parseFunc func(ctx context.Context, token string, cli *http.Client) (*dto.ProviderResponse, error),
 ) *OAuth2Provider {
 	return &OAuth2Provider{
-		parseFunc: parseFunc,
+		successURL: successURL,
+		parseFunc:  parseFunc,
 		config: &oauth2.Config{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
@@ -32,6 +35,10 @@ func NewOAuth2Provider(
 			Endpoint:     endpoint,
 		},
 	}
+}
+
+func (o *OAuth2Provider) GetSuccessURL() string {
+	return o.successURL
 }
 
 func (o *OAuth2Provider) GetConfig() *oauth2.Config {

@@ -36,6 +36,7 @@ const (
 type OAuth2Provider interface {
 	GetConfig() *oauth2.Config
 	GetUser(ctx context.Context, code string) (*dto.ProviderResponse, error)
+	GetSuccessURL() string
 }
 
 type Provider struct {

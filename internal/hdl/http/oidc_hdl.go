@@ -9,16 +9,20 @@ import (
 )
 
 func RegisterOIDCRoutes(mux *http.ServeMux, h *Handler) {
-	mux.HandleFunc("/api/auth/oidc/{provider}/start", mid.Apply(
-		h.startOIDC,
-		mid.AllowedMethods(http.MethodGet),
-	))
+	mux.HandleFunc(
+		"/api/auth/oidc/{provider}/start", mid.Apply(
+			h.startOIDC,
+			mid.AllowedMethods(http.MethodGet),
+		),
+	)
 
-	mux.HandleFunc("/api/auth/oidc/{provider}/callback", mid.Apply(
-		h.handleOIDCCallback,
-		mid.AllowedMethods(http.MethodGet),
-		mid.Device,
-	))
+	mux.HandleFunc(
+		"/api/auth/oidc/{provider}/callback", mid.Apply(
+			h.handleOIDCCallback,
+			mid.AllowedMethods(http.MethodGet),
+			mid.Device,
+		),
+	)
 }
 
 func (h *Handler) startOIDC(w http.ResponseWriter, r *http.Request) {
@@ -59,5 +63,5 @@ func (h *Handler) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, http.StatusOK, res)
+	http.Redirect(w, r, res.SuccessURL, http.StatusTemporaryRedirect)
 }

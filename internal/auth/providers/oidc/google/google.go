@@ -16,6 +16,7 @@ func NewGoogleOIDC(conf config.Config) *GoogleOIDC {
 		conf.Auth.OIDC.Google.ClientSecret,
 		conf.Auth.OIDC.Google.RedirectURL,
 		conf.Auth.OIDC.Google.Scopes,
+		conf.Auth.OIDC.SuccessURL,
 	)
 
 	if err != nil {

@@ -30,7 +30,7 @@ func (c *Controller) GetOIDCAuthURL(ctx context.Context, provider string) (*dto.
 	}, nil
 }
 
-func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.TokenPair, error) {
+func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.HandleCallbackResponse, error) {
 	const op = "auth.HandleOIDCCallback.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -112,7 +112,7 @@ func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceReques
 	}
 
 	device := auth.GenerateDevice(d)
-	if err = c.repo.CreateToken(ctx, user.ID, refresh, auth.GetRefreshTime(), &device); err != nil {
+	if err = c.repo.CreateToken(ctx, user.ID, refresh, c.au.GetRefreshTime(), &device); err != nil {
 		zap.L().Error(
 			"Failed to save token",
 			zap.String("op", op),
@@ -124,8 +124,9 @@ func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceReques
 		return nil, err
 	}
 
-	return &dto.TokenPair{
-		Access:  access,
-		Refresh: refresh,
+	return &dto.HandleCallbackResponse{
+		Access:     access,
+		Refresh:    refresh,
+		SuccessURL: pr.GetSuccessURL(),
 	}, err
 }

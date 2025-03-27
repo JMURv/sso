@@ -60,10 +60,10 @@ type AppCtrl interface {
 	CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, req *dto.CheckLoginCodeRequest) (*dto.TokenPair, error)
 
 	GetOAuth2AuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error)
-	HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.TokenPair, error)
+	HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.HandleCallbackResponse, error)
 
 	GetOIDCAuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error)
-	HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.TokenPair, error)
+	HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.HandleCallbackResponse, error)
 
 	StartRegistration(ctx context.Context, uid uuid.UUID) (*protocol.CredentialCreation, error)
 	FinishRegistration(ctx context.Context, uid uuid.UUID, r *http.Request) error

@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	rrepo "github.com/JMURv/sso/internal/repository"
-	md "github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/internal/dto"
+	md "github.com/JMURv/sso/internal/models"
+	rrepo "github.com/JMURv/sso/internal/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -155,7 +156,8 @@ func TestRepository_CreatePerm(t *testing.T) {
 	defer db.Close()
 
 	repo := Repository{conn: db}
-	mockData := md.Permission{ID: 1, Name: "admin"}
+	id := uint64(1)
+	mockData := dto.CreatePermissionRequest{Name: "admin"}
 
 	t.Run(
 		"Success", func(t *testing.T) {
@@ -165,7 +167,7 @@ func TestRepository_CreatePerm(t *testing.T) {
 				WithArgs(mockData.Name).
 				WillReturnRows(
 					sqlmock.NewRows([]string{"id"}).
-						AddRow(mockData.ID),
+						AddRow(id),
 				)
 
 			mock.ExpectCommit()
@@ -174,7 +176,7 @@ func TestRepository_CreatePerm(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, res)
 			require.NotNil(t, uint64(0))
-			assert.Equal(t, mockData.ID, res)
+			assert.Equal(t, id, res)
 		},
 	)
 
@@ -228,7 +230,7 @@ func TestRepository_CreatePerm(t *testing.T) {
 				WithArgs(mockData.Name).
 				WillReturnRows(
 					sqlmock.NewRows([]string{"id"}).
-						AddRow(mockData.ID),
+						AddRow(id),
 				)
 
 			mock.ExpectCommit().WillReturnError(internalErr)
@@ -246,19 +248,20 @@ func TestRepository_UpdatePerm(t *testing.T) {
 	defer db.Close()
 
 	repo := Repository{conn: db}
-	mockData := md.Permission{ID: 1, Name: "new-admin"}
+	id := uint64(1)
+	mockData := dto.UpdatePermissionRequest{Name: "new-admin"}
 
 	t.Run(
 		"Success", func(t *testing.T) {
 			mock.ExpectBegin()
 
 			mock.ExpectExec(regexp.QuoteMeta(permUpdate)).
-				WithArgs(mockData.Name, mockData.ID).
+				WithArgs(mockData.Name, id).
 				WillReturnResult(sqlmock.NewResult(1, 1))
 
 			mock.ExpectCommit()
 
-			err := repo.UpdatePerm(context.Background(), mockData.ID, &mockData)
+			err := repo.UpdatePerm(context.Background(), id, &mockData)
 			require.NoError(t, err)
 			require.NoError(t, mock.ExpectationsWereMet())
 		},
@@ -268,7 +271,7 @@ func TestRepository_UpdatePerm(t *testing.T) {
 		"BeginError", func(t *testing.T) {
 			mock.ExpectBegin().WillReturnError(internalErr)
 
-			err := repo.UpdatePerm(context.Background(), mockData.ID, &mockData)
+			err := repo.UpdatePerm(context.Background(), id, &mockData)
 			require.Equal(t, internalErr, err)
 			require.NoError(t, mock.ExpectationsWereMet())
 		},
@@ -279,10 +282,10 @@ func TestRepository_UpdatePerm(t *testing.T) {
 			mock.ExpectBegin()
 
 			mock.ExpectExec(regexp.QuoteMeta(permUpdate)).
-				WithArgs(mockData.Name, mockData.ID).
+				WithArgs(mockData.Name, id).
 				WillReturnResult(sqlmock.NewResult(1, 0))
 
-			err := repo.UpdatePerm(context.Background(), mockData.ID, &mockData)
+			err := repo.UpdatePerm(context.Background(), id, &mockData)
 			require.ErrorIs(t, rrepo.ErrNotFound, err)
 			require.NoError(t, mock.ExpectationsWereMet())
 		},
@@ -292,12 +295,12 @@ func TestRepository_UpdatePerm(t *testing.T) {
 		"ErrInternal", func(t *testing.T) {
 			mock.ExpectBegin()
 			mock.ExpectExec(regexp.QuoteMeta(permUpdate)).
-				WithArgs(mockData.Name, mockData.ID).
+				WithArgs(mockData.Name, id).
 				WillReturnError(internalErr)
 
 			mock.ExpectRollback()
 
-			err := repo.UpdatePerm(context.Background(), mockData.ID, &mockData)
+			err := repo.UpdatePerm(context.Background(), id, &mockData)
 			require.ErrorIs(t, internalErr, err)
 			require.NoError(t, mock.ExpectationsWereMet())
 		},
@@ -308,12 +311,12 @@ func TestRepository_UpdatePerm(t *testing.T) {
 			mock.ExpectBegin()
 
 			mock.ExpectExec(regexp.QuoteMeta(permUpdate)).
-				WithArgs(mockData.Name, mockData.ID).
+				WithArgs(mockData.Name, id).
 				WillReturnResult(sqlmock.NewResult(1, 1))
 
 			mock.ExpectCommit().WillReturnError(internalErr)
 
-			err := repo.UpdatePerm(context.Background(), mockData.ID, &mockData)
+			err := repo.UpdatePerm(context.Background(), id, &mockData)
 			require.Equal(t, internalErr, err)
 		},
 	)

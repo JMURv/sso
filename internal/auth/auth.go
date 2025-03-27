@@ -2,8 +2,6 @@ package auth
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"github.com/JMURv/sso/internal/auth/providers"
 	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/config"
@@ -62,10 +60,8 @@ func (a *Auth) Hash(val string) (string, error) {
 	return string(bytes), nil
 }
 
-func (a *Auth) HashSHA256(val string) (string, error) {
-	shaHash := sha256.Sum256([]byte(val))
-	hexHash := hex.EncodeToString(shaHash[:])
-	return a.Hash(hexHash)
+func (a *Auth) GetRefreshTime() time.Time {
+	return time.Now().Add(RefreshTokenDuration)
 }
 
 func (a *Auth) ComparePasswords(hashed, pswd []byte) error {

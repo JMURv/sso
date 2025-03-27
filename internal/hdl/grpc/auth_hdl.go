@@ -6,6 +6,7 @@ import (
 	pb "github.com/JMURv/sso/api/grpc/v1/gen"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
+	"github.com/JMURv/sso/internal/hdl"
 	"github.com/JMURv/sso/internal/hdl/validation"
 	utils "github.com/JMURv/sso/internal/models/mapper"
 	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
@@ -30,7 +31,7 @@ func (h *Handler) Authenticate(ctx context.Context, req *pb.SSO_EmailAndPassword
 	if req == nil {
 		c = codes.InvalidArgument
 		zap.L().Debug("failed to decode request", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+		return nil, status.Errorf(c, hdl.ErrDecodeRequest.Error())
 	}
 
 	r := &dto.EmailAndPasswordRequest{

@@ -101,7 +101,7 @@ func SetAuthCookies(w http.ResponseWriter, access, refresh string) {
 		w, &http.Cookie{
 			Name:     "refresh",
 			Value:    refresh,
-			Expires:  time.Now().Add(auth.RefreshTokenDuration),
+			Expires:  auth.GetRefreshTime(),
 			HttpOnly: true,
 			Secure:   true,
 			Path:     "/",

@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 	"errors"
-	rrepo "github.com/JMURv/sso/internal/repository"
-	md "github.com/JMURv/sso/pkg/model"
+	"github.com/JMURv/sso/internal/dto"
+	md "github.com/JMURv/sso/internal/models"
+	rrepo "github.com/JMURv/sso/internal/repo"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -528,8 +529,8 @@ func TestCreateUser(t *testing.T) {
 	defer db.Close()
 
 	repo := Repository{conn: db}
-	testUser := &md.User{
-		ID:       uuid.New(),
+	id := uuid.New()
+	testUser := &dto.CreateUserRequest{
 		Name:     "Test User",
 		Email:    "testuser@example.com",
 		Password: "securepassword",
@@ -543,7 +544,7 @@ func TestCreateUser(t *testing.T) {
 			).
 				WillReturnRows(
 					sqlmock.NewRows([]string{"id"}).
-						AddRow(testUser.ID.String()),
+						AddRow(id.String()),
 				)
 			mock.ExpectCommit()
 
@@ -579,8 +580,7 @@ func TestUpdateUser(t *testing.T) {
 	repo := Repository{conn: db}
 
 	testUserID := uuid.New()
-	testUser := &md.User{
-		ID:       testUserID,
+	testUser := &dto.UpdateUserRequest{
 		Name:     "Original User",
 		Email:    "originaluser@example.com",
 		Password: "securepassword",
@@ -591,16 +591,14 @@ func TestUpdateUser(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(testUserID.String()))
 	mock.ExpectCommit()
 
-	_, err = repo.CreateUser(context.Background(), testUser)
+	err = repo.UpdateUser(context.Background(), testUserID, testUser)
 	require.NoError(t, err)
 
-	newData := &md.User{
+	newData := &dto.UpdateUserRequest{
 		Name:     "Updated User",
 		Password: "newsecurepassword",
 		Email:    "updateduser@example.com",
 		Avatar:   "new_avatar.png",
-		Address:  "123 Updated St.",
-		Phone:    "123-456-7890",
 	}
 
 	t.Run(
@@ -615,8 +613,6 @@ func TestUpdateUser(t *testing.T) {
 					newData.Password,
 					newData.Email,
 					newData.Avatar,
-					newData.Address,
-					newData.Phone,
 					testUserID.String(),
 				).
 				WillReturnResult(sqlmock.NewResult(1, 1))
@@ -650,8 +646,6 @@ func TestUpdateUser(t *testing.T) {
 					newData.Password,
 					newData.Email,
 					newData.Avatar,
-					newData.Address,
-					newData.Phone,
 					testUserID.String(),
 				).
 				WillReturnResult(sqlmock.NewResult(1, 0))

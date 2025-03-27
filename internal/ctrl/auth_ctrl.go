@@ -31,13 +31,8 @@ func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid
 		return res, err
 	}
 
-	hash, err := c.au.HashSHA256(refresh)
-	if err != nil {
-		return res, err
-	}
-
 	device := auth.GenerateDevice(d)
-	if err = c.repo.CreateToken(ctx, uid, hash, time.Now().Add(auth.RefreshTokenDuration), &device); err != nil {
+	if err = c.repo.CreateToken(ctx, uid, refresh, auth.GetRefreshTime(), &device); err != nil {
 		zap.L().Error(
 			"failed to create token",
 			zap.String("op", op),
@@ -129,11 +124,6 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 		return nil, err
 	}
 
-	hash, err := c.au.HashSHA256(refresh)
-	if err != nil {
-		return nil, err
-	}
-
 	if err = c.repo.RevokeAllTokens(ctx, claims.UID); err != nil {
 		zap.L().Error(
 			"Failed to revoke tokens",
@@ -144,7 +134,7 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 		return nil, err
 	}
 
-	err = c.repo.CreateToken(ctx, claims.UID, hash, time.Now().Add(auth.RefreshTokenDuration), &device)
+	err = c.repo.CreateToken(ctx, claims.UID, refresh, auth.GetRefreshTime(), &device)
 	if err != nil {
 		zap.L().Error(
 			"Failed to create token",
@@ -345,7 +335,7 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 				return tokens, ErrWhileGeneratingToken
 			}
 
-			err = c.repo.CreateToken(ctx, res.ID, refresh, time.Now().Add(auth.RefreshTokenDuration), &device)
+			err = c.repo.CreateToken(ctx, res.ID, refresh, auth.GetRefreshTime(), &device)
 			if err != nil {
 				zap.L().Error(
 					"Failed to create token",
@@ -411,7 +401,7 @@ func (c *Controller) CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, r
 	}
 
 	device := auth.GenerateDevice(d)
-	if err = c.repo.CreateToken(ctx, res.ID, refresh, time.Now().Add(auth.RefreshTokenDuration), &device); err != nil {
+	if err = c.repo.CreateToken(ctx, res.ID, refresh, auth.GetRefreshTime(), &device); err != nil {
 		zap.L().Error(
 			"Failed to create token",
 			zap.String("op", op),

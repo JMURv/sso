@@ -10,7 +10,7 @@ import (
 
 type Config struct {
 	Mode        string       `yaml:"mode" env:"MODE" envDefault:"dev"`
-	ServiceName string       `yaml:"serviceName" env:"SERVICE_NAME,required"`
+	ServiceName string       `yaml:"serviceName" env:"SERVICE_NAME" envDefault:"sso"`
 	Auth        AuthConfig   `yaml:"auth"`
 	Server      ServerConfig `yaml:"server"`
 	Email       EmailConfig  `yaml:"email"`
@@ -19,24 +19,27 @@ type Config struct {
 	Jaeger      JaegerConfig `yaml:"jaeger"`
 }
 
-type provider struct {
-	ClientID     string   `yaml:"clientID"`
-	ClientSecret string   `yaml:"clientSecret"`
-	RedirectURL  string   `yaml:"redirectURL"`
-	Scopes       []string `yaml:"scopes"`
-}
-
 type AuthConfig struct {
 	Secret             string `yaml:"secret" env:"SECRET,required"`
 	ProviderSignSecret string `yaml:"providerSignSecret" env:"PROVIDER_SIGN_SECRET"`
 	Oauth              struct {
-		SuccessURL string   `yaml:"successURL"`
-		Google     provider `yaml:"google"`
+		SuccessURL string `yaml:"successURL" env:"OAUTH2_SUCCESS_URL"`
+		Google     struct {
+			ClientID     string   `yaml:"clientID" env:"OAUTH2_GOOGLE_CLIENT_ID" envDefault:""`
+			ClientSecret string   `yaml:"clientSecret" env:"OAUTH2_GOOGLE_CLIENT_SECRET" envDefault:""`
+			RedirectURL  string   `yaml:"redirectURL" env:"OAUTH2_GOOGLE_REDIRECT_URL" envDefault:""`
+			Scopes       []string `yaml:"scopes" env:"OAUTH2_GOOGLE_SCOPES" envDefault:"" envSeparator:","`
+		} `yaml:"google"`
 	} `yaml:"oauth"`
 
 	OIDC struct {
-		SuccessURL string   `yaml:"successURL"`
-		Google     provider `yaml:"google"`
+		SuccessURL string `yaml:"successURL" env:"OIDC_SUCCESS_URL"`
+		Google     struct {
+			ClientID     string   `yaml:"clientID" env:"OIDC_GOOGLE_CLIENT_ID" envDefault:""`
+			ClientSecret string   `yaml:"clientSecret" env:"OIDC_GOOGLE_CLIENT_SECRET" envDefault:""`
+			RedirectURL  string   `yaml:"redirectURL" env:"OIDC_GOOGLE_REDIRECT_URL" envDefault:""`
+			Scopes       []string `yaml:"scopes" env:"OIDC_GOOGLE_SCOPES" envDefault:"" envSeparator:","`
+		} `yaml:"google"`
 	} `yaml:"oidc"`
 }
 
@@ -69,13 +72,13 @@ type RedisConfig struct {
 
 type JaegerConfig struct {
 	Sampler struct {
-		Type  string  `yaml:"type" env:"JAEGER_SAMPLER_TYPE"`
-		Param float64 `yaml:"param" env:"JAEGER_SAMPLER_PARAM"`
+		Type  string  `yaml:"type" env:"JAEGER_SAMPLER_TYPE" envDefault:"const"`
+		Param float64 `yaml:"param" env:"JAEGER_SAMPLER_PARAM" envDefault:"1"`
 	} `yaml:"sampler"`
 	Reporter struct {
-		LogSpans           bool   `yaml:"LogSpans" env:"JAEGER_REPORTER_LOGSPANS"`
-		LocalAgentHostPort string `yaml:"LocalAgentHostPort" env:"JAEGER_REPORTER_LOCALAGENT"`
-		CollectorEndpoint  string `yaml:"CollectorEndpoint" env:"JAEGER_REPORTER_COLLECTOR"`
+		LogSpans           bool   `yaml:"LogSpans" env:"JAEGER_REPORTER_LOGSPANS" envDefault:"true"`
+		LocalAgentHostPort string `yaml:"LocalAgentHostPort" env:"JAEGER_REPORTER_LOCALAGENT" envDefault:"localhost:6831"`
+		CollectorEndpoint  string `yaml:"CollectorEndpoint" env:"JAEGER_REPORTER_COLLECTOR" envDefault:"http://localhost:14268/api/traces"`
 	} `yaml:"reporter"`
 }
 
@@ -84,13 +87,13 @@ func MustLoad(configPath string) Config {
 
 	_, err := os.Stat(configPath)
 	if err != nil && errors.Is(err, os.ErrNotExist) {
-		if err := env.Parse(conf); err != nil {
+		if err = env.Parse(conf); err != nil {
 			panic("failed to parse environment variables: " + err.Error())
 		}
+
 		zap.L().Info(
 			"Load configuration from environment",
 		)
-
 		return conf
 	} else if err != nil {
 		panic("failed to stat file: " + err.Error())

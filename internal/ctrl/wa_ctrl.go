@@ -17,6 +17,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -28,12 +29,16 @@ func (c *Controller) StartRegistration(ctx context.Context, uid uuid.UUID) (*pro
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	user, err := c.GetUserForWA(ctx, uid)
+	user, err := c.GetUserForWA(ctx, uid, "")
 	if err != nil {
 		return nil, err
 	}
 
-	res, sessionData, err := c.au.Wa.BeginRegistration(user)
+	opts, sess, err := c.au.Wa.BeginRegistration(
+		user, func(credCreationOpts *protocol.PublicKeyCredentialCreationOptions) {
+			credCreationOpts.CredentialExcludeList = user.ExcludeCredentialDescriptorList()
+		},
+	)
 	if err != nil {
 		zap.L().Error(
 			"Failed to begin registration",
@@ -45,11 +50,11 @@ func (c *Controller) StartRegistration(ctx context.Context, uid uuid.UUID) (*pro
 		return nil, err
 	}
 
-	if err = c.StoreWASession(ctx, wa.Register, uid, sessionData); err != nil {
+	if err = c.StoreWASession(ctx, wa.Register, uid, sess); err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return opts, nil
 }
 
 func (c *Controller) FinishRegistration(ctx context.Context, uid uuid.UUID, r *http.Request) error {
@@ -57,33 +62,37 @@ func (c *Controller) FinishRegistration(ctx context.Context, uid uuid.UUID, r *h
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	user, err := c.GetUserForWA(ctx, uid)
+	sess, err := c.GetWASession(ctx, wa.Register, uid)
 	if err != nil {
 		return err
 	}
 
-	sessionData, err := c.GetWASession(ctx, wa.Register, uid)
+	user, err := c.GetUserForWA(ctx, uid, "")
 	if err != nil {
 		return err
 	}
 
-	credential, err := c.au.Wa.FinishRegistration(user, *sessionData, r)
+	credential, err := c.au.Wa.FinishRegistration(user, *sess, r)
 	if err != nil {
 		zap.L().Error(
 			"failed to finish registration",
 			zap.String("op", op),
 			zap.String("uid", uid.String()),
 			zap.Any("user", user),
-			zap.Any("sess", sessionData),
+			zap.Any("sess", sess),
 			zap.Error(err),
 		)
 		return err
 	}
 
-	if err = c.StoreWACredential(ctx, uid, credential); err != nil {
+	if err = c.repo.CreateWACredential(ctx, uid, credential); err != nil {
+		zap.L().Error(
+			"failed to create webAuthn credential",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
-
 	return nil
 }
 
@@ -92,16 +101,16 @@ func (c *Controller) BeginLogin(ctx context.Context, email string) (*protocol.Cr
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	user, err := c.GetUserByEmailForWA(ctx, email)
+	user, err := c.GetUserForWA(ctx, uuid.Nil, email)
 	if err != nil {
-		if errors.Is(err, repo.ErrNotFound) {
-			return nil, ErrNotFound
-		}
 		return nil, err
 	}
 
-	options, sessionData, err := c.au.Wa.BeginLogin(user)
+	opts, sess, err := c.au.Wa.BeginLogin(user)
 	if err != nil {
+		if strings.Contains(err.Error(), "Found no credentials for user") {
+			return nil, ErrNotFound
+		}
 		zap.L().Error(
 			"failed to begin login",
 			zap.String("op", op),
@@ -112,10 +121,10 @@ func (c *Controller) BeginLogin(ctx context.Context, email string) (*protocol.Cr
 		return nil, err
 	}
 
-	if err = c.StoreWASession(ctx, wa.Login, user.ID, sessionData); err != nil {
+	if err = c.StoreWASession(ctx, wa.Login, user.ID, sess); err != nil {
 		return nil, err
 	}
-	return options, nil
+	return opts, nil
 }
 
 func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.DeviceRequest, r *http.Request) (dto.TokenPair, error) {
@@ -124,12 +133,8 @@ func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.Device
 	defer span.Finish()
 
 	var res dto.TokenPair
-
-	user, err := c.GetUserByEmailForWA(ctx, email)
+	user, err := c.GetUserForWA(ctx, uuid.Nil, email)
 	if err != nil {
-		if errors.Is(err, repo.ErrNotFound) {
-			return res, ErrNotFound
-		}
 		return res, err
 	}
 
@@ -138,7 +143,7 @@ func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.Device
 		return res, err
 	}
 
-	_, err = c.au.Wa.FinishLogin(user, *sess, r)
+	cred, err := c.au.Wa.FinishLogin(user, *sess, r)
 	if err != nil {
 		zap.L().Error(
 			"Failed to finish login",
@@ -151,54 +156,29 @@ func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.Device
 		return res, err
 	}
 
-	res, err = c.GenPair(ctx, &d, user.ID, []md.Permission{})
-	if err != nil {
+	if cred.Authenticator.CloneWarning {
+		zap.L().Error(
+			"credential appears to be cloned",
+			zap.String("op", op),
+			zap.Any("credential", cred),
+		)
+		return res, errors.New("credential appears to be cloned") // http.StatusForbiddens
+	}
+
+	if err = c.repo.UpdateWACredential(ctx, cred); err != nil {
+		zap.L().Error(
+			"user failed to update credential during finish login",
+			zap.Error(err),
+			zap.Any("user", user),
+		)
 		return res, err
 	}
 
+	res, err = c.GenPair(ctx, &d, user.ID, user.Permissions)
+	if err != nil {
+		return res, err
+	}
 	return res, nil
-}
-
-func (c *Controller) GetUserForWA(ctx context.Context, uid uuid.UUID) (*md.WebauthnUser, error) {
-	const op = "webauthn.GetUserForWA.ctrl"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
-
-	user, err := c.repo.GetUserByID(ctx, uid)
-	if err != nil {
-		if errors.Is(err, repo.ErrNotFound) {
-			zap.L().Debug(
-				"user not found",
-				zap.String("op", op),
-				zap.Any("uid", uid),
-			)
-			return nil, ErrNotFound
-		}
-		zap.L().Error(
-			"failed to get user",
-			zap.String("op", op),
-			zap.Any("uid", uid),
-			zap.Error(err),
-		)
-		return nil, err
-	}
-
-	credentials, err := c.repo.GetWACredentials(ctx, uid)
-	if err != nil {
-		zap.L().Error(
-			"failed to get credentials",
-			zap.String("op", op),
-			zap.Any("uid", uid),
-			zap.Error(err),
-		)
-		return nil, err
-	}
-
-	return &md.WebauthnUser{
-		ID:          user.ID,
-		Email:       user.Email,
-		Credentials: credentials,
-	}, nil
 }
 
 func (c *Controller) StoreWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID, req *webauthn.SessionData) error {
@@ -242,59 +222,55 @@ func (c *Controller) GetWASession(ctx context.Context, sessionType wa.SessionTyp
 	return &session, nil
 }
 
-func (c *Controller) StoreWACredential(ctx context.Context, userID uuid.UUID, credential *webauthn.Credential) error {
-	const op = "webauthn.StoreWACredential.ctrl"
+func (c *Controller) GetUserForWA(ctx context.Context, uid uuid.UUID, email string) (*md.WebauthnUser, error) {
+	const op = "webauthn.GetUserForWA.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	if err := c.repo.CreateWACredential(
-		ctx, userID, &md.WebauthnCredential{
-			ID:              credential.ID,
-			PublicKey:       credential.PublicKey,
-			AttestationType: credential.AttestationType,
-			Authenticator:   credential.Authenticator,
-			UserID:          userID,
-		},
-	); err != nil {
-		zap.L().Error(
-			"failed to create webAuthn credential",
-			zap.String("op", op),
-			zap.Error(err),
-		)
-		return err
-	}
-	return nil
-}
-
-func (c *Controller) GetUserByEmailForWA(ctx context.Context, email string) (*md.WebauthnUser, error) {
-	const op = "webauthn.GetUserByEmailForWA.ctrl"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
-
-	user, err := c.repo.GetUserByEmail(ctx, email)
-	if err != nil {
-		if errors.Is(err, repo.ErrNotFound) {
-			zap.L().Debug(
-				repo.ErrNotFound.Error(),
+	var err error
+	var user *md.User
+	if uid != uuid.Nil {
+		user, err = c.repo.GetUserByID(ctx, uid)
+		if err != nil {
+			if errors.Is(err, repo.ErrNotFound) {
+				zap.L().Debug(
+					"user not found",
+					zap.String("op", op),
+					zap.Any("uid", uid),
+				)
+				return nil, ErrNotFound
+			}
+			zap.L().Error(
+				"failed to get user",
+				zap.String("op", op),
+				zap.Any("uid", uid),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+	} else {
+		user, err = c.repo.GetUserByEmail(ctx, email)
+		if err != nil {
+			if errors.Is(err, repo.ErrNotFound) {
+				zap.L().Debug(
+					repo.ErrNotFound.Error(),
+					zap.String("op", op),
+					zap.String("email", email),
+				)
+				return nil, ErrNotFound
+			}
+			zap.L().Error(
+				"failed to get user",
 				zap.String("op", op),
 				zap.String("email", email),
+				zap.Error(err),
 			)
-			return nil, ErrNotFound
+			return nil, err
 		}
-		zap.L().Error(
-			"failed to get user",
-			zap.String("op", op),
-			zap.String("email", email),
-			zap.Error(err),
-		)
-		return nil, err
 	}
 
 	credentials, err := c.repo.GetWACredentials(ctx, user.ID)
 	if err != nil {
-		if errors.Is(err, repo.ErrNotFound) {
-			return nil, ErrNotFound
-		}
 		zap.L().Error(
 			"failed to get webAuthn credentials",
 			zap.String("op", op),
@@ -302,10 +278,10 @@ func (c *Controller) GetUserByEmailForWA(ctx context.Context, email string) (*md
 		)
 		return nil, err
 	}
-
 	return &md.WebauthnUser{
 		ID:          user.ID,
 		Email:       user.Email,
+		Permissions: user.Permissions,
 		Credentials: credentials,
 	}, nil
 }

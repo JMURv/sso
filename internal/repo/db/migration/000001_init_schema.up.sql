@@ -1,7 +1,6 @@
 -- USERS
 
-CREATE TABLE IF NOT EXISTS users
-(
+CREATE TABLE IF NOT EXISTS users (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       VARCHAR(50)  NOT NULL,
     password   VARCHAR(255) NULL,
@@ -12,14 +11,12 @@ CREATE TABLE IF NOT EXISTS users
     updated_at TIMESTAMPTZ      DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS permission
-(
+CREATE TABLE IF NOT EXISTS permission (
     id   SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS user_permission
-(
+CREATE TABLE IF NOT EXISTS user_permission (
     user_id       UUID   NOT NULL,
     permission_id BIGINT NOT NULL,
     PRIMARY KEY (user_id, permission_id),
@@ -35,8 +32,7 @@ CREATE INDEX IF NOT EXISTS permission_name_idx ON permission (name);
 
 -- USER DEVICES
 
-CREATE TABLE IF NOT EXISTS user_devices
-(
+CREATE TABLE IF NOT EXISTS user_devices (
     id          VARCHAR(36) PRIMARY KEY,
     user_id     UUID         NOT NULL REFERENCES users (id),
     name        VARCHAR(100) NOT NULL,
@@ -58,12 +54,11 @@ CREATE INDEX IF NOT EXISTS idx_user_devices_last_active ON user_devices (last_ac
 
 -- REFRESH TOKEN
 
-CREATE TABLE IF NOT EXISTS refresh_tokens
-(
+CREATE TABLE IF NOT EXISTS refresh_tokens (
     id           SERIAL PRIMARY KEY,
     user_id      UUID                     NOT NULL,
     token_hash   TEXT                     NOT NULL UNIQUE,
-    expires_at   TIMESTAMP WITH TIME ZONE NOT NULL,
+    expires_at   TIMESTAMPTZ              NOT NULL,
     revoked      BOOLEAN                  NOT NULL DEFAULT FALSE,
     device_id    VARCHAR(36)              NOT NULL,
     last_used_at TIMESTAMPTZ,
@@ -81,8 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens (expires
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_device_id ON refresh_tokens (device_id);
 
 -- OAUTH2
-CREATE TABLE IF NOT EXISTS oauth2_connections
-(
+CREATE TABLE IF NOT EXISTS oauth2_connections (
     id            SERIAL PRIMARY KEY,
     user_id       UUID         NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     provider      VARCHAR(50)  NOT NULL, -- google, github etc.
@@ -101,17 +95,16 @@ CREATE INDEX IF NOT EXISTS idx_oauth2_provider_id ON oauth2_connections (provide
 
 
 -- WebAuthn
-CREATE TABLE IF NOT EXISTS webauthn_credentials
-(
-    id               BYTEA PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS wa_credentials (
+    id               BYTEA NOT NULL,
     public_key       BYTEA NOT NULL,
     attestation_type TEXT  NOT NULL,
     authenticator    JSONB NOT NULL,
-    user_id          UUID REFERENCES users (id) ON DELETE CASCADE
+    user_id          UUID REFERENCES users (id) ON DELETE CASCADE,
+    PRIMARY KEY (id, user_id)
 );
 
 INSERT INTO permission (name)
 VALUES ('admin'),
        ('staff')
 ON CONFLICT (name) DO NOTHING;
-

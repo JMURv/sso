@@ -50,18 +50,32 @@ SELECT
 	u.avatar, 
 	u.created_at, 
 	u.updated_at,
-	ARRAY_AGG(p.id::TEXT || '|' || p.name || '|' || up.value::TEXT) FILTER (WHERE p.id IS NOT NULL) AS permissions
+	ARRAY_AGG(p.id::TEXT || '|' || p.name || '|' || up.value::TEXT) FILTER (WHERE p.id IS NOT NULL) AS permissions,
+	ARRAY_AGG(oth2.provider || '|' || oth2.provider_id) FILTER (WHERE oth2.id IS NOT NULL) AS oauth2_connections
 FROM users u
 LEFT JOIN user_permission up ON up.user_id = u.id
 LEFT JOIN permission p ON p.id = up.permission_id
+LEFT JOIN oauth2_connections oth2 ON oth2.user_id = u.id
 WHERE u.id = $1
-GROUP BY u.id, u.created_at
+GROUP BY u.id
 `
 
 const userGetByEmailQ = `
-SELECT id, name, password, email, avatar, created_at, updated_at
-FROM users
-WHERE email = $1`
+SELECT 
+    u.id, 
+    u.name, 
+    u.password, 
+    u.email, 
+    u.avatar, 
+    u.created_at, 
+    u.updated_at,
+    ARRAY_AGG(p.id::TEXT || '|' || p.name || '|' || up.value::TEXT) FILTER (WHERE p.id IS NOT NULL) AS permissions
+FROM users u
+LEFT JOIN user_permission up ON up.user_id = u.id
+LEFT JOIN permission p ON p.id = up.permission_id
+WHERE email = $1
+GROUP BY u.id
+`
 
 const userCreateQ = `
 INSERT INTO users (name, password, email, avatar) 

@@ -32,7 +32,7 @@ func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid
 	}
 
 	device := auth.GenerateDevice(d)
-	if err = c.repo.CreateToken(ctx, uid, refresh, auth.GetRefreshTime(), &device); err != nil {
+	if err = c.repo.CreateToken(ctx, uid, refresh, c.au.GetRefreshTime(), &device); err != nil {
 		zap.L().Error(
 			"failed to create token",
 			zap.String("op", op),
@@ -134,7 +134,7 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 		return nil, err
 	}
 
-	err = c.repo.CreateToken(ctx, claims.UID, refresh, auth.GetRefreshTime(), &device)
+	err = c.repo.CreateToken(ctx, claims.UID, refresh, c.au.GetRefreshTime(), &device)
 	if err != nil {
 		zap.L().Error(
 			"Failed to create token",
@@ -282,17 +282,8 @@ func (c *Controller) SendForgotPasswordEmail(ctx context.Context, email string) 
 
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 	code := rand.Intn(9999-1000+1) + 1000
-	if err = c.smtp.SendForgotPasswordEmail(ctx, strconv.Itoa(code), res.ID.String(), email); err != nil {
-		zap.L().Error(
-			"Failed to send email",
-			zap.String("op", op),
-			zap.String("uid", res.ID.String()),
-			zap.String("email", email),
-			zap.Error(err),
-		)
-		return err
-	}
 
+	go c.smtp.SendForgotPasswordEmail(ctx, strconv.Itoa(code), res.ID.String(), email)
 	c.cache.Set(ctx, time.Minute*15, fmt.Sprintf(recoveryCacheKey, res.ID.String()), code)
 	return nil
 }
@@ -327,7 +318,7 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 	}
 
 	device := auth.GenerateDevice(d)
-	devs, err := c.repo.GetUserDevices(ctx, res.ID)
+	devs, err := c.repo.ListDevices(ctx, res.ID)
 	for i := 0; i < len(devs); i++ {
 		if devs[i].ID == device.ID {
 			access, refresh, err := c.au.GenPair(ctx, res.ID, res.Permissions)
@@ -335,7 +326,7 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 				return tokens, ErrWhileGeneratingToken
 			}
 
-			err = c.repo.CreateToken(ctx, res.ID, refresh, auth.GetRefreshTime(), &device)
+			err = c.repo.CreateToken(ctx, res.ID, refresh, c.au.GetRefreshTime(), &device)
 			if err != nil {
 				zap.L().Error(
 					"Failed to create token",
@@ -401,7 +392,7 @@ func (c *Controller) CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, r
 	}
 
 	device := auth.GenerateDevice(d)
-	if err = c.repo.CreateToken(ctx, res.ID, refresh, auth.GetRefreshTime(), &device); err != nil {
+	if err = c.repo.CreateToken(ctx, res.ID, refresh, c.au.GetRefreshTime(), &device); err != nil {
 		zap.L().Error(
 			"Failed to create token",
 			zap.String("op", op),

@@ -17,15 +17,27 @@ import (
 )
 
 func RegisterUserRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
-	mux.HandleFunc("/api/users/search", mid.Apply(
-		h.searchUser,
-		mid.AllowedMethods(http.MethodGet),
-	))
+	mux.HandleFunc(
+		"/api/users/search", mid.Apply(
+			h.searchUser,
+			mid.AllowedMethods(http.MethodGet),
+		),
+	)
 
-	mux.HandleFunc("/api/users/exists", mid.Apply(
-		h.existsUser,
-		mid.AllowedMethods(http.MethodPost),
-	))
+	mux.HandleFunc(
+		"/api/users/exists", mid.Apply(
+			h.existsUser,
+			mid.AllowedMethods(http.MethodPost),
+		),
+	)
+
+	mux.HandleFunc(
+		"/api/users/me", mid.Apply(
+			h.getMe,
+			mid.AllowedMethods(http.MethodGet),
+			mid.Auth(au),
+		),
+	)
 
 	mux.HandleFunc(
 		"/api/users", func(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +150,29 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 			zap.Error(err),
 		)
 		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrFailedToParseUUID)
+		return
+	}
+
+	res, err := h.ctrl.GetUserByID(r.Context(), uid)
+	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
+		utils.ErrResponse(w, http.StatusNotFound, err)
+		return
+	} else if err != nil {
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+		return
+	}
+
+	utils.SuccessResponse(w, http.StatusOK, res)
+}
+
+func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
+	uid, ok := r.Context().Value("uid").(uuid.UUID)
+	if uid == uuid.Nil || !ok {
+		zap.L().Debug(
+			hdl.ErrFailedToParseUUID.Error(),
+			zap.Any("uid", r.Context().Value("uid")),
+		)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrFailedToParseUUID)
 		return
 	}
 

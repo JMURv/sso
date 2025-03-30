@@ -3,7 +3,6 @@ package ctrl
 import (
 	"context"
 	"errors"
-	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/auth/providers"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
@@ -102,31 +101,25 @@ func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceReques
 			)
 			return nil, err
 		} else if err == nil {
-			// TODO: Привязать OAuth2 к существующему пользователю
+			if err = c.repo.CreateOAuth2Connection(ctx, user.ID, provider, oauthUser); err != nil {
+				zap.L().Error(
+					"failed to create oauth2 connection",
+					zap.String("op", op),
+					zap.Any("oauthUser", oauthUser),
+					zap.Error(err),
+				)
+				return nil, err
+			}
 		}
 	}
 
-	access, refresh, err := c.au.GenPair(ctx, user.ID, user.Permissions)
+	pair, err := c.GenPair(ctx, d, user.ID, user.Permissions)
 	if err != nil {
 		return nil, err
 	}
-
-	device := auth.GenerateDevice(d)
-	if err = c.repo.CreateToken(ctx, user.ID, refresh, c.au.GetRefreshTime(), &device); err != nil {
-		zap.L().Error(
-			"Failed to save token",
-			zap.String("op", op),
-			zap.Any("user", user),
-			zap.Any("device", device),
-			zap.String("refresh", refresh),
-			zap.Error(err),
-		)
-		return nil, err
-	}
-
 	return &dto.HandleCallbackResponse{
-		Access:     access,
-		Refresh:    refresh,
+		Access:     pair.Access,
+		Refresh:    pair.Refresh,
 		SuccessURL: pr.GetSuccessURL(),
-	}, err
+	}, nil
 }

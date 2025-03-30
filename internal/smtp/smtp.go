@@ -55,30 +55,30 @@ func (s *EmailServer) SendLoginEmail(_ context.Context, code int, toEmail string
 	_ = s.Send(m)
 }
 
-func (s *EmailServer) SendActivationCodeEmail(_ context.Context, code uint64, toEmail string) error {
+func (s *EmailServer) SendActivationCodeEmail(_ context.Context, code uint64, toEmail string) {
 	m := s.GetMessageBase("Activation Code", toEmail)
 	m.SetBody("text/plain", fmt.Sprintf("Activation code: %v", code))
-	return s.Send(m)
+	_ = s.Send(m)
 }
 
-func (s *EmailServer) SendForgotPasswordEmail(_ context.Context, token, uid64, toEmail string) error {
+func (s *EmailServer) SendForgotPasswordEmail(_ context.Context, token, uid64, toEmail string) {
 	m := s.GetMessageBase("Forgot Password Code", toEmail)
 
 	params := fmt.Sprintf("?uidb64=%v&token=%v", uid64, token)
 	resetURL := fmt.Sprintf("%v://%v/email/password-reset/%v", s.serverConfig.Scheme, s.serverConfig.Domain, params)
 
 	m.SetBody("text/plain", fmt.Sprintf("Forgot password URL: %v", resetURL))
-	return s.Send(m)
+	_ = s.Send(m)
 }
 
-func (s *EmailServer) SendSupportEmail(_ context.Context, u *md.User, theme, text string) error {
+func (s *EmailServer) SendSupportEmail(_ context.Context, u *md.User, theme, text string) {
 	m := s.GetMessageBase(theme, s.admin)
 	m.SetBody("text/plain", fmt.Sprintf("New support message from %v with email: %v\n %v", u.Name, u.Email, text))
-	return s.Send(m)
+	_ = s.Send(m)
 }
 
-func (s *EmailServer) SendUserCredentials(_ context.Context, email, pass string) error {
+func (s *EmailServer) SendUserCredentials(_ context.Context, email, pass string) {
 	m := s.GetMessageBase("Данные для входа", email)
 	m.SetBody("text/plain", fmt.Sprintf("Данные для входа.\nLogin: %v\nPassword: %v", email, pass))
-	return s.Send(m)
+	_ = s.Send(m)
 }

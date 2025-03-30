@@ -104,8 +104,8 @@ func MustLoad(configPath string) Config {
 		panic("failed to read config: " + err.Error())
 	}
 
-	if err = yaml.Unmarshal(data, conf); err != nil {
-		panic("failed to unmarshal cgonfig: " + err.Error())
+	if err = yaml.Unmarshal(data, &conf); err != nil {
+		panic("failed to unmarshal config: " + err.Error())
 	}
 
 	zap.L().Info(

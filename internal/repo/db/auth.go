@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/JMURv/sso/internal/config"
+	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/google/uuid"
@@ -16,13 +17,7 @@ import (
 	"time"
 )
 
-func (r *Repository) CreateToken(
-	ctx context.Context,
-	userID uuid.UUID,
-	hashedT string,
-	expiresAt time.Time,
-	device *md.Device,
-) error {
+func (r *Repository) CreateToken(ctx context.Context, userID uuid.UUID, hashedT string, expiresAt time.Time, device *md.Device) error {
 	const op = "auth.CreateToken.repo"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -140,7 +135,7 @@ func (r *Repository) RevokeByDevice(ctx context.Context, userID uuid.UUID, devic
 	return err
 }
 
-func (r *Repository) GetUserDevices(ctx context.Context, userID uuid.UUID) ([]md.Device, error) {
+func (r *Repository) ListDevices(ctx context.Context, uid uuid.UUID) ([]md.Device, error) {
 	const op = "auth.GetUserDevices.repo"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -150,7 +145,7 @@ func (r *Repository) GetUserDevices(ctx context.Context, userID uuid.UUID) ([]md
         SELECT id, name, device_type, os, user_agent, browser, ip, last_active 
         FROM user_devices 
         WHERE user_id = $1`,
-		userID,
+		uid,
 	)
 	if err != nil {
 		return nil, err
@@ -187,10 +182,49 @@ func (r *Repository) GetUserDevices(ctx context.Context, userID uuid.UUID) ([]md
 	return devices, nil
 }
 
+func (r *Repository) GetDevice(ctx context.Context, uid uuid.UUID, dID string) (*md.Device, error) {
+	return nil, nil
+}
+
+func (r *Repository) UpdateDevice(ctx context.Context, uid uuid.UUID, dID string, req *dto.UpdateDeviceRequest) error {
+	const op = "auth.UpdateDevice.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	res, err := r.conn.ExecContext(
+		ctx, `
+		UPDATE user_devices
+		SET name = $1
+		WHERE id = $2 AND user_id = $3
+		`,
+		req.Name,
+		dID,
+		uid,
+	)
+	if err != nil {
+		return err
+	}
+
+	aff, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if aff == 0 {
+		return repo.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r *Repository) DeleteDevice(ctx context.Context, userID uuid.UUID, deviceID string) error {
 	const op = "auth.DeleteDevice.repo"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
+
+	if err := r.RevokeByDevice(ctx, userID, deviceID); err != nil {
+		return err
+	}
 
 	res, err := r.conn.ExecContext(
 		ctx, `DELETE FROM user_devices WHERE id = $1 AND user_id = $2`,

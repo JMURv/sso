@@ -20,7 +20,6 @@ const RefreshTokenDuration = time.Hour * 24 * 7
 
 type Core interface {
 	Hash(val string) (string, error)
-	HashSHA256(val string) (string, error)
 	ComparePasswords(hashed, pswd []byte) error
 	NewToken(ctx context.Context, uid uuid.UUID, perms []md.Permission, d time.Duration) (string, error)
 	ParseClaims(ctx context.Context, tokenStr string) (Claims, error)

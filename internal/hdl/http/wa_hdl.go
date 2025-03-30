@@ -28,7 +28,11 @@ func RegisterWebAuthnRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 		),
 	)
 
-	mux.HandleFunc("/api/auth/webauthn/login/start", h.loginStart)
+	mux.HandleFunc(
+		"/api/auth/webauthn/login/start",
+		h.loginStart,
+	)
+
 	mux.HandleFunc(
 		"/api/auth/webauthn/login/finish", mid.Apply(
 			h.loginFinish,

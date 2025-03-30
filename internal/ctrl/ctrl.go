@@ -28,23 +28,13 @@ type AppRepo interface {
 	GetUserByOAuth2(ctx context.Context, provider, providerID string) (*md.User, error)
 	CreateOAuth2Connection(ctx context.Context, userID uuid.UUID, provider string, data *dto.ProviderResponse) error
 
-	CreateWACredential(
-		ctx context.Context,
-		userID uuid.UUID,
-		cred *md.WebauthnCredential,
-	) error
-	GetWACredentials(
-		ctx context.Context,
-		userID uuid.UUID,
-	) ([]webauthn.Credential, error)
-
-	GetByDevice(ctx context.Context, userID uuid.UUID, deviceID string) (*md.RefreshToken, error)
-	RevokeByDevice(ctx context.Context, userID uuid.UUID, deviceID string) error
-	GetUserDevices(ctx context.Context, userID uuid.UUID) ([]md.Device, error)
-	DeleteDevice(ctx context.Context, userID uuid.UUID, deviceID string) error
+	GetWACredentials(ctx context.Context, userID uuid.UUID) ([]webauthn.Credential, error)
+	CreateWACredential(ctx context.Context, userID uuid.UUID, cred *webauthn.Credential) error
+	UpdateWACredential(ctx context.Context, cred *webauthn.Credential) error
 
 	userRepo
 	permRepo
+	deviceRepo
 }
 
 type AppCtrl interface {
@@ -70,11 +60,9 @@ type AppCtrl interface {
 	BeginLogin(ctx context.Context, email string) (*protocol.CredentialAssertion, error)
 	FinishLogin(ctx context.Context, email string, d dto.DeviceRequest, r *http.Request) (dto.TokenPair, error)
 
-	GetUserForWA(ctx context.Context, uid uuid.UUID) (*md.WebauthnUser, error)
+	GetUserForWA(ctx context.Context, uid uuid.UUID, email string) (*md.WebauthnUser, error)
 	StoreWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID, req *webauthn.SessionData) error
 	GetWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID) (*webauthn.SessionData, error)
-	StoreWACredential(ctx context.Context, userID uuid.UUID, credential *webauthn.Credential) error
-	GetUserByEmailForWA(ctx context.Context, email string) (*md.WebauthnUser, error)
 
 	IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error)
 	SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error)
@@ -90,6 +78,11 @@ type AppCtrl interface {
 	CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error)
 	UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error
 	DeletePerm(ctx context.Context, id uint64) error
+
+	ListDevices(ctx context.Context, uid uuid.UUID) ([]md.Device, error)
+	GetDevice(ctx context.Context, uid uuid.UUID, dID string) (*md.Device, error)
+	UpdateDevice(ctx context.Context, uid uuid.UUID, dID string, req *dto.UpdateDeviceRequest) error
+	DeleteDevice(ctx context.Context, uid uuid.UUID, dID string) error
 }
 
 type CacheService interface {
@@ -104,8 +97,8 @@ type CacheService interface {
 
 type EmailService interface {
 	SendLoginEmail(_ context.Context, code int, toEmail string)
-	SendForgotPasswordEmail(ctx context.Context, token, uid64, toEmail string) error
-	SendUserCredentials(_ context.Context, email, pass string) error
+	SendForgotPasswordEmail(ctx context.Context, token, uid64, toEmail string)
+	SendUserCredentials(_ context.Context, email, pass string)
 }
 
 type Controller struct {

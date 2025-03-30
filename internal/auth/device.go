@@ -8,7 +8,7 @@ import (
 	"github.com/mssola/useragent"
 )
 
-// TODO: Make better device recognition and remove Name param
+// TODO: Make better device recognition
 func GenerateDevice(d *dto.DeviceRequest) md.Device {
 	hash := sha256.Sum256([]byte(d.IP + d.UA))
 	ua := useragent.New(d.UA)
@@ -17,7 +17,7 @@ func GenerateDevice(d *dto.DeviceRequest) md.Device {
 
 	return md.Device{
 		ID:         fmt.Sprintf("%x", hash[:8]),
-		Name:       "My" + dt,
+		Name:       "My " + dt,
 		DeviceType: dt,
 		OS:         ua.OS(),
 		Browser:    bName,

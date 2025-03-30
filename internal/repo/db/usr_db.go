@@ -147,6 +147,7 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 
 	res := &md.User{}
 	perms := make([]string, 0, 5)
+	oauth2 := make([]string, 0, 5)
 	err := r.conn.QueryRowContext(ctx, userGetByIDQ, userID).Scan(
 		&res.ID,
 		&res.Name,
@@ -156,6 +157,7 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		&res.CreatedAt,
 		&res.UpdatedAt,
 		pq.Array(&perms),
+		pq.Array(&oauth2),
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -169,6 +171,11 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		return nil, err
 	}
 
+	res.Oauth2Connections, err = ScanOauth2Connections(oauth2)
+	if err != nil {
+		return nil, err
+	}
+
 	return res, nil
 }
 
@@ -178,6 +185,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 	defer span.Finish()
 
 	res := &md.User{}
+	perms := make([]string, 0, 5)
 	err := r.conn.QueryRowContext(ctx, userGetByEmailQ, email).
 		Scan(
 			&res.ID,
@@ -187,6 +195,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 			&res.Avatar,
 			&res.CreatedAt,
 			&res.UpdatedAt,
+			pq.Array(&perms),
 		)
 
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
@@ -195,6 +204,10 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 		return nil, err
 	}
 
+	res.Permissions, err = ScanPermissions(perms)
+	if err != nil {
+		return nil, err
+	}
 	return res, nil
 }
 

@@ -35,6 +35,7 @@ func (h *Handler) Start(port int) {
 
 	RegisterUserRoutes(mux, h.au, h)
 	RegisterPermRoutes(mux, h.au, h)
+	RegisterDeviceRoutes(mux, h.au, h)
 	mux.HandleFunc(
 		"/health", func(w http.ResponseWriter, r *http.Request) {
 			utils.SuccessResponse(w, http.StatusOK, "OK")

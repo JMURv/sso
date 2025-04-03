@@ -7,6 +7,10 @@ CREATE TABLE IF NOT EXISTS users (
     email      VARCHAR(50)  NOT NULL UNIQUE,
     avatar     VARCHAR(255),
 
+    is_wa BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT FALSE,
+    is_email_verified BOOLEAN DEFAULT FALSE,
+
     created_at TIMESTAMPTZ      DEFAULT NOW(),
     updated_at TIMESTAMPTZ      DEFAULT NOW()
 );
@@ -19,10 +23,9 @@ CREATE TABLE IF NOT EXISTS permission (
 CREATE TABLE IF NOT EXISTS user_permission (
     user_id       UUID   NOT NULL,
     permission_id BIGINT NOT NULL,
-    PRIMARY KEY (user_id, permission_id),
-
     value         BOOLEAN DEFAULT FALSE,
 
+    PRIMARY KEY (user_id, permission_id),
     CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
     CONSTRAINT fk_permission FOREIGN KEY (permission_id) REFERENCES permission (id) ON DELETE CASCADE
 );
@@ -56,13 +59,13 @@ CREATE INDEX IF NOT EXISTS idx_user_devices_last_active ON user_devices (last_ac
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id           SERIAL PRIMARY KEY,
-    user_id      UUID                     NOT NULL,
-    token_hash   TEXT                     NOT NULL UNIQUE,
-    expires_at   TIMESTAMPTZ              NOT NULL,
-    revoked      BOOLEAN                  NOT NULL DEFAULT FALSE,
-    device_id    VARCHAR(36)              NOT NULL,
+    user_id      UUID        NOT NULL,
+    token_hash   TEXT        NOT NULL UNIQUE,
+    expires_at   TIMESTAMPTZ NOT NULL,
+    revoked      BOOLEAN     NOT NULL DEFAULT FALSE,
+    device_id    VARCHAR(36) NOT NULL,
     last_used_at TIMESTAMPTZ,
-    created_at   TIMESTAMPTZ              NOT NULL DEFAULT NOW(),
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_user
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,

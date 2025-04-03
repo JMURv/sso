@@ -20,6 +20,12 @@ import (
 const codeCacheKey = "code:%v"
 const recoveryCacheKey = "recovery:%v"
 
+type authRepo interface {
+	CreateToken(ctx context.Context, userID uuid.UUID, hashedT string, expiresAt time.Time, device *md.Device) error
+	IsTokenValid(ctx context.Context, userID uuid.UUID, d *md.Device, token string) (bool, error)
+	RevokeAllTokens(ctx context.Context, userID uuid.UUID) error
+}
+
 func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Permission) (dto.TokenPair, error) {
 	const op = "auth.GenPair.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)

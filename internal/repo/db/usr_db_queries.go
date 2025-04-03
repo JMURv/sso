@@ -47,7 +47,10 @@ SELECT
 	u.name, 
 	u.password, 
 	u.email, 
-	u.avatar, 
+	u.avatar,
+	u.is_wa,
+	u.is_active,
+	u.is_email_verified,
 	u.created_at, 
 	u.updated_at,
 	ARRAY_AGG(p.id::TEXT || '|' || p.name || '|' || up.value::TEXT) FILTER (WHERE p.id IS NOT NULL) AS permissions,
@@ -66,7 +69,10 @@ SELECT
     u.name, 
     u.password, 
     u.email, 
-    u.avatar, 
+    u.avatar,
+	u.is_wa,
+	u.is_active,
+	u.is_email_verified,
     u.created_at, 
     u.updated_at,
     ARRAY_AGG(p.id::TEXT || '|' || p.name || '|' || up.value::TEXT) FILTER (WHERE p.id IS NOT NULL) AS permissions
@@ -78,15 +84,20 @@ GROUP BY u.id
 `
 
 const userCreateQ = `
-INSERT INTO users (name, password, email, avatar) 
-VALUES ($1, $2, $3, $4)
+INSERT INTO users (name, password, email, avatar, is_active, is_email_verified) 
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id
 `
 
 const userUpdateQ = `
 UPDATE users 
-SET name = $1, password = $2, email = $3, avatar = $4
-WHERE id = $5`
+SET name = $1, 
+    password = $2,
+    email = $3,
+    avatar = $4,
+	is_active = $5,
+	is_email_verified = $6
+WHERE id = $7`
 
 const userDeleteQ = `DELETE FROM users WHERE id = $1`
 const userCreatePermQ = `INSERT INTO user_permission (user_id, permission_id, value) VALUES ($1, $2, $3)`

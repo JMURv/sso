@@ -30,6 +30,12 @@ type AuthConfig struct {
 			RedirectURL  string   `yaml:"redirectURL" env:"OAUTH2_GOOGLE_REDIRECT_URL" envDefault:""`
 			Scopes       []string `yaml:"scopes" env:"OAUTH2_GOOGLE_SCOPES" envDefault:"" envSeparator:","`
 		} `yaml:"google"`
+		GitHub struct {
+			ClientID     string   `yaml:"clientID" env:"OAUTH2_GITHUB_CLIENT_ID" envDefault:""`
+			ClientSecret string   `yaml:"clientSecret" env:"OAUTH2_GITHUB_CLIENT_SECRET" envDefault:""`
+			RedirectURL  string   `yaml:"redirectURL" env:"OAUTH2_GITHUB_REDIRECT_URL" envDefault:""`
+			Scopes       []string `yaml:"scopes" env:"OAUTH2_GITHUB_SCOPES" envDefault:"" envSeparator:","`
+		} `yaml:"github"`
 	} `yaml:"oauth"`
 
 	OIDC struct {
@@ -44,9 +50,10 @@ type AuthConfig struct {
 }
 
 type ServerConfig struct {
-	Port   int    `yaml:"port" env:"SERVER_PORT,required"`
-	Scheme string `yaml:"scheme" env:"SERVER_SCHEME" envDefault:"http"`
-	Domain string `yaml:"domain" env:"SERVER_DOMAIN" envDefault:"localhost"`
+	Port     int    `yaml:"port" env:"SERVER_PORT,required"`
+	GRPCPort int    `yaml:"grpc_port" env:"SERVER_GRPC_PORT" envDefault:"50065"`
+	Scheme   string `yaml:"scheme" env:"SERVER_SCHEME" envDefault:"http"`
+	Domain   string `yaml:"domain" env:"SERVER_DOMAIN" envDefault:"localhost"`
 }
 
 type EmailConfig struct {

@@ -23,6 +23,8 @@ type CreateUserRequest struct {
 	Email       string       `json:"email" validate:"required,email"`
 	Password    string       `json:"password" validate:"required"`
 	Avatar      string       `json:"avatar"`
+	IsActive    bool         `json:"is_active"`
+	IsEmail     bool         `json:"is_email_verified"`
 	Permissions []permission `json:"permissions"`
 }
 
@@ -31,6 +33,8 @@ type UpdateUserRequest struct {
 	Email       string       `json:"email" validate:"required,email"`
 	Password    string       `json:"password"`
 	Avatar      string       `json:"avatar"`
+	IsActive    bool         `json:"is_active"`
+	IsEmail     bool         `json:"is_email_verified"`
 	Permissions []permission `json:"permissions" validate:"required"`
 }
 

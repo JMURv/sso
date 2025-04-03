@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/JMURv/sso/api/grpc/v1/gen"
+	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/hdl/grpc/interceptors"
 	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
@@ -23,9 +24,10 @@ type Handler struct {
 	srv  *grpc.Server
 	hsrv *health.Server
 	ctrl ctrl.AppCtrl
+	au   auth.Core
 }
 
-func New(name string, ctrl ctrl.AppCtrl) *Handler {
+func New(name string, ctrl ctrl.AppCtrl, au auth.Core) *Handler {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			interceptors.AuthUnaryInterceptor(),
@@ -48,6 +50,7 @@ func New(name string, ctrl ctrl.AppCtrl) *Handler {
 		ctrl: ctrl,
 		srv:  srv,
 		hsrv: hsrv,
+		au:   au,
 	}
 }
 

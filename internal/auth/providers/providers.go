@@ -5,8 +5,8 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
 	"fmt"
+	gh_oauth2 "github.com/JMURv/sso/internal/auth/providers/oauth2/github"
 	g_oauth2 "github.com/JMURv/sso/internal/auth/providers/oauth2/google"
 	g_oidc "github.com/JMURv/sso/internal/auth/providers/oidc/google"
 	"github.com/JMURv/sso/internal/config"
@@ -43,6 +43,7 @@ type Provider struct {
 	secret          []byte
 	OAuth2Providers struct {
 		Google OAuth2Provider
+		GitHub OAuth2Provider
 	}
 	OIDCProviders struct {
 		Google OAuth2Provider
@@ -54,8 +55,10 @@ func New(conf config.Config) *Provider {
 		secret: []byte(conf.Auth.ProviderSignSecret),
 		OAuth2Providers: struct {
 			Google OAuth2Provider
+			GitHub OAuth2Provider
 		}{
 			Google: g_oauth2.NewGoogleOAuth2(conf),
+			GitHub: gh_oauth2.NewGitHubOAuth2(conf),
 		},
 		OIDCProviders: struct {
 			Google OAuth2Provider
@@ -65,8 +68,6 @@ func New(conf config.Config) *Provider {
 	}
 }
 
-var ErrUnknownProvider = errors.New("unknown provider")
-
 func (p *Provider) Get(_ context.Context, provider Providers, flow Flow) (OAuth2Provider, error) {
 	switch provider {
 	case Google:
@@ -74,6 +75,8 @@ func (p *Provider) Get(_ context.Context, provider Providers, flow Flow) (OAuth2
 			return p.OIDCProviders.Google, nil
 		}
 		return p.OAuth2Providers.Google, nil
+	case GitHub:
+		return p.OAuth2Providers.GitHub, nil
 	default:
 		zap.L().Error(
 			"Unknown provider",
@@ -95,12 +98,6 @@ func (p *Provider) GenerateSignedState() string {
 	signedState := base64.URLEncoding.EncodeToString([]byte(data)) + "." + base64.URLEncoding.EncodeToString(signature)
 	return signedState
 }
-
-var ErrInvalidState = errors.New("invalid oauth state")
-var ErrInvalidStateFormat = errors.New("invalid oauth state format")
-var ErrInvalidSignature = errors.New("invalid signature")
-var ErrInvalidDataFormat = errors.New("invalid data format")
-var ErrStateExpired = errors.New("state expired")
 
 func (p *Provider) ValidateSignedState(signedState string, maxAge time.Duration) error {
 	parts := strings.Split(signedState, ".")

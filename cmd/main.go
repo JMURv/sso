@@ -6,6 +6,7 @@ import (
 	"github.com/JMURv/sso/internal/cache/redis"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/ctrl"
+	"github.com/JMURv/sso/internal/hdl/grpc"
 	"github.com/JMURv/sso/internal/hdl/http"
 	"github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/JMURv/sso/internal/observability/tracing/jaeger"
@@ -49,8 +50,10 @@ func main() {
 	repo := db.New(conf)
 	svc := ctrl.New(repo, au, cache, smtp.New(conf))
 	h := http.New(svc, au)
+	hg := grpc.New(conf.ServiceName, svc, au)
 
 	go h.Start(conf.Server.Port)
+	go hg.Start(conf.Server.GRPCPort)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)

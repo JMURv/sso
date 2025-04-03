@@ -16,42 +16,18 @@ message SSO_Uint64Msg {
   uint64 uint64 = 1;
 }
 
-message SSO_User {
-  string id = 1;
-  string name = 2;
-  string password = 3;
-  string email = 4;
-  string avatar = 5;
-  string address = 6;
-  string phone = 7;
-  repeated SSO_Permission permissions = 8;
-  google.protobuf.Timestamp created_at = 9;
-  google.protobuf.Timestamp updated_at = 10;
+message SSO_ListReq {
+  uint64 page = 1;
+  uint64 size = 2;
 }
 
-service PermissionSvc {
-  rpc ListPermissions (SSO_ListReq) returns (SSO_PermissionList);
-  rpc GetPermission (SSO_Uint64Msg) returns (SSO_Permission);
-  rpc CreatePermission (SSO_Permission) returns (SSO_Uint64Msg);
-  rpc UpdatePermission (SSO_Permission) returns (SSO_Empty);
-  rpc DeletePermission (SSO_Uint64Msg) returns (SSO_Empty);
+message SSO_SearchReq {
+  string query = 1;
+  uint64 page = 2;
+  uint64 size = 3;
 }
 
-message SSO_Permission {
-  uint64 id = 1;
-  string name = 2;
-  bool   value = 3;
-}
-
-message SSO_PermissionList {
-  repeated SSO_Permission data = 1;
-  int64 count = 2;
-  int64 total_pages = 3;
-  int64 current_page = 4;
-  bool has_next_page = 5;
-}
-
-service SSO {
+service Auth {
   rpc Authenticate (SSO_EmailAndPasswordRequest) returns (SSO_TokenPair);
   rpc ParseClaims (SSO_StringMsg) returns (SSO_ParseClaimsRes);
   rpc GetUserByToken(SSO_StringMsg) returns (SSO_User);
@@ -120,45 +96,27 @@ message SSO_SendSupportEmailReq {
 
 service Users {
   rpc SearchUser (SSO_SearchReq) returns (SSO_PaginatedUsersRes);
+  rpc ExistUser (ExistUserRequest) returns (ExistUserResponse);
   rpc ListUsers (SSO_ListReq) returns (SSO_PaginatedUsersRes);
   rpc GetUser (SSO_UuidMsg) returns (SSO_User);
+  rpc GetMe (SSO_Empty) returns (SSO_User);
   rpc CreateUser (SSO_CreateUserReq) returns (SSO_CreateUserRes);
-  rpc UpdateUser (SSO_UserWithUid) returns (SSO_UuidMsg);
+  rpc UpdateUser (SSO_UpdateUserReq) returns (SSO_UuidMsg);
   rpc DeleteUser (SSO_UuidMsg) returns (SSO_Empty);
 }
 
-message SSO_UserWithUid {
-  SSO_User user = 1;
-  string uid = 2;
-}
-
-message FileReq {
-  bytes file = 1;
-  string filename = 2;
-}
-
-message SSO_CreateUserReq {
-  string name = 1;
-  string email = 2;
+message SSO_User {
+  string id = 1;
+  string name = 2;
   string password = 3;
-  FileReq file = 4;
-}
-
-message SSO_CreateUserRes {
-  string uid = 1;
-  string access = 2;
-  string refresh = 3;
-}
-
-message SSO_ListReq {
-  uint64 page = 1;
-  uint64 size = 2;
-}
-
-message SSO_SearchReq {
-  string query = 1;
-  uint64 page = 2;
-  uint64 size = 3;
+  string email = 4;
+  string avatar = 5;
+  string is_wa = 6;
+  string is_active = 7;
+  string is_email_verified = 8;
+  repeated SSO_Permission permissions = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
 }
 
 message SSO_PaginatedUsersRes {
@@ -167,4 +125,88 @@ message SSO_PaginatedUsersRes {
   int64 total_pages = 3;
   int64 current_page = 4;
   bool has_next_page = 5;
+}
+
+message ExistUserRequest {
+  string email = 1;
+}
+
+message ExistUserResponse {
+  bool is_exist = 1;
+}
+
+message SSO_CreateUserReq {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+  string avatar = 4;
+  bool is_active = 5;
+  bool is_email_verified = 6;
+  repeated SSO_Permission permissions = 7;
+}
+
+message SSO_UpdateUserReq {
+  string uid = 1;
+  string name = 2;
+  string email = 3;
+  string password = 4;
+  string avatar = 5;
+  bool is_active = 6;
+  bool is_email_verified = 7;
+  repeated SSO_Permission permissions = 8;
+}
+
+message SSO_CreateUserRes {
+  string uid = 1;
+}
+
+service PermissionSvc {
+  rpc ListPermissions (SSO_ListReq) returns (SSO_PermissionList);
+  rpc GetPermission (SSO_Uint64Msg) returns (SSO_Permission);
+  rpc CreatePermission (SSO_Permission) returns (SSO_Uint64Msg);
+  rpc UpdatePermission (SSO_Permission) returns (SSO_Empty);
+  rpc DeletePermission (SSO_Uint64Msg) returns (SSO_Empty);
+}
+
+message SSO_Permission {
+  uint64 id = 1;
+  string name = 2;
+  bool   value = 3;
+}
+
+message SSO_PermissionList {
+  repeated SSO_Permission data = 1;
+  int64 count = 2;
+  int64 total_pages = 3;
+  int64 current_page = 4;
+  bool has_next_page = 5;
+}
+
+service DevicesSvc {
+  rpc ListDevices (SSO_ListReq) returns (SSO_ListDevicesRes);
+  rpc GetDevice (SSO_StringMsg) returns (SSO_Device);
+  rpc UpdateDevice (UpdateDeviceRequest) returns (SSO_Empty);
+  rpc DeleteDevice (SSO_StringMsg) returns (SSO_Empty);
+}
+
+message SSO_Device {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  string device_type = 4;
+  string os = 5;
+  string browser = 6;
+  string ua = 7;
+  string ip = 8;
+  google.protobuf.Timestamp last_active = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message SSO_ListDevicesRes {
+  repeated SSO_Device data = 1;
+}
+
+message UpdateDeviceRequest {
+  string id = 1;
+  string name = 2;
 }

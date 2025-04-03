@@ -183,6 +183,7 @@ func (r *Repository) ListDevices(ctx context.Context, uid uuid.UUID) ([]md.Devic
 }
 
 func (r *Repository) GetDevice(ctx context.Context, uid uuid.UUID, dID string) (*md.Device, error) {
+	panic("TODO: implement me")
 	return nil, nil
 }
 

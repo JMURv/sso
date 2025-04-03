@@ -120,7 +120,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &dto.UpdateDeviceRequest{}
-	if ok := utils.ParseAndValidate(w, r, req); !ok {
+	if ok = utils.ParseAndValidate(w, r, req); !ok {
 		return
 	}
 

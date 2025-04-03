@@ -154,6 +154,9 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		&res.Password,
 		&res.Email,
 		&res.Avatar,
+		&res.IsWA,
+		&res.IsActive,
+		&res.IsEmailVerified,
 		&res.CreatedAt,
 		&res.UpdatedAt,
 		pq.Array(&perms),
@@ -193,6 +196,9 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 			&res.Password,
 			&res.Email,
 			&res.Avatar,
+			&res.IsWA,
+			&res.IsActive,
+			&res.IsEmailVerified,
 			&res.CreatedAt,
 			&res.UpdatedAt,
 			pq.Array(&perms),
@@ -238,6 +244,8 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 		req.Password,
 		req.Email,
 		req.Avatar,
+		req.IsActive,
+		req.IsEmail,
 	).Scan(&id)
 
 	if err != nil {
@@ -293,6 +301,8 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 		req.Password,
 		req.Email,
 		req.Avatar,
+		req.IsActive,
+		req.IsEmail,
 		id,
 	)
 	if err != nil {

@@ -20,6 +20,12 @@ import (
 	"strings"
 )
 
+type waRepo interface {
+	GetWACredentials(ctx context.Context, userID uuid.UUID) ([]webauthn.Credential, error)
+	CreateWACredential(ctx context.Context, userID uuid.UUID, cred *webauthn.Credential) error
+	UpdateWACredential(ctx context.Context, cred *webauthn.Credential) error
+}
+
 const (
 	webauthnSessionKey = "webauthn:%s:%s"
 )

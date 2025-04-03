@@ -13,14 +13,6 @@ type WebauthnUser struct {
 	Credentials []webauthn.Credential
 }
 
-type WebauthnCredential struct {
-	ID              []byte
-	PublicKey       []byte
-	AttestationType string
-	Authenticator   webauthn.Authenticator
-	UserID          uuid.UUID
-}
-
 func (u *WebauthnUser) WebAuthnID() []byte {
 	return u.ID[:]
 }

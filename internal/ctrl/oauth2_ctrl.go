@@ -7,10 +7,16 @@ import (
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
+	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"time"
 )
+
+type oauth2Repo interface {
+	GetUserByOAuth2(ctx context.Context, provider, providerID string) (*md.User, error)
+	CreateOAuth2Connection(ctx context.Context, userID uuid.UUID, provider string, data *dto.ProviderResponse) error
+}
 
 func (c *Controller) GetOAuth2AuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error) {
 	const op = "auth.GetOAuth2AuthURL.ctrl"

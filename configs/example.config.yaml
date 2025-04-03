@@ -20,14 +20,11 @@ auth:
       clientID: "id"
       clientSecret: "secret"
       redirectURL: "http://localhost:8080/api/auth/oidc/google/callback"
-      scopes: [
-        "openid",
-        "email",
-        "profile"
-      ]
+      scopes: ["openid","email","profile"]
 
 server:
   port: 8080
+  grpc_port: 50065
   scheme: "http"
   domain: "localhost"
 

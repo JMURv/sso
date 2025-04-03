@@ -15,23 +15,9 @@ import (
 )
 
 type AppRepo interface {
-	CreateToken(
-		ctx context.Context,
-		userID uuid.UUID,
-		hashedT string,
-		expiresAt time.Time,
-		device *md.Device,
-	) error
-	IsTokenValid(ctx context.Context, userID uuid.UUID, d *md.Device, token string) (bool, error)
-	RevokeAllTokens(ctx context.Context, userID uuid.UUID) error
-
-	GetUserByOAuth2(ctx context.Context, provider, providerID string) (*md.User, error)
-	CreateOAuth2Connection(ctx context.Context, userID uuid.UUID, provider string, data *dto.ProviderResponse) error
-
-	GetWACredentials(ctx context.Context, userID uuid.UUID) ([]webauthn.Credential, error)
-	CreateWACredential(ctx context.Context, userID uuid.UUID, cred *webauthn.Credential) error
-	UpdateWACredential(ctx context.Context, cred *webauthn.Credential) error
-
+	authRepo
+	oauth2Repo
+	waRepo
 	userRepo
 	permRepo
 	deviceRepo
@@ -103,12 +89,12 @@ type EmailService interface {
 
 type Controller struct {
 	repo  AppRepo
-	au    *auth.Auth
+	au    auth.Core
 	cache CacheService
 	smtp  EmailService
 }
 
-func New(repo AppRepo, au *auth.Auth, cache CacheService, smtp EmailService) *Controller {
+func New(repo AppRepo, au auth.Core, cache CacheService, smtp EmailService) *Controller {
 	return &Controller{
 		repo:  repo,
 		au:    au,

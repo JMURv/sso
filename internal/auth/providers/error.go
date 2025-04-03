@@ -1,1 +1,10 @@
 package providers
+
+import "errors"
+
+var ErrUnknownProvider = errors.New("unknown provider")
+var ErrInvalidState = errors.New("invalid oauth state")
+var ErrInvalidStateFormat = errors.New("invalid oauth state format")
+var ErrInvalidSignature = errors.New("invalid signature")
+var ErrInvalidDataFormat = errors.New("invalid data format")
+var ErrStateExpired = errors.New("state expired")

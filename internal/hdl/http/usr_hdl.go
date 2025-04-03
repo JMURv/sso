@@ -3,7 +3,6 @@ package http
 import (
 	"errors"
 	"github.com/JMURv/sso/internal/auth"
-	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
@@ -12,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -86,24 +84,6 @@ func (h *Handler) existsUser(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
-func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
-	req := &dto.CreateUserRequest{}
-	if ok := utils.ParseAndValidate(w, r, req); !ok {
-		return
-	}
-
-	res, err := h.ctrl.CreateUser(r.Context(), req)
-	if err != nil && errors.Is(err, ctrl.ErrAlreadyExists) {
-		utils.ErrResponse(w, http.StatusConflict, err)
-		return
-	} else if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
-	}
-
-	utils.SuccessResponse(w, http.StatusCreated, res)
-}
-
 func (h *Handler) searchUser(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if len(query) < 3 {
@@ -111,16 +91,7 @@ func (h *Handler) searchUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := strconv.Atoi(r.URL.Query().Get("page"))
-	if err != nil || page < 1 {
-		page = config.DefaultPage
-	}
-
-	size, err := strconv.Atoi(r.URL.Query().Get("size"))
-	if err != nil || size < 1 {
-		size = config.DefaultSize
-	}
-
+	page, size := utils.ParsePaginationValues(r)
 	res, err := h.ctrl.SearchUser(r.Context(), query, page, size)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
@@ -134,30 +105,6 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	page, size := utils.ParsePaginationValues(r)
 	res, err := h.ctrl.ListUsers(r.Context(), page, size)
 	if err != nil {
-		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-		return
-	}
-
-	utils.SuccessResponse(w, http.StatusOK, res)
-}
-
-func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
-	uid, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/users/"))
-	if uid == uuid.Nil || err != nil {
-		zap.L().Debug(
-			hdl.ErrFailedToParseUUID.Error(),
-			zap.String("path", r.URL.Path),
-			zap.Error(err),
-		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrFailedToParseUUID)
-		return
-	}
-
-	res, err := h.ctrl.GetUserByID(r.Context(), uid)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		utils.ErrResponse(w, http.StatusNotFound, err)
-		return
-	} else if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
@@ -186,6 +133,48 @@ func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SuccessResponse(w, http.StatusOK, res)
+}
+
+func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
+	uid, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/api/users/"))
+	if uid == uuid.Nil || err != nil {
+		zap.L().Debug(
+			hdl.ErrFailedToParseUUID.Error(),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrFailedToParseUUID)
+		return
+	}
+
+	res, err := h.ctrl.GetUserByID(r.Context(), uid)
+	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
+		utils.ErrResponse(w, http.StatusNotFound, err)
+		return
+	} else if err != nil {
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+		return
+	}
+
+	utils.SuccessResponse(w, http.StatusOK, res)
+}
+
+func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
+	req := &dto.CreateUserRequest{}
+	if ok := utils.ParseAndValidate(w, r, req); !ok {
+		return
+	}
+
+	res, err := h.ctrl.CreateUser(r.Context(), req)
+	if err != nil && errors.Is(err, ctrl.ErrAlreadyExists) {
+		utils.ErrResponse(w, http.StatusConflict, err)
+		return
+	} else if err != nil {
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+		return
+	}
+
+	utils.SuccessResponse(w, http.StatusCreated, res)
 }
 
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +214,7 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
 		)
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrFailedToParseUUID)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrFailedToParseUUID)
 		return
 	}
 

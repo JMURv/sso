@@ -14,7 +14,6 @@ import (
 	"strings"
 )
 
-// TODO: mid.Auth to mid.CheckOwner
 func RegisterDeviceRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 	mux.HandleFunc(
 		"/api/device", mid.Apply(

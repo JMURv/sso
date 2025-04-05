@@ -1,11 +1,9 @@
 package models
 
-import "github.com/google/uuid"
-
 type Permission struct {
-	ID    uint64 `json:"id"`
-	Name  string `json:"name"`
-	Value bool   `json:"value"`
+	ID          uint64 `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 type PaginatedPermission struct {
@@ -14,10 +12,4 @@ type PaginatedPermission struct {
 	TotalPages  int           `json:"total_pages"`
 	CurrentPage int           `json:"current_page"`
 	HasNextPage bool          `json:"has_next_page"`
-}
-
-type UserPermission struct {
-	UserID uuid.UUID `json:"user_id"`
-	PermID uint64    `json:"permission_id"`
-	Value  bool      `json:"value"`
 }

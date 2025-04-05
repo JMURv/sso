@@ -5,40 +5,61 @@ import (
 	"errors"
 	pb "github.com/JMURv/sso/api/grpc/v1/gen"
 	ctrl "github.com/JMURv/sso/internal/ctrl"
+	"github.com/JMURv/sso/internal/dto"
+	"github.com/JMURv/sso/internal/hdl"
 	"github.com/JMURv/sso/internal/hdl/validation"
-	md "github.com/JMURv/sso/internal/models"
 	utils "github.com/JMURv/sso/internal/models/mapper"
-	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/google/uuid"
-	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"time"
 )
 
-func (h *Handler) SearchUser(ctx context.Context, req *pb.SSO_SearchReq) (*pb.SSO_PaginatedUsersRes, error) {
-	s, c := time.Now(), codes.OK
-	const op = "sso.SearchUser.hdl"
+func (h *Handler) ExistUser(ctx context.Context, req *pb.SSO_ExistUserRequest) (*pb.SSO_ExistUserResponse, error) {
+	const op = "sso.ExistUser.hdl"
+	res, err := h.ctrl.IsUserExist(ctx, req.Email)
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
+	}
 
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
+	return &pb.SSO_ExistUserResponse{
+		IsExist: res.Exists,
+	}, nil
+}
+
+func (h *Handler) GetMe(ctx context.Context, req *pb.SSO_Empty) (*pb.SSO_User, error) {
+	const op = "sso.GetMe.hdl"
+	uid, ok := ctx.Value("uid").(uuid.UUID)
+	if !ok {
+		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
+	}
+
+	res, err := h.ctrl.GetUserByID(ctx, uid)
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
+	}
+	return utils.ModelToProto(res), nil
+}
+
+func (h *Handler) SearchUser(ctx context.Context, req *pb.SSO_SearchReq) (*pb.SSO_PaginatedUsersRes, error) {
+	const op = "sso.SearchUser.hdl"
 
 	q, page, size := req.Query, req.Page, req.Size
 	if q == "" || page == 0 || size == 0 {
-		c = codes.InvalidArgument
 		zap.L().Debug("failed to decode request", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
 	u, err := h.ctrl.SearchUser(ctx, q, int(page), int(size))
 	if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
 
 	return &pb.SSO_PaginatedUsersRes{
@@ -51,27 +72,17 @@ func (h *Handler) SearchUser(ctx context.Context, req *pb.SSO_SearchReq) (*pb.SS
 }
 
 func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_PaginatedUsersRes, error) {
-	s, c := time.Now(), codes.OK
 	const op = "sso.ListUsers.hdl"
-
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
 
 	page, size := req.Page, req.Size
 	if page == 0 || size == 0 {
-		c = codes.InvalidArgument
 		zap.L().Debug("failed to decode request", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
 	u, err := h.ctrl.ListUsers(ctx, int(page), int(size))
 	if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
 
 	return &pb.SSO_PaginatedUsersRes{
@@ -84,148 +95,100 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_P
 }
 
 func (h *Handler) CreateUser(ctx context.Context, req *pb.SSO_CreateUserReq) (*pb.SSO_CreateUserRes, error) {
-	s, c := time.Now(), codes.OK
 	const op = "sso.CreateUser.hdl"
+	_, ok := ctx.Value("uid").(uuid.UUID)
+	if !ok {
+		zap.L().Debug("failed to parse uid", zap.String("op", op))
+		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
+	}
 
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
-
-	protoUser := &md.User{
+	r := &dto.CreateUserRequest{
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: req.Password,
+		Avatar:   req.Avatar,
+		IsActive: req.IsActive,
+		IsEmail:  req.IsEmailVerified,
+		Roles:    req.Roles,
 	}
 
-	if err := validation.NewUserValidation(protoUser); err != nil {
-		c = codes.InvalidArgument
-		zap.L().Debug("failed to validate user", zap.String("op", op), zap.Error(err))
-		return nil, status.Errorf(c, err.Error())
+	if err := validation.V.Struct(r); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	uid, err := h.ctrl.CreateUser(ctx, protoUser, req.File.Filename, req.File.File)
-	if err != nil && errors.Is(err, ctrl.ErrAlreadyExists) {
-		c = codes.AlreadyExists
-		return nil, status.Errorf(c, err.Error())
-	} else if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	res, err := h.ctrl.CreateUser(ctx, r)
+	if err != nil {
+		if errors.Is(err, ctrl.ErrAlreadyExists) {
+			return nil, status.Errorf(codes.AlreadyExists, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-
 	return &pb.SSO_CreateUserRes{
-		Uid:     uid.String(),
-		Access:  access,
-		Refresh: refresh,
+		Uid: res.ID.String(),
 	}, nil
 }
 
 func (h *Handler) GetUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_User, error) {
-	s, c := time.Now(), codes.OK
 	const op = "sso.GetUser.hdl"
-
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
-
 	uid, err := uuid.Parse(req.Uuid)
 	if uid == uuid.Nil || err != nil {
-		c = codes.InvalidArgument
 		zap.L().Debug("failed to parse uid", zap.String("op", op), zap.Error(err))
-		return nil, status.Errorf(c, ctrl.ErrParseUUID.Error())
+		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
 	u, err := h.ctrl.GetUserByID(ctx, uid)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = codes.NotFound
-		return nil, status.Errorf(c, err.Error())
-	} else if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-
 	return utils.ModelToProto(u), nil
 }
 
-func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UserWithUid) (*pb.SSO_UuidMsg, error) {
-	s, c := time.Now(), codes.OK
+func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UpdateUserReq) (*pb.SSO_UuidMsg, error) {
 	const op = "sso.UpdateUser.hdl"
-
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
-
-	_, ok := ctx.Value("uid").(string)
+	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		c = codes.Unauthenticated
 		zap.L().Debug("failed to get uid from context", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrUnauthorized.Error())
+		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
-	uid, err := uuid.Parse(req.Uid)
-	if uid == uuid.Nil || err != nil {
-		c = codes.InvalidArgument
-		zap.L().Debug("failed to parse uid", zap.String("op", op), zap.Error(err))
-		return nil, status.Errorf(c, ctrl.ErrParseUUID.Error())
+	r := &dto.UpdateUserRequest{
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: req.Password,
+		Avatar:   req.Avatar,
+		IsActive: req.IsActive,
+		IsEmail:  req.IsEmailVerified,
+		Roles:    req.Roles,
 	}
-
-	protoUser := utils.ProtoToModel(req.User)
-	if err = validation.UserValidation(protoUser); err != nil {
-		c = codes.InvalidArgument
+	if err := validation.V.Struct(r); err != nil {
 		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
-		return nil, status.Errorf(c, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	err = h.ctrl.UpdateUser(ctx, uid, protoUser)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = codes.NotFound
-		return nil, status.Errorf(c, err.Error())
-	} else if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	err := h.ctrl.UpdateUser(ctx, uid, r)
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-
 	return &pb.SSO_UuidMsg{Uuid: uid.String()}, nil
 }
 
 func (h *Handler) DeleteUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_Empty, error) {
-	s, c := time.Now(), codes.OK
 	const op = "sso.DeleteUser.hdl"
-
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
-
-	_, ok := ctx.Value("uid").(string)
+	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		c = codes.Unauthenticated
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrUnauthorized.Error())
+		zap.L().Debug("failed to parse uid", zap.String("op", op))
+		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
-	uid, err := uuid.Parse(req.Uuid)
-	if uid == uuid.Nil || err != nil {
-		c = codes.InvalidArgument
-		zap.L().Debug("failed to parse uid", zap.String("op", op), zap.Error(err))
-		return nil, status.Errorf(c, ctrl.ErrParseUUID.Error())
-	}
-
-	err = h.ctrl.DeleteUser(ctx, uid)
+	err := h.ctrl.DeleteUser(ctx, uid)
 	if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-
 	return &pb.SSO_Empty{}, nil
 }

@@ -27,22 +27,24 @@ message SSO_SearchReq {
   uint64 size = 3;
 }
 
+// ------ Auth ------
+
 service Auth {
   rpc Authenticate (SSO_EmailAndPasswordRequest) returns (SSO_TokenPair);
   rpc ParseClaims (SSO_StringMsg) returns (SSO_ParseClaimsRes);
-  rpc GetUserByToken(SSO_StringMsg) returns (SSO_User);
+  rpc Refresh (SSO_RefreshRequest) returns (SSO_TokenPair);
 
-  rpc SendLoginCode (SSO_SendLoginCodeReq) returns (SSO_Empty);
-  rpc CheckLoginCode (SSO_CheckLoginCodeReq) returns (SSO_CheckLoginCodeRes);
-  rpc Logout (SSO_Empty) returns (SSO_Empty);
+  rpc SendLoginCode (SSO_SendLoginCodeReq) returns (SSO_TokenPair);
+  rpc CheckLoginCode (SSO_CheckLoginCodeReq) returns (SSO_TokenPair);
 
-  rpc Me (SSO_Empty) returns (SSO_User);
-  rpc UpdateMe(SSO_User) returns (SSO_User);
-
-  rpc CheckEmail (SSO_EmailMsg) returns (SSO_CheckEmailRes);
   rpc SendForgotPasswordEmail (SSO_EmailMsg) returns (SSO_Empty);
   rpc CheckForgotPasswordEmail (SSO_CheckForgotPasswordEmailReq) returns (SSO_Empty);
-  rpc SendSupportEmail (SSO_SendSupportEmailReq) returns (SSO_Empty);
+
+  rpc Logout (SSO_Empty) returns (SSO_Empty);
+}
+
+message SSO_RefreshRequest {
+  string refresh = 1;
 }
 
 message SSO_EmailAndPasswordRequest {
@@ -51,13 +53,16 @@ message SSO_EmailAndPasswordRequest {
 }
 
 message SSO_TokenPair {
-  string token = 1;
+  string access = 1;
+  string refresh = 2;
 }
 
 message SSO_ParseClaimsRes {
-  string token = 1;
-  string email = 2;
+  string uid = 1;
+  repeated SSO_Role roles = 2;
   int64 exp = 3;
+  int64 iat = 4;
+  string sub = 5;
 }
 
 message SSO_SendLoginCodeReq {
@@ -70,33 +75,21 @@ message SSO_CheckLoginCodeReq {
   int32 code = 2;
 }
 
-message SSO_CheckLoginCodeRes {
-  string access = 1;
-  string refresh = 2;
-}
-
 message SSO_EmailMsg {
   string email = 1;
 }
 
-message SSO_CheckEmailRes {
-  bool is_exist = 1;
-}
-
 message SSO_CheckForgotPasswordEmailReq {
   string password = 1;
-  string uidb64 = 2;
-  string token = 3;
+  string id = 2;
+  string code = 3;
 }
 
-message SSO_SendSupportEmailReq {
-  string theme = 1;
-  string text = 2;
-}
+// ------ Users ------
 
 service Users {
   rpc SearchUser (SSO_SearchReq) returns (SSO_PaginatedUsersRes);
-  rpc ExistUser (ExistUserRequest) returns (ExistUserResponse);
+  rpc ExistUser (SSO_ExistUserRequest) returns (SSO_ExistUserResponse);
   rpc ListUsers (SSO_ListReq) returns (SSO_PaginatedUsersRes);
   rpc GetUser (SSO_UuidMsg) returns (SSO_User);
   rpc GetMe (SSO_Empty) returns (SSO_User);
@@ -114,7 +107,7 @@ message SSO_User {
   string is_wa = 6;
   string is_active = 7;
   string is_email_verified = 8;
-  repeated SSO_Permission permissions = 9;
+  repeated SSO_Role roles = 9;
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
 }
@@ -127,11 +120,11 @@ message SSO_PaginatedUsersRes {
   bool has_next_page = 5;
 }
 
-message ExistUserRequest {
+message SSO_ExistUserRequest {
   string email = 1;
 }
 
-message ExistUserResponse {
+message SSO_ExistUserResponse {
   bool is_exist = 1;
 }
 
@@ -142,7 +135,7 @@ message SSO_CreateUserReq {
   string avatar = 4;
   bool is_active = 5;
   bool is_email_verified = 6;
-  repeated SSO_Permission permissions = 7;
+  repeated uint64 roles = 7;
 }
 
 message SSO_UpdateUserReq {
@@ -153,14 +146,16 @@ message SSO_UpdateUserReq {
   string avatar = 5;
   bool is_active = 6;
   bool is_email_verified = 7;
-  repeated SSO_Permission permissions = 8;
+  repeated uint64 roles = 8;
 }
 
 message SSO_CreateUserRes {
   string uid = 1;
 }
 
-service PermissionSvc {
+// ------ Permissions ------
+
+service Permission {
   rpc ListPermissions (SSO_ListReq) returns (SSO_PermissionList);
   rpc GetPermission (SSO_Uint64Msg) returns (SSO_Permission);
   rpc CreatePermission (SSO_Permission) returns (SSO_Uint64Msg);
@@ -171,7 +166,7 @@ service PermissionSvc {
 message SSO_Permission {
   uint64 id = 1;
   string name = 2;
-  bool   value = 3;
+  string description = 3;
 }
 
 message SSO_PermissionList {
@@ -182,10 +177,36 @@ message SSO_PermissionList {
   bool has_next_page = 5;
 }
 
-service DevicesSvc {
+// ------ Roles ------
+
+service Role {
+  rpc ListRoles (SSO_ListReq) returns (SSO_RoleList);
+  rpc GetRole (SSO_Uint64Msg) returns (SSO_Role);
+  rpc CreateRole (SSO_Role) returns (SSO_Uint64Msg);
+  rpc UpdateRole (SSO_Role) returns (SSO_Empty);
+  rpc DeleteRole (SSO_Uint64Msg) returns (SSO_Empty);
+}
+
+message SSO_Role {
+  uint64 id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message SSO_RoleList {
+  repeated SSO_Role data = 1;
+  int64 count = 2;
+  int64 total_pages = 3;
+  int64 current_page = 4;
+  bool has_next_page = 5;
+}
+
+// ------ Devices ------
+
+service Devices {
   rpc ListDevices (SSO_ListReq) returns (SSO_ListDevicesRes);
   rpc GetDevice (SSO_StringMsg) returns (SSO_Device);
-  rpc UpdateDevice (UpdateDeviceRequest) returns (SSO_Empty);
+  rpc UpdateDevice (SSO_UpdateDeviceRequest) returns (SSO_Empty);
   rpc DeleteDevice (SSO_StringMsg) returns (SSO_Empty);
 }
 
@@ -206,7 +227,7 @@ message SSO_ListDevicesRes {
   repeated SSO_Device data = 1;
 }
 
-message UpdateDeviceRequest {
+message SSO_UpdateDeviceRequest {
   string id = 1;
   string name = 2;
 }

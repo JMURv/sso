@@ -4,42 +4,33 @@ import (
 	"context"
 	"errors"
 	pb "github.com/JMURv/sso/api/grpc/v1/gen"
+	"github.com/JMURv/sso/internal/config"
 	ctrl "github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
+	"github.com/JMURv/sso/internal/hdl"
 	"github.com/JMURv/sso/internal/hdl/validation"
 	utils "github.com/JMURv/sso/internal/models/mapper"
-	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
-	"github.com/opentracing/opentracing-go"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"time"
 )
 
 func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_PermissionList, error) {
-	s, c := time.Now(), codes.OK
-	const op = "sso.ListPermissions.hdl"
+	page := req.Page
+	if page < 1 {
+		page = config.DefaultPage
+	}
 
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
-
-	page, size := req.Page, req.Size
-	if page == 0 || size == 0 {
-		c = codes.InvalidArgument
-		zap.L().Debug("failed to decode request", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+	size := req.Size
+	if size < 1 {
+		size = config.DefaultSize
 	}
 
 	res, err := h.ctrl.ListPermissions(ctx, int(page), int(size))
 	if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-
 	return &pb.SSO_PermissionList{
 		Data:        utils.ListPermissionsToProto(res.Data),
 		Count:       res.Count,
@@ -50,144 +41,100 @@ func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_ListReq) (*pb
 }
 
 func (h *Handler) GetPermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb.SSO_Permission, error) {
-	s, c := time.Now(), codes.OK
 	const op = "sso.GetPermission.hdl"
-
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
-
 	if req == nil || req.Uint64 == 0 {
-		c = codes.InvalidArgument
 		zap.L().Debug(
 			"failed to parse uid",
 			zap.String("op", op),
 			zap.Uint64("uid", req.Uint64),
 		)
-		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
 	res, err := h.ctrl.GetPermission(ctx, req.Uint64)
-	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = codes.NotFound
-		return nil, status.Errorf(c, err.Error())
-	} else if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-
 	return utils.PermissionToProto(res), nil
 }
 
 func (h *Handler) CreatePermission(ctx context.Context, req *pb.SSO_Permission) (*pb.SSO_Uint64Msg, error) {
-	s, c := time.Now(), codes.OK
 	const op = "sso.CreatePermission.hdl"
-
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
-
 	mdPerm := &dto.CreatePermissionRequest{
-		Name: req.Name,
+		Name:        req.Name,
+		Description: req.Description,
 	}
 
 	if err := validation.V.Struct(mdPerm); err != nil {
-		c = codes.InvalidArgument
 		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
-		return nil, status.Errorf(c, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	uid, err := h.ctrl.CreatePerm(ctx, mdPerm)
-	if err != nil && errors.Is(err, ctrl.ErrAlreadyExists) {
-		c = codes.AlreadyExists
-		return nil, status.Errorf(c, err.Error())
-	} else if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	if err != nil {
+		if errors.Is(err, ctrl.ErrAlreadyExists) {
+			return nil, status.Errorf(codes.AlreadyExists, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-
 	return &pb.SSO_Uint64Msg{
 		Uint64: uid,
 	}, nil
 }
 
 func (h *Handler) UpdatePermission(ctx context.Context, req *pb.SSO_Permission) (*pb.SSO_Empty, error) {
-	s, c := time.Now(), codes.OK
 	const op = "sso.UpdatePermission.hdl"
 
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
-
-	if _, ok := ctx.Value("uid").(string); !ok {
-		c = codes.Unauthenticated
+	if _, ok := ctx.Value("uid").(uuid.UUID); !ok {
 		zap.L().Debug("failed to get uid from context", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrUnauthorized.Error())
+		return nil, status.Errorf(codes.Unauthenticated, hdl.ErrFailedToParseUUID.Error())
 	}
 
 	if req == nil || req.Id == 0 {
-		c = codes.InvalidArgument
 		zap.L().Debug("failed to decode request", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
-	mdPerm := utils.PermissionFromProto(req)
-	if err := validation.PermValidation(mdPerm); err != nil {
-		c = codes.InvalidArgument
+	mdPerm := &dto.UpdatePermissionRequest{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+	if err := validation.V.Struct(mdPerm); err != nil {
 		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
-		return nil, status.Errorf(c, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	if err := h.ctrl.UpdatePerm(ctx, req.Id, mdPerm); err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = codes.NotFound
-		return nil, status.Errorf(c, err.Error())
-	} else if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	err := h.ctrl.UpdatePerm(ctx, req.Id, mdPerm)
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-
 	return &pb.SSO_Empty{}, nil
 }
 
 func (h *Handler) DeletePermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb.SSO_Empty, error) {
-	s, c := time.Now(), codes.OK
 	const op = "sso.DeletePermission.hdl"
-
-	span := opentracing.GlobalTracer().StartSpan(op)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer func() {
-		span.Finish()
-		metrics.ObserveRequest(time.Since(s), int(c), op)
-	}()
-
-	if _, ok := ctx.Value("uid").(string); !ok {
-		c = codes.Unauthenticated
+	if _, ok := ctx.Value("uid").(uuid.UUID); !ok {
 		zap.L().Debug("failed to get uid from context", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrUnauthorized.Error())
+		return nil, status.Errorf(codes.Unauthenticated, hdl.ErrFailedToParseUUID.Error())
 	}
 
 	if req == nil || req.Uint64 == 0 {
-		c = codes.InvalidArgument
 		zap.L().Debug("failed to decode request", zap.String("op", op))
-		return nil, status.Errorf(c, ctrl.ErrDecodeRequest.Error())
+		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
-	if err := h.ctrl.DeletePerm(ctx, req.Uint64); err != nil && errors.Is(err, ctrl.ErrNotFound) {
-		c = codes.NotFound
-		return nil, status.Errorf(c, err.Error())
-	} else if err != nil {
-		c = codes.Internal
-		return nil, status.Errorf(c, ctrl.ErrInternalError.Error())
+	err := h.ctrl.DeletePerm(ctx, req.Uint64)
+	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-
 	return &pb.SSO_Empty{}, nil
 }

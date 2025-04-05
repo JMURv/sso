@@ -13,33 +13,33 @@ import (
 	"go.uber.org/zap"
 )
 
-const permKey = "perm:%v"
-const permListKey = "perms-list:%v:%v"
-const permPattern = "perms-*"
+const roleKey = "role:%v"
+const roleListKey = "roles-list:%v:%v"
+const rolePattern = "roles-*"
 
-type permRepo interface {
-	ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error)
-	GetPermission(ctx context.Context, id uint64) (*md.Permission, error)
-	CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error)
-	UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error
-	DeletePerm(ctx context.Context, id uint64) error
+type roleRepo interface {
+	ListRoles(ctx context.Context, page, size int) (*md.PaginatedRole, error)
+	GetRole(ctx context.Context, id uint64) (*md.Role, error)
+	CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (uint64, error)
+	UpdateRole(ctx context.Context, id uint64, req *dto.UpdateRoleRequest) error
+	DeleteRole(ctx context.Context, id uint64) error
 }
 
-func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error) {
-	const op = "perms.ListPermissions.ctrl"
+func (c *Controller) ListRoles(ctx context.Context, page, size int) (*md.PaginatedRole, error) {
+	const op = "roles.ListRoles.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &md.PaginatedPermission{}
-	key := fmt.Sprintf(permListKey, page, size)
+	cached := &md.PaginatedRole{}
+	key := fmt.Sprintf(roleListKey, page, size)
 	if err := c.cache.GetToStruct(ctx, key, &cached); err == nil {
 		return cached, nil
 	}
 
-	res, err := c.repo.ListPermissions(ctx, page, size)
+	res, err := c.repo.ListRoles(ctx, page, size)
 	if err != nil {
 		zap.L().Error(
-			"failed to list permissions",
+			"failed to list roles",
 			zap.String("op", op),
 			zap.Int("page", page),
 			zap.Int("size", size),
@@ -52,24 +52,25 @@ func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*md.P
 	if bytes, err = json.Marshal(res); err == nil {
 		c.cache.Set(ctx, config.DefaultCacheTime, key, bytes)
 	}
+
 	return res, nil
 }
 
-func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permission, error) {
-	const op = "perms.GetPermission.ctrl"
+func (c *Controller) GetRole(ctx context.Context, id uint64) (*md.Role, error) {
+	const op = "roles.GetRole.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &md.Permission{}
-	cacheKey := fmt.Sprintf(permKey, id)
+	cached := &md.Role{}
+	cacheKey := fmt.Sprintf(roleKey, id)
 	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
 		return cached, nil
 	}
 
-	res, err := c.repo.GetPermission(ctx, id)
+	res, err := c.repo.GetRole(ctx, id)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
-			"failed to find permission",
+			"failed to find role",
 			zap.String("op", op),
 			zap.Uint64("id", id),
 			zap.Error(err),
@@ -77,7 +78,7 @@ func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permissi
 		return nil, ErrNotFound
 	} else if err != nil {
 		zap.L().Error(
-			"failed to get permission",
+			"failed to get role",
 			zap.String("op", op),
 			zap.Uint64("id", id),
 			zap.Error(err),
@@ -92,41 +93,41 @@ func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permissi
 	return res, nil
 }
 
-func (c *Controller) CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error) {
-	const op = "perms.CreatePerm.ctrl"
+func (c *Controller) CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (uint64, error) {
+	const op = "roles.CreateRole.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res, err := c.repo.CreatePerm(ctx, req)
+	res, err := c.repo.CreateRole(ctx, req)
 	if err != nil && errors.Is(err, repo.ErrAlreadyExists) {
 		zap.L().Debug(
-			"permission already exists",
+			"role already exists",
 			zap.String("op", op),
 			zap.Error(err),
 		)
 		return 0, ErrAlreadyExists
 	} else if err != nil {
 		zap.L().Error(
-			"failed to create permission",
+			"failed to create role",
 			zap.String("op", op),
 			zap.Error(err),
 		)
 		return 0, err
 	}
 
-	go c.cache.InvalidateKeysByPattern(ctx, permPattern)
+	go c.cache.InvalidateKeysByPattern(ctx, rolePattern)
 	return res, nil
 }
 
-func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error {
-	const op = "perms.UpdatePerm.ctrl"
+func (c *Controller) UpdateRole(ctx context.Context, id uint64, req *dto.UpdateRoleRequest) error {
+	const op = "roles.UpdateRole.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	err := c.repo.UpdatePerm(ctx, id, req)
+	err := c.repo.UpdateRole(ctx, id, req)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
-			"failed to find permission",
+			"failed to find role",
 			zap.String("op", op),
 			zap.Uint64("id", id),
 			zap.Error(err),
@@ -134,7 +135,7 @@ func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *dto.UpdateP
 		return ErrNotFound
 	} else if err != nil {
 		zap.L().Error(
-			"failed to update permission",
+			"failed to update role",
 			zap.String("op", op),
 			zap.Uint64("id", id),
 			zap.Error(err),
@@ -142,20 +143,20 @@ func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *dto.UpdateP
 		return err
 	}
 
-	c.cache.Delete(ctx, fmt.Sprintf(permKey, id))
-	go c.cache.InvalidateKeysByPattern(ctx, permPattern)
+	c.cache.Delete(ctx, fmt.Sprintf(roleKey, id))
+	go c.cache.InvalidateKeysByPattern(ctx, rolePattern)
 	return nil
 }
 
-func (c *Controller) DeletePerm(ctx context.Context, id uint64) error {
-	const op = "perms.DeletePerm.ctrl"
+func (c *Controller) DeleteRole(ctx context.Context, id uint64) error {
+	const op = "roles.DeleteRole.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	err := c.repo.DeletePerm(ctx, id)
+	err := c.repo.DeleteRole(ctx, id)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		zap.L().Debug(
-			"failed to delete permission",
+			"failed to delete role",
 			zap.String("op", op),
 			zap.Uint64("id", id),
 			zap.Error(err),
@@ -163,7 +164,7 @@ func (c *Controller) DeletePerm(ctx context.Context, id uint64) error {
 		return ErrNotFound
 	} else if err != nil {
 		zap.L().Error(
-			"failed to delete permission",
+			"failed to delete role",
 			zap.String("op", op),
 			zap.Uint64("id", id),
 			zap.Error(err),
@@ -171,7 +172,7 @@ func (c *Controller) DeletePerm(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	c.cache.Delete(ctx, fmt.Sprintf(permKey, id))
-	go c.cache.InvalidateKeysByPattern(ctx, permPattern)
+	c.cache.Delete(ctx, fmt.Sprintf(roleKey, id))
+	go c.cache.InvalidateKeysByPattern(ctx, rolePattern)
 	return nil
 }

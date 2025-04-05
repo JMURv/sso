@@ -124,25 +124,10 @@ func mustPrecreate(db *sql.DB) {
 			}
 
 			for _, perm := range v.Perms {
-				var permID uint64
-				err := tx.QueryRow(`SELECT id FROM permission WHERE name = $1`, perm.Name).Scan(&permID)
-				if err != nil && err == sql.ErrNoRows {
-					if err := tx.QueryRow(permCreate, perm.Name).Scan(&permID); err != nil {
-						tx.Rollback()
-						panic(err)
-					}
-				} else if err != nil {
-					tx.Rollback()
-					panic(err)
-				}
-
-				if _, err = tx.Exec(userCreatePermQ, userID, permID, true); err != nil {
-					tx.Rollback()
-					panic(err)
-				}
+				zap.L().Debug("debug", zap.Any("perm", perm))
 			}
 
-			if err := tx.Commit(); err != nil {
+			if err = tx.Commit(); err != nil {
 				panic(err)
 			}
 		}

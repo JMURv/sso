@@ -20,11 +20,12 @@ type AppRepo interface {
 	waRepo
 	userRepo
 	permRepo
+	roleRepo
 	deviceRepo
 }
 
 type AppCtrl interface {
-	GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Permission) (dto.TokenPair, error)
+	GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Role) (dto.TokenPair, error)
 	Authenticate(ctx context.Context, d *dto.DeviceRequest, req *dto.EmailAndPasswordRequest) (*dto.TokenPair, error)
 	Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto.RefreshRequest) (*dto.TokenPair, error)
 	ParseClaims(ctx context.Context, token string) (auth.Claims, error)
@@ -65,6 +66,12 @@ type AppCtrl interface {
 	UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error
 	DeletePerm(ctx context.Context, id uint64) error
 
+	ListRoles(ctx context.Context, page, size int) (*md.PaginatedRole, error)
+	CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (uint64, error)
+	GetRole(ctx context.Context, uid uint64) (*md.Role, error)
+	UpdateRole(ctx context.Context, uid uint64, req *dto.UpdateRoleRequest) error
+	DeleteRole(ctx context.Context, uid uint64) error
+
 	ListDevices(ctx context.Context, uid uuid.UUID) ([]md.Device, error)
 	GetDevice(ctx context.Context, uid uuid.UUID, dID string) (*md.Device, error)
 	UpdateDevice(ctx context.Context, uid uuid.UUID, dID string, req *dto.UpdateDeviceRequest) error
@@ -89,12 +96,12 @@ type EmailService interface {
 
 type Controller struct {
 	repo  AppRepo
-	au    auth.Core
+	au    *auth.Auth
 	cache CacheService
 	smtp  EmailService
 }
 
-func New(repo AppRepo, au auth.Core, cache CacheService, smtp EmailService) *Controller {
+func New(repo AppRepo, au *auth.Auth, cache CacheService, smtp EmailService) *Controller {
 	return &Controller{
 		repo:  repo,
 		au:    au,

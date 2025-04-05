@@ -119,7 +119,7 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 		}
 	}
 
-	pair, err := c.GenPair(ctx, d, user.ID, user.Permissions)
+	pair, err := c.GenPair(ctx, d, user.ID, user.Roles)
 	if err != nil {
 		return nil, err
 	}

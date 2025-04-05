@@ -17,47 +17,36 @@ func ListModelToProto(u []*md.User) []*gen.SSO_User {
 }
 
 func ModelToProto(u *md.User) *gen.SSO_User {
-	perms := make([]*gen.SSO_Permission, 0, len(u.Permissions))
-	for _, v := range u.Permissions {
-		perms = append(
-			perms, &gen.SSO_Permission{
-				Name:  v.Name,
-				Value: v.Value,
-			},
-		)
+	roles := make([]*gen.SSO_Role, 0, len(u.Roles))
+	for _, v := range u.Roles {
+		roles = append(roles, RoleToProto(&v))
 	}
-
 	return &gen.SSO_User{
-		Id:          u.ID.String(),
-		Name:        u.Name,
-		Password:    u.Password,
-		Email:       u.Email,
-		Avatar:      u.Avatar,
-		Permissions: perms,
-		CreatedAt:   timestamppb.New(u.CreatedAt),
-		UpdatedAt:   timestamppb.New(u.UpdatedAt),
+		Id:        u.ID.String(),
+		Name:      u.Name,
+		Password:  u.Password,
+		Email:     u.Email,
+		Avatar:    u.Avatar,
+		Roles:     roles,
+		CreatedAt: timestamppb.New(u.CreatedAt),
+		UpdatedAt: timestamppb.New(u.UpdatedAt),
 	}
 }
 
 func ProtoToModel(u *gen.SSO_User) *md.User {
-	perms := make([]md.Permission, 0, len(u.Permissions))
-	for _, v := range u.Permissions {
-		perms = append(
-			perms, md.Permission{
-				Name:  v.Name,
-				Value: v.Value,
-			},
-		)
+	perms := make([]md.Role, 0, len(u.Roles))
+	for _, v := range u.Roles {
+		perms = append(perms, *RoleFromProto(v))
 	}
 
 	modelUser := &md.User{
-		Name:        u.Name,
-		Password:    u.Password,
-		Email:       u.Email,
-		Avatar:      u.Avatar,
-		Permissions: perms,
-		CreatedAt:   u.CreatedAt.AsTime(),
-		UpdatedAt:   u.UpdatedAt.AsTime(),
+		Name:      u.Name,
+		Password:  u.Password,
+		Email:     u.Email,
+		Avatar:    u.Avatar,
+		Roles:     perms,
+		CreatedAt: u.CreatedAt.AsTime(),
+		UpdatedAt: u.UpdatedAt.AsTime(),
 	}
 
 	uid, err := uuid.Parse(u.Id)

@@ -13,29 +13,24 @@ type PaginatedUserResponse struct {
 	HasNextPage bool       `json:"has_next_page"`
 }
 
-type permission struct {
-	ID    uint64 `json:"id" validate:"required"`
-	Value bool   `json:"value" validate:"required"`
-}
-
 type CreateUserRequest struct {
-	Name        string       `json:"name" validate:"required"`
-	Email       string       `json:"email" validate:"required,email"`
-	Password    string       `json:"password" validate:"required"`
-	Avatar      string       `json:"avatar"`
-	IsActive    bool         `json:"is_active"`
-	IsEmail     bool         `json:"is_email_verified"`
-	Permissions []permission `json:"permissions"`
+	Name     string   `json:"name" validate:"required"`
+	Email    string   `json:"email" validate:"required,email"`
+	Password string   `json:"password" validate:"required"`
+	Avatar   string   `json:"avatar"`
+	IsActive bool     `json:"is_active"`
+	IsEmail  bool     `json:"is_email_verified"`
+	Roles    []uint64 `json:"roles" validate:"required"`
 }
 
 type UpdateUserRequest struct {
-	Name        string       `json:"name" validate:"required"`
-	Email       string       `json:"email" validate:"required,email"`
-	Password    string       `json:"password"`
-	Avatar      string       `json:"avatar"`
-	IsActive    bool         `json:"is_active"`
-	IsEmail     bool         `json:"is_email_verified"`
-	Permissions []permission `json:"permissions" validate:"required"`
+	Name     string   `json:"name" validate:"required"`
+	Email    string   `json:"email" validate:"required,email"`
+	Password string   `json:"password"`
+	Avatar   string   `json:"avatar"`
+	IsActive bool     `json:"is_active"`
+	IsEmail  bool     `json:"is_email_verified"`
+	Roles    []uint64 `json:"roles" validate:"required"`
 }
 
 type CreateUserResponse struct {

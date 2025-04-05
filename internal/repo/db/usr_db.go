@@ -29,7 +29,7 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 		return nil, err
 	}
 	defer func(rows *sql.Rows) {
-		if err := rows.Close(); err != nil {
+		if err = rows.Close(); err != nil {
 			zap.L().Debug(
 				"failed to close rows",
 				zap.String("op", op),
@@ -41,7 +41,7 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 	res := make([]*md.User, 0, size)
 	for rows.Next() {
 		user := &md.User{}
-		perms := make([]string, 0, 5)
+		roles := make([]string, 0, 5)
 		if err = rows.Scan(
 			&user.ID,
 			&user.Name,
@@ -50,20 +50,19 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 			&user.Avatar,
 			&user.CreatedAt,
 			&user.UpdatedAt,
-			pq.Array(&perms),
+			pq.Array(&roles),
 		); err != nil {
 			return nil, err
 		}
 
-		user.Permissions, err = ScanPermissions(perms)
+		user.Roles, err = ScanRoles(roles)
 		if err != nil {
 			return nil, err
 		}
-
 		res = append(res, user)
 	}
 
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -104,8 +103,8 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int) (*dto.Pagina
 	res := make([]*md.User, 0, size)
 	for rows.Next() {
 		user := &md.User{}
-		perms := make([]string, 0, 5)
-		if err := rows.Scan(
+		roles := make([]string, 0, 5)
+		if err = rows.Scan(
 			&user.ID,
 			&user.Name,
 			&user.Password,
@@ -113,12 +112,12 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int) (*dto.Pagina
 			&user.Avatar,
 			&user.CreatedAt,
 			&user.UpdatedAt,
-			pq.Array(&perms),
+			pq.Array(&roles),
 		); err != nil {
 			return nil, err
 		}
 
-		user.Permissions, err = ScanPermissions(perms)
+		user.Roles, err = ScanRoles(roles)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +125,7 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int) (*dto.Pagina
 		res = append(res, user)
 	}
 
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -145,10 +144,11 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
+	var err error
 	res := &md.User{}
-	perms := make([]string, 0, 5)
+	roles := make([]string, 0, 5)
 	oauth2 := make([]string, 0, 5)
-	err := r.conn.QueryRowContext(ctx, userGetByIDQ, userID).Scan(
+	err = r.conn.QueryRowContext(ctx, userGetByIDQ, userID).Scan(
 		&res.ID,
 		&res.Name,
 		&res.Password,
@@ -159,7 +159,7 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		&res.IsEmailVerified,
 		&res.CreatedAt,
 		&res.UpdatedAt,
-		pq.Array(&perms),
+		pq.Array(&roles),
 		pq.Array(&oauth2),
 	)
 
@@ -169,7 +169,7 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		return nil, err
 	}
 
-	res.Permissions, err = ScanPermissions(perms)
+	res.Roles, err = ScanRoles(roles)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 	defer span.Finish()
 
 	res := &md.User{}
-	perms := make([]string, 0, 5)
+	roles := make([]string, 0, 5)
 	err := r.conn.QueryRowContext(ctx, userGetByEmailQ, email).
 		Scan(
 			&res.ID,
@@ -201,7 +201,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 			&res.IsEmailVerified,
 			&res.CreatedAt,
 			&res.UpdatedAt,
-			pq.Array(&perms),
+			pq.Array(&roles),
 		)
 
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
@@ -210,7 +210,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 		return nil, err
 	}
 
-	res.Permissions, err = ScanPermissions(perms)
+	res.Roles, err = ScanRoles(roles)
 	if err != nil {
 		return nil, err
 	}
@@ -255,15 +255,9 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 		return uuid.Nil, err
 	}
 
-	if len(req.Permissions) > 0 {
-		for i := 0; i < len(req.Permissions); i++ {
-			if _, err := tx.ExecContext(
-				ctx,
-				userCreatePermQ,
-				id,
-				req.Permissions[i].ID,
-				req.Permissions[i].Value,
-			); err != nil {
+	if len(req.Roles) > 0 {
+		for i := 0; i < len(req.Roles); i++ {
+			if _, err = tx.ExecContext(ctx, userAddRoleQ, id, req.Roles[i]); err != nil {
 				return uuid.Nil, err
 			}
 		}
@@ -318,18 +312,12 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 		return repo.ErrNotFound
 	}
 
-	if _, err = tx.ExecContext(ctx, userDeletePermQ, id); err != nil {
+	if _, err = tx.ExecContext(ctx, userRemoveRoleQ, id); err != nil {
 		return err
 	}
 
-	for i := 0; i < len(req.Permissions); i++ {
-		if _, err = tx.ExecContext(
-			ctx,
-			userCreatePermQ,
-			id,
-			req.Permissions[i].ID,
-			req.Permissions[i].Value,
-		); err != nil {
+	for i := 0; i < len(req.Roles); i++ {
+		if _, err = tx.ExecContext(ctx, userAddRoleQ, id, req.Roles[i]); err != nil {
 			return err
 		}
 	}

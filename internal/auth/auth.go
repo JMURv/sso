@@ -21,14 +21,15 @@ const RefreshTokenDuration = time.Hour * 24 * 7
 type Core interface {
 	Hash(val string) (string, error)
 	ComparePasswords(hashed, pswd []byte) error
-	NewToken(ctx context.Context, uid uuid.UUID, perms []md.Permission, d time.Duration) (string, error)
+	GetRefreshTime() time.Time
+	NewToken(ctx context.Context, uid uuid.UUID, perms []md.Role, d time.Duration) (string, error)
 	ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
-	GenPair(ctx context.Context, uid uuid.UUID, perms []md.Permission) (string, string, error)
+	GenPair(ctx context.Context, uid uuid.UUID, perms []md.Role) (string, string, error)
 }
 
 type Claims struct {
-	UID   uuid.UUID       `json:"uid"`
-	Roles []md.Permission `json:"roles"`
+	UID   uuid.UUID `json:"uid"`
+	Roles []md.Role `json:"roles"`
 	jwt.RegisteredClaims
 }
 
@@ -70,7 +71,7 @@ func (a *Auth) ComparePasswords(hashed, pswd []byte) error {
 	return nil
 }
 
-func (a *Auth) NewToken(ctx context.Context, uid uuid.UUID, perms []md.Permission, d time.Duration) (string, error) {
+func (a *Auth) NewToken(ctx context.Context, uid uuid.UUID, roles []md.Role, d time.Duration) (string, error) {
 	const op = "auth.NewToken.jwt"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -78,7 +79,7 @@ func (a *Auth) NewToken(ctx context.Context, uid uuid.UUID, perms []md.Permissio
 	signed, err := jwt.NewWithClaims(
 		jwt.SigningMethodHS256, &Claims{
 			UID:   uid,
-			Roles: perms,
+			Roles: roles,
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(d)),
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -136,28 +137,28 @@ func (a *Auth) ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
 	return claims, nil
 }
 
-func (a *Auth) GenPair(ctx context.Context, uid uuid.UUID, perms []md.Permission) (string, string, error) {
+func (a *Auth) GenPair(ctx context.Context, uid uuid.UUID, roles []md.Role) (string, string, error) {
 	const op = "auth.GenPair.jwt"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	access, err := a.NewToken(ctx, uid, perms, AccessTokenDuration)
+	access, err := a.NewToken(ctx, uid, roles, AccessTokenDuration)
 	if err != nil {
 		zap.L().Error(
 			"Failed to generate token pair",
 			zap.String("uid", uid.String()),
-			zap.Any("perms", perms),
+			zap.Any("roles", roles),
 			zap.Error(err),
 		)
 		return "", "", err
 	}
 
-	refresh, err := a.NewToken(ctx, uid, perms, RefreshTokenDuration)
+	refresh, err := a.NewToken(ctx, uid, roles, RefreshTokenDuration)
 	if err != nil {
 		zap.L().Error(
 			"Failed to generate token pair",
 			zap.String("uid", uid.String()),
-			zap.Any("perms", perms),
+			zap.Any("roles", roles),
 			zap.Error(err),
 		)
 		return "", "", err

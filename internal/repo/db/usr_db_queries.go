@@ -1,8 +1,15 @@
 package db
 
-const userSelectQ = `SELECT COUNT(*) FROM users`
+const userSelectQ = `
+SELECT COUNT(*)
+FROM users
+`
 
-const userSearchSelectQ = `SELECT COUNT(*) FROM users WHERE name ILIKE $1 OR email ILIKE $2`
+const userSearchSelectQ = `
+SELECT COUNT(*)
+FROM users 
+WHERE name ILIKE $1 OR email ILIKE $2
+`
 
 const userSearchQ = `
 SELECT 
@@ -13,10 +20,10 @@ SELECT
 	u.avatar, 
 	u.created_at, 
 	u.updated_at,
-	ARRAY_AGG(p.id::TEXT || '|' || p.name || '|' || up.value::TEXT) FILTER (WHERE p.id IS NOT NULL) AS permissions
+	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles
 FROM users u
-LEFT JOIN user_permission up ON up.user_id = u.id
-LEFT JOIN permission p ON p.id = up.permission_id
+LEFT JOIN user_roles ur ON ur.user_id = u.id
+LEFT JOIN roles r ON r.id = ur.role_id
 WHERE u.name ILIKE $1 OR u.email ILIKE $2
 GROUP BY u.id, u.name
 ORDER BY u.name DESC 
@@ -32,10 +39,10 @@ SELECT
 	u.avatar, 
 	u.created_at, 
 	u.updated_at,
-	ARRAY_AGG(p.id::TEXT || '|' || p.name || '|' || up.value::TEXT) FILTER (WHERE p.id IS NOT NULL) AS permissions
+	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles
 FROM users u
-LEFT JOIN user_permission up ON up.user_id = u.id
-LEFT JOIN permission p ON p.id = up.permission_id
+LEFT JOIN user_roles ur ON ur.user_id = u.id
+LEFT JOIN roles r ON r.id = ur.role_id
 GROUP BY u.id, u.created_at
 ORDER BY created_at DESC 
 LIMIT $1 OFFSET $2
@@ -53,12 +60,12 @@ SELECT
 	u.is_email_verified,
 	u.created_at, 
 	u.updated_at,
-	ARRAY_AGG(p.id::TEXT || '|' || p.name || '|' || up.value::TEXT) FILTER (WHERE p.id IS NOT NULL) AS permissions,
-	ARRAY_AGG(oth2.provider || '|' || oth2.provider_id) FILTER (WHERE oth2.id IS NOT NULL) AS oauth2_connections
+	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles,
+	ARRAY_AGG(oth2.provider || '|' || oth2.provider_id) FILTER (WHERE oth2.id IS NOT NULL) AS oauth2_connections	
 FROM users u
-LEFT JOIN user_permission up ON up.user_id = u.id
-LEFT JOIN permission p ON p.id = up.permission_id
 LEFT JOIN oauth2_connections oth2 ON oth2.user_id = u.id
+LEFT JOIN user_roles ur ON ur.user_id = u.id
+LEFT JOIN roles r ON r.id = ur.role_id
 WHERE u.id = $1
 GROUP BY u.id
 `
@@ -75,10 +82,10 @@ SELECT
 	u.is_email_verified,
     u.created_at, 
     u.updated_at,
-    ARRAY_AGG(p.id::TEXT || '|' || p.name || '|' || up.value::TEXT) FILTER (WHERE p.id IS NOT NULL) AS permissions
+    ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles
 FROM users u
-LEFT JOIN user_permission up ON up.user_id = u.id
-LEFT JOIN permission p ON p.id = up.permission_id
+LEFT JOIN user_roles ur ON ur.user_id = u.id
+LEFT JOIN roles r ON r.id = ur.role_id
 WHERE email = $1
 GROUP BY u.id
 `
@@ -99,6 +106,18 @@ SET name = $1,
 	is_email_verified = $6
 WHERE id = $7`
 
-const userDeleteQ = `DELETE FROM users WHERE id = $1`
-const userCreatePermQ = `INSERT INTO user_permission (user_id, permission_id, value) VALUES ($1, $2, $3)`
-const userDeletePermQ = `DELETE FROM user_permission WHERE user_id = $1`
+const userDeleteQ = `
+DELETE FROM users 
+WHERE id = $1
+`
+
+const userAddRoleQ = `
+INSERT INTO user_roles (user_id, role_id) 
+VALUES ($1, $2)
+ON CONFLICT (user_id, role_id) DO NOTHING
+`
+
+const userRemoveRoleQ = `
+DELETE FROM user_roles 
+WHERE user_id = $1
+`

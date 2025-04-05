@@ -18,9 +18,11 @@ import (
 )
 
 type Handler struct {
-	gen.SSOServer
+	gen.AuthServer
 	gen.UsersServer
-	gen.PermissionSvcServer
+	gen.DevicesServer
+	gen.PermissionServer
+	gen.RoleServer
 	srv  *grpc.Server
 	hsrv *health.Server
 	ctrl ctrl.AppCtrl
@@ -30,7 +32,9 @@ type Handler struct {
 func New(name string, ctrl ctrl.AppCtrl, au auth.Core) *Handler {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			interceptors.AuthUnaryInterceptor(),
+			interceptors.Auth(au),
+			interceptors.Device(),
+			interceptors.LogTraceMetrics(),
 			metrics.SrvMetrics.UnaryServerInterceptor(
 				pm.WithExemplarFromContext(metrics.Exemplar),
 			),
@@ -55,9 +59,11 @@ func New(name string, ctrl ctrl.AppCtrl, au auth.Core) *Handler {
 }
 
 func (h *Handler) Start(port int) {
-	gen.RegisterSSOServer(h.srv, h)
+	gen.RegisterAuthServer(h.srv, h)
 	gen.RegisterUsersServer(h.srv, h)
-	gen.RegisterPermissionSvcServer(h.srv, h)
+	gen.RegisterDevicesServer(h.srv, h)
+	gen.RegisterPermissionServer(h.srv, h)
+	gen.RegisterRoleServer(h.srv, h)
 	grpc_health_v1.RegisterHealthServer(h.srv, h.hsrv)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", port))

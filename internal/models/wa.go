@@ -9,7 +9,7 @@ import (
 type WebauthnUser struct {
 	ID          uuid.UUID
 	Email       string
-	Permissions []Permission
+	Roles       []Role
 	Credentials []webauthn.Credential
 }
 

@@ -26,7 +26,7 @@ type authRepo interface {
 	RevokeAllTokens(ctx context.Context, userID uuid.UUID) error
 }
 
-func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Permission) (dto.TokenPair, error) {
+func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Role) (dto.TokenPair, error) {
 	const op = "auth.GenPair.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -81,7 +81,7 @@ func (c *Controller) Authenticate(ctx context.Context, d *dto.DeviceRequest, req
 		return nil, auth.ErrInvalidCredentials
 	}
 
-	pair, err := c.GenPair(ctx, d, res.ID, res.Permissions)
+	pair, err := c.GenPair(ctx, d, res.ID, res.Roles)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 	devs, err := c.repo.ListDevices(ctx, res.ID)
 	for i := 0; i < len(devs); i++ {
 		if devs[i].ID == device.ID {
-			access, refresh, err := c.au.GenPair(ctx, res.ID, res.Permissions)
+			access, refresh, err := c.au.GenPair(ctx, res.ID, res.Roles)
 			if err != nil {
 				return tokens, ErrWhileGeneratingToken
 			}
@@ -392,7 +392,7 @@ func (c *Controller) CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, r
 		return nil, err
 	}
 
-	access, refresh, err := c.au.GenPair(ctx, res.ID, res.Permissions)
+	access, refresh, err := c.au.GenPair(ctx, res.ID, res.Roles)
 	if err != nil {
 		return nil, ErrWhileGeneratingToken
 	}

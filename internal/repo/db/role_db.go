@@ -12,23 +12,23 @@ import (
 	"strings"
 )
 
-func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error) {
-	const op = "sso.ListPermissions.repo"
+func (r *Repository) ListRoles(ctx context.Context, page, size int) (*md.PaginatedRole, error) {
+	const op = "roles.ListRoles.repo"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	var count int64
-	if err := r.conn.QueryRowContext(ctx, permSelect).Scan(&count); err != nil {
+	if err := r.conn.QueryRowContext(ctx, roleSelect).Scan(&count); err != nil {
 		return nil, err
 	}
 
-	rows, err := r.conn.QueryContext(ctx, permList, size, (page-1)*size)
+	rows, err := r.conn.QueryContext(ctx, roleList, size, (page-1)*size)
 	if err != nil {
 		return nil, err
 	}
 	defer func(rows *sql.Rows) {
 		if err := rows.Close(); err != nil {
-			zap.L().Debug(
+			zap.L().Error(
 				"failed to close rows",
 				zap.String("op", op),
 				zap.Error(err),
@@ -36,9 +36,9 @@ func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*md.P
 		}
 	}(rows)
 
-	res := make([]*md.Permission, 0, size)
+	res := make([]*md.Role, 0, size)
 	for rows.Next() {
-		var p md.Permission
+		var p md.Role
 		if err = rows.Scan(
 			&p.ID,
 			&p.Name,
@@ -49,12 +49,12 @@ func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*md.P
 		res = append(res, &p)
 	}
 
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
 	totalPages := int((count + int64(size) - 1) / int64(size))
-	return &md.PaginatedPermission{
+	return &md.PaginatedRole{
 		Data:        res,
 		Count:       count,
 		TotalPages:  totalPages,
@@ -63,13 +63,13 @@ func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*md.P
 	}, nil
 }
 
-func (r *Repository) GetPermission(ctx context.Context, id uint64) (*md.Permission, error) {
-	const op = "sso.GetPermission.repo"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+func (r *Repository) GetRole(ctx context.Context, id uint64) (*md.Role, error) {
+	const op = "roles.GetRole.repo"
+	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res := &md.Permission{}
-	err := r.conn.QueryRowContext(ctx, permGet, id).Scan(&res.ID, &res.Name, &res.Description)
+	res := &md.Role{}
+	err := r.conn.QueryRowContext(ctx, roleGet, id).Scan(&res.ID, &res.Name, &res.Description)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, repo.ErrNotFound
 	} else if err != nil {
@@ -79,13 +79,13 @@ func (r *Repository) GetPermission(ctx context.Context, id uint64) (*md.Permissi
 	return res, nil
 }
 
-func (r *Repository) CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error) {
-	const op = "sso.CreatePerm.repo"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+func (r *Repository) CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (uint64, error) {
+	const op = "roles.CreateRole.repo"
+	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	var id uint64
-	err := r.conn.QueryRowContext(ctx, permCreate, req.Name, req.Description).Scan(&id)
+	err := r.conn.QueryRowContext(ctx, roleCreate, req.Name, req.Description).Scan(&id)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique constraint") {
 			return 0, repo.ErrAlreadyExists
@@ -96,12 +96,12 @@ func (r *Repository) CreatePerm(ctx context.Context, req *dto.CreatePermissionRe
 	return id, nil
 }
 
-func (r *Repository) UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error {
-	const op = "sso.UpdatePerm.repo"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+func (r *Repository) UpdateRole(ctx context.Context, id uint64, req *dto.UpdateRoleRequest) error {
+	const op = "roles.UpdateRole.repo"
+	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res, err := r.conn.ExecContext(ctx, permUpdate, req.Name, req.Description, id)
+	res, err := r.conn.ExecContext(ctx, roleUpdate, req.Name, req.Description, id)
 	if err != nil {
 		return err
 	}
@@ -118,12 +118,12 @@ func (r *Repository) UpdatePerm(ctx context.Context, id uint64, req *dto.UpdateP
 	return nil
 }
 
-func (r *Repository) DeletePerm(ctx context.Context, id uint64) error {
-	const op = "sso.DeletePerm.repo"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+func (r *Repository) DeleteRole(ctx context.Context, id uint64) error {
+	const op = "roles.DeleteRole.repo"
+	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res, err := r.conn.ExecContext(ctx, permDelete, id)
+	res, err := r.conn.ExecContext(ctx, roleDelete, id)
 	if err != nil {
 		return err
 	}

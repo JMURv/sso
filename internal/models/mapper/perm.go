@@ -9,9 +9,9 @@ func ListPermissionsToProto(req []*md.Permission) []*gen.SSO_Permission {
 	res := make([]*gen.SSO_Permission, len(req))
 	for i, v := range req {
 		res[i] = &gen.SSO_Permission{
-			Id:    v.ID,
-			Name:  v.Name,
-			Value: v.Value,
+			Id:          v.ID,
+			Name:        v.Name,
+			Description: v.Description,
 		}
 	}
 	return res
@@ -19,16 +19,16 @@ func ListPermissionsToProto(req []*md.Permission) []*gen.SSO_Permission {
 
 func PermissionToProto(req *md.Permission) *gen.SSO_Permission {
 	return &gen.SSO_Permission{
-		Id:    req.ID,
-		Name:  req.Name,
-		Value: req.Value,
+		Id:          req.ID,
+		Name:        req.Name,
+		Description: req.Description,
 	}
 }
 
 func PermissionFromProto(req *gen.SSO_Permission) *md.Permission {
 	return &md.Permission{
-		ID:    req.Id,
-		Name:  req.Name,
-		Value: req.Value,
+		ID:          req.Id,
+		Name:        req.Name,
+		Description: req.Description,
 	}
 }

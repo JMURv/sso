@@ -180,7 +180,7 @@ func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.Device
 		return res, err
 	}
 
-	res, err = c.GenPair(ctx, &d, user.ID, user.Permissions)
+	res, err = c.GenPair(ctx, &d, user.ID, user.Roles)
 	if err != nil {
 		return res, err
 	}
@@ -287,7 +287,7 @@ func (c *Controller) GetUserForWA(ctx context.Context, uid uuid.UUID, email stri
 	return &md.WebauthnUser{
 		ID:          user.ID,
 		Email:       user.Email,
-		Permissions: user.Permissions,
+		Roles:       user.Roles,
 		Credentials: credentials,
 	}, nil
 }

@@ -2,7 +2,7 @@ package providers
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	providers "github.com/JMURv/sso/internal/auth/providers/oauth2"
 	conf "github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"strconv"
 )
+
+var ErrNoEmailFound = errors.New("no email found")
 
 type GitHubProvider struct {
 	*providers.OAuth2Provider
@@ -42,15 +44,20 @@ func NewGitHubOAuth2(config conf.Config) *GitHubProvider {
 
 			req, err := http.NewRequest(http.MethodGet, "https://api.github.com/user", nil)
 			if err != nil {
+				zap.L().Debug("Failed to create request", zap.Error(err))
 				return nil, err
 			}
 			req.Header.Set("Authorization", "token "+token)
 
 			resp, err := cli.Do(req)
 			if err != nil {
+				zap.L().Error(
+					"Failed to get user",
+					zap.String("op", op),
+					zap.Error(err),
+				)
 				return nil, err
 			}
-
 			defer func(Body io.ReadCloser) {
 				if err := Body.Close(); err != nil {
 					zap.L().Debug("failed to close body", zap.Error(err))
@@ -59,6 +66,11 @@ func NewGitHubOAuth2(config conf.Config) *GitHubProvider {
 
 			var ghRes gitHubResponse
 			if err = json.NewDecoder(resp.Body).Decode(&ghRes); err != nil {
+				zap.L().Error(
+					"Failed to decode response",
+					zap.String("op", op),
+					zap.Error(err),
+				)
 				return nil, err
 			}
 
@@ -74,6 +86,7 @@ func NewGitHubOAuth2(config conf.Config) *GitHubProvider {
 				ProviderID: strconv.FormatInt(ghRes.ID, 10),
 				Email:      ghRes.Email,
 				Name:       ghRes.Name,
+				Picture:    ghRes.AvatarURL,
 			}, nil
 		},
 	)
@@ -83,12 +96,16 @@ func NewGitHubOAuth2(config conf.Config) *GitHubProvider {
 func getGitHubEmail(ctx context.Context, cli *http.Client, token string) (string, error) {
 	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/user/emails", nil)
 	if err != nil {
+		zap.L().Debug("Failed to create request", zap.Error(err))
 		return "", err
 	}
 	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
 	resp, err := cli.Do(req)
 	if err != nil {
+		zap.L().Debug("Failed to get user emails", zap.Error(err))
 		return "", err
 	}
 	defer func(Body io.ReadCloser) {
@@ -97,20 +114,10 @@ func getGitHubEmail(ctx context.Context, cli *http.Client, token string) (string
 		}
 	}(resp.Body)
 
-	var emails []struct {
-		Email    string `json:"email"`
-		Primary  bool   `json:"primary"`
-		Verified bool   `json:"verified"`
-	}
-
-	if err = json.NewDecoder(resp.Body).Decode(&emails); err != nil {
+	var res map[string]any
+	if err = json.NewDecoder(resp.Body).Decode(&res); err != nil {
 		return "", err
 	}
 
-	for _, email := range emails {
-		if email.Primary && email.Verified {
-			return email.Email, nil
-		}
-	}
-	return "", fmt.Errorf("no verified email found")
+	return "", ErrNoEmailFound
 }

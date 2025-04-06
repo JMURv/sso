@@ -1,6 +1,8 @@
 package http
 
 import (
+	"errors"
+	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
@@ -59,6 +61,10 @@ func (h *Handler) handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.ctrl.HandleOAuth2Callback(r.Context(), &d, parts[4], code, state)
 	if err != nil {
+		if errors.Is(err, ctrl.ErrNotFound) {
+			utils.ErrResponse(w, http.StatusNotFound, err)
+			return
+		}
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}

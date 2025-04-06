@@ -20,7 +20,7 @@ type CreateUserRequest struct {
 	Avatar   string   `json:"avatar"`
 	IsActive bool     `json:"is_active"`
 	IsEmail  bool     `json:"is_email_verified"`
-	Roles    []uint64 `json:"roles" validate:"required"`
+	Roles    []uint64 `json:"roles"`
 }
 
 type UpdateUserRequest struct {
@@ -30,7 +30,7 @@ type UpdateUserRequest struct {
 	Avatar   string   `json:"avatar"`
 	IsActive bool     `json:"is_active"`
 	IsEmail  bool     `json:"is_email_verified"`
-	Roles    []uint64 `json:"roles" validate:"required"`
+	Roles    []uint64 `json:"roles"`
 }
 
 type CreateUserResponse struct {

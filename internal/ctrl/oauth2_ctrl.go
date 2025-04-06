@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/JMURv/sso/internal/auth/providers"
+	gh "github.com/JMURv/sso/internal/auth/providers/oauth2/github"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
@@ -52,6 +53,9 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 
 	oauthUser, err := pr.GetUser(ctx, code)
 	if err != nil {
+		if errors.Is(err, gh.ErrNoEmailFound) {
+			return nil, ErrNotFound
+		}
 		zap.L().Debug(
 			"Failed to get user",
 			zap.String("op", op),

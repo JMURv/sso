@@ -110,6 +110,16 @@ func (r *Repository) CreateWACredential(ctx context.Context, userID uuid.UUID, c
 		)
 		return err
 	}
+
+	_, err = r.conn.ExecContext(ctx, `UPDATE users SET is_wa = TRUE WHERE id = $1`, userID)
+	if err != nil {
+		zap.L().Error(
+			"Failed to update user is_wa",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return err
+	}
 	return nil
 }
 

@@ -45,7 +45,6 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 		if err = rows.Scan(
 			&user.ID,
 			&user.Name,
-			&user.Password,
 			&user.Email,
 			&user.Avatar,
 			&user.CreatedAt,
@@ -107,7 +106,6 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int) (*dto.Pagina
 		if err = rows.Scan(
 			&user.ID,
 			&user.Name,
-			&user.Password,
 			&user.Email,
 			&user.Avatar,
 			&user.CreatedAt,
@@ -151,7 +149,6 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 	err = r.conn.QueryRowContext(ctx, userGetByIDQ, userID).Scan(
 		&res.ID,
 		&res.Name,
-		&res.Password,
 		&res.Email,
 		&res.Avatar,
 		&res.IsWA,
@@ -193,8 +190,8 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 		Scan(
 			&res.ID,
 			&res.Name,
-			&res.Password,
 			&res.Email,
+			&res.Password,
 			&res.Avatar,
 			&res.IsWA,
 			&res.IsActive,

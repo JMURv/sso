@@ -125,7 +125,7 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 			utils.ErrResponse(w, http.StatusUnauthorized, err)
 			return
 		} else {
-			utils.ErrResponse(w, http.StatusInternalServerError, err)
+			utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 			return
 		}
 	}

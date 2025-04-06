@@ -18,19 +18,19 @@ const permListKey = "perms-list:%v:%v"
 const permPattern = "perms-*"
 
 type permRepo interface {
-	ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error)
+	ListPermissions(ctx context.Context, page, size int) (*dto.PaginatedPermissionResponse, error)
 	GetPermission(ctx context.Context, id uint64) (*md.Permission, error)
 	CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error)
 	UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error
 	DeletePerm(ctx context.Context, id uint64) error
 }
 
-func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error) {
+func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*dto.PaginatedPermissionResponse, error) {
 	const op = "perms.ListPermissions.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &md.PaginatedPermission{}
+	cached := &dto.PaginatedPermissionResponse{}
 	key := fmt.Sprintf(permListKey, page, size)
 	if err := c.cache.GetToStruct(ctx, key, &cached); err == nil {
 		return cached, nil

@@ -6,3 +6,19 @@ const roleGet = `SELECT id, name, description FROM roles WHERE id = $1`
 const roleCreate = `INSERT INTO roles (name, description) VALUES ($1, $2) RETURNING id`
 const roleUpdate = `UPDATE roles SET name = $1, description = $2 WHERE id = $3`
 const roleDelete = `DELETE FROM roles WHERE id = $1`
+
+const roleSearchSelectQ = `
+SELECT COUNT(*)
+FROM user_roles 
+WHERE name ILIKE $1
+`
+
+const roleSearchQ = `
+SELECT 
+	ur.id, 
+	ur.name, 
+	ur.description 
+FROM user_roles ur
+WHERE ur.name ILIKE $1
+LIMIT $2 OFFSET $3
+`

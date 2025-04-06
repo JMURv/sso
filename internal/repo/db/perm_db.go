@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error) {
+func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*dto.PaginatedPermissionResponse, error) {
 	const op = "sso.ListPermissions.repo"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -54,7 +54,7 @@ func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*md.P
 	}
 
 	totalPages := int((count + int64(size) - 1) / int64(size))
-	return &md.PaginatedPermission{
+	return &dto.PaginatedPermissionResponse{
 		Data:        res,
 		Count:       count,
 		TotalPages:  totalPages,

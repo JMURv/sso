@@ -114,11 +114,11 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	//cached := &md.User{}
-	//cacheKey := fmt.Sprintf(userCacheKey, userID)
-	//if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
-	//	return cached, nil
-	//}
+	cached := &md.User{}
+	cacheKey := fmt.Sprintf(userCacheKey, userID)
+	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
+		return cached, nil
+	}
 
 	res, err := c.repo.GetUserByID(ctx, userID)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
@@ -139,9 +139,9 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		return nil, err
 	}
 
-	//if bytes, err := json.Marshal(res); err == nil {
-	//	c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
-	//}
+	if bytes, err := json.Marshal(res); err == nil {
+		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
+	}
 	return res, nil
 }
 
@@ -219,6 +219,19 @@ func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 	const op = "users.UpdateUser.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
+
+	if req.Password != "" {
+		hash, err := c.au.Hash(req.Password)
+		if err != nil {
+			zap.L().Debug(
+				"failed to hash password",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+			return err
+		}
+		req.Password = hash
+	}
 
 	err := c.repo.UpdateUser(ctx, id, req)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {

@@ -12,7 +12,59 @@ import (
 	"strings"
 )
 
-func (r *Repository) ListRoles(ctx context.Context, page, size int) (*md.PaginatedRole, error) {
+func (r *Repository) SearchRole(ctx context.Context, query string, page, size int) (*dto.PaginatedRoleResponse, error) {
+	const op = "roles.SearchRole.repo"
+	span, _ := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	var count int64
+	if err := r.conn.QueryRowContext(ctx, roleSearchSelectQ, "%"+query+"%").
+		Scan(&count); err != nil {
+		return nil, err
+	}
+
+	rows, err := r.conn.QueryContext(ctx, roleSearchQ, "%"+query+"%", size, (page-1)*size)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		if err = rows.Close(); err != nil {
+			zap.L().Debug(
+				"failed to close rows",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+		}
+	}(rows)
+
+	res := make([]*md.Role, 0, size)
+	for rows.Next() {
+		role := &md.Role{}
+		if err = rows.Scan(
+			&role.ID,
+			&role.Name,
+			&role.Description,
+		); err != nil {
+			return nil, err
+		}
+		res = append(res, role)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	totalPages := int((count + int64(size) - 1) / int64(size))
+	return &dto.PaginatedRoleResponse{
+		Data:        res,
+		Count:       count,
+		TotalPages:  totalPages,
+		CurrentPage: page,
+		HasNextPage: page < totalPages,
+	}, nil
+}
+
+func (r *Repository) ListRoles(ctx context.Context, page, size int) (*dto.PaginatedRoleResponse, error) {
 	const op = "roles.ListRoles.repo"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -54,7 +106,7 @@ func (r *Repository) ListRoles(ctx context.Context, page, size int) (*md.Paginat
 	}
 
 	totalPages := int((count + int64(size) - 1) / int64(size))
-	return &md.PaginatedRole{
+	return &dto.PaginatedRoleResponse{
 		Data:        res,
 		Count:       count,
 		TotalPages:  totalPages,

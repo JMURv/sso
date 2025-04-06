@@ -60,13 +60,14 @@ type AppCtrl interface {
 	UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
-	ListPermissions(ctx context.Context, page, size int) (*md.PaginatedPermission, error)
+	ListPermissions(ctx context.Context, page, size int) (*dto.PaginatedPermissionResponse, error)
 	GetPermission(ctx context.Context, id uint64) (*md.Permission, error)
 	CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error)
 	UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error
 	DeletePerm(ctx context.Context, id uint64) error
 
-	ListRoles(ctx context.Context, page, size int) (*md.PaginatedRole, error)
+	SearchRole(ctx context.Context, query string, page, size int) (*dto.PaginatedRoleResponse, error)
+	ListRoles(ctx context.Context, page, size int) (*dto.PaginatedRoleResponse, error)
 	CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (uint64, error)
 	GetRole(ctx context.Context, uid uint64) (*md.Role, error)
 	UpdateRole(ctx context.Context, uid uint64, req *dto.UpdateRoleRequest) error

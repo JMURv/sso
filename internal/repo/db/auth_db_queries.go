@@ -23,7 +23,7 @@ VALUES ($1, $2, $3, $4)
 const isValidToken = `
 SELECT token_hash
 FROM refresh_tokens 
-WHERE user_id = $1 AND device_id = $2 AND expires_at > NOW() AND revoked = FALSE
+WHERE user_id = $1 AND device_id = $2 AND expires_at > NOW() AND revoked IS FALSE
 ORDER BY expires_at DESC
 LIMIT 1
 `

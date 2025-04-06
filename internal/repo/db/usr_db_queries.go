@@ -15,7 +15,6 @@ const userSearchQ = `
 SELECT 
 	u.id, 
 	u.name, 
-	u.password, 
 	u.email, 
 	u.avatar, 
 	u.created_at, 
@@ -34,7 +33,6 @@ const userListQ = `
 SELECT 
 	u.id, 
 	u.name, 
-	u.password, 
 	u.email, 
 	u.avatar, 
 	u.created_at, 
@@ -52,7 +50,6 @@ const userGetByIDQ = `
 SELECT 
 	u.id, 
 	u.name, 
-	u.password, 
 	u.email, 
 	u.avatar,
 	u.is_wa,
@@ -74,8 +71,8 @@ const userGetByEmailQ = `
 SELECT 
     u.id, 
     u.name, 
-    u.password, 
     u.email, 
+    u.password,
     u.avatar,
 	u.is_wa,
 	u.is_active,

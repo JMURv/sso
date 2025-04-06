@@ -16,21 +16,52 @@ import (
 const roleKey = "role:%v"
 const roleListKey = "roles-list:%v:%v"
 const rolePattern = "roles-*"
+const roleSearchCacheKey = "roles-search:%v:%v:%v"
 
 type roleRepo interface {
-	ListRoles(ctx context.Context, page, size int) (*md.PaginatedRole, error)
+	SearchRole(ctx context.Context, query string, page, size int) (*dto.PaginatedRoleResponse, error)
+	ListRoles(ctx context.Context, page, size int) (*dto.PaginatedRoleResponse, error)
 	GetRole(ctx context.Context, id uint64) (*md.Role, error)
 	CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (uint64, error)
 	UpdateRole(ctx context.Context, id uint64, req *dto.UpdateRoleRequest) error
 	DeleteRole(ctx context.Context, id uint64) error
 }
 
-func (c *Controller) ListRoles(ctx context.Context, page, size int) (*md.PaginatedRole, error) {
+func (c *Controller) SearchRole(ctx context.Context, query string, page, size int) (*dto.PaginatedRoleResponse, error) {
+	const op = "roles.SearchRole.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	cached := &dto.PaginatedRoleResponse{}
+	cacheKey := fmt.Sprintf(roleSearchCacheKey, query, page, size)
+	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
+		return cached, nil
+	}
+
+	res, err := c.repo.SearchRole(ctx, query, page, size)
+	if err != nil {
+		zap.L().Error(
+			"failed to search roles",
+			zap.String("op", op),
+			zap.String("query", query),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	var bytes []byte
+	if bytes, err = json.Marshal(res); err == nil {
+		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
+	}
+	return res, nil
+}
+
+func (c *Controller) ListRoles(ctx context.Context, page, size int) (*dto.PaginatedRoleResponse, error) {
 	const op = "roles.ListRoles.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &md.PaginatedRole{}
+	cached := &dto.PaginatedRoleResponse{}
 	key := fmt.Sprintf(roleListKey, page, size)
 	if err := c.cache.GetToStruct(ctx, key, &cached); err == nil {
 		return cached, nil

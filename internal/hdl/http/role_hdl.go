@@ -14,7 +14,15 @@ import (
 	"strings"
 )
 
+// TODO: add search
 func RegisterRoleRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
+	mux.HandleFunc(
+		"/api/roles/search", mid.Apply(
+			h.searchRole,
+			mid.AllowedMethods(http.MethodGet),
+		),
+	)
+
 	mux.HandleFunc(
 		"/api/roles", func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -42,6 +50,23 @@ func RegisterRoleRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 			}
 		},
 	)
+}
+
+func (h *Handler) searchRole(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if len(query) < 3 {
+		utils.SuccessResponse(w, http.StatusOK, dto.PaginatedRoleResponse{})
+		return
+	}
+
+	page, size := utils.ParsePaginationValues(r)
+	res, err := h.ctrl.SearchRole(r.Context(), query, page, size)
+	if err != nil {
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+		return
+	}
+
+	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
 func (h *Handler) listRoles(w http.ResponseWriter, r *http.Request) {

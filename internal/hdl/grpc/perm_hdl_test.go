@@ -26,7 +26,7 @@ package grpc
 //	ctx := context.Background()
 //	page := uint64(1)
 //	size := uint64(10)
-//	expectedData := &md.PaginatedPermission{}
+//	expectedData := &dto.md.PaginatedPermissionResponse{}
 //
 //	t.Run(
 //		"Invalid request", func(t *testing.T) {

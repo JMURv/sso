@@ -2,15 +2,12 @@ package db
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 	"time"
 )
 
@@ -60,8 +57,8 @@ func (r *Repository) IsTokenValid(ctx context.Context, userID uuid.UUID, d *md.D
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	var hash string
-	err := r.conn.QueryRowContext(ctx, isValidToken, userID, d.ID).Scan(&hash)
+	var stored string
+	err := r.conn.QueryRowContext(ctx, isValidToken, userID, d.ID).Scan(&stored)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
@@ -69,9 +66,7 @@ func (r *Repository) IsTokenValid(ctx context.Context, userID uuid.UUID, d *md.D
 		return false, err
 	}
 
-	shaHash := sha256.Sum256([]byte(token))
-	hexHash := hex.EncodeToString(shaHash[:])
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(hexHash)) == nil, nil
+	return token == stored, nil
 }
 
 func (r *Repository) RevokeAllTokens(ctx context.Context, userID uuid.UUID) error {

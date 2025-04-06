@@ -61,10 +61,7 @@ func Device(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			ua := r.Header.Get("User-Agent")
-			ip := strings.Split(r.RemoteAddr, ":")[0]
-			if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-				ip = strings.Split(forwarded, ",")[0]
-			}
+			ip := r.Header.Get("X-Forwarded-For")
 
 			ctx := context.WithValue(r.Context(), "ip", ip)
 			ctx = context.WithValue(ctx, "ua", ua)

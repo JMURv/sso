@@ -53,7 +53,7 @@ type AppCtrl interface {
 
 	IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error)
 	SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error)
-	ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error)
+	ListUsers(ctx context.Context, page, size int, sort string, filters map[string]any) (*dto.PaginatedUserResponse, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
 	CreateUser(ctx context.Context, u *dto.CreateUserRequest) (*dto.CreateUserResponse, error)

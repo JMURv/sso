@@ -16,7 +16,7 @@ import (
 
 type userRepo interface {
 	SearchUser(ctx context.Context, query string, page int, size int) (*dto.PaginatedUserResponse, error)
-	ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error)
+	ListUsers(ctx context.Context, page, size int, sort string, filters map[string]any) (*dto.PaginatedUserResponse, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
 	CreateUser(ctx context.Context, req *dto.CreateUserRequest) (uuid.UUID, error)
@@ -26,7 +26,7 @@ type userRepo interface {
 
 const userCacheKey = "user:%v"
 const usersSearchCacheKey = "users-search:%v:%v:%v"
-const usersListKey = "users-list:%v:%v"
+const usersListKey = "users-list:%v:%v:%v:%v"
 const userPattern = "users-*"
 
 func (c *Controller) IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error) {
@@ -80,18 +80,18 @@ func (c *Controller) SearchUser(ctx context.Context, query string, page, size in
 	return res, nil
 }
 
-func (c *Controller) ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error) {
+func (c *Controller) ListUsers(ctx context.Context, page, size int, sort string, filters map[string]any) (*dto.PaginatedUserResponse, error) {
 	const op = "users.ListUsers.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &dto.PaginatedUserResponse{}
-	cacheKey := fmt.Sprintf(usersListKey, page, size)
-	if err := c.cache.GetToStruct(ctx, cacheKey, &cached); err == nil {
-		return cached, nil
-	}
+	//cached := &dto.PaginatedUserResponse{}
+	//cacheKey := fmt.Sprintf(usersListKey, page, size, sort, filters)
+	//if err := c.cache.GetToStruct(ctx, cacheKey, &cached); err == nil {
+	//	return cached, nil
+	//}
 
-	res, err := c.repo.ListUsers(ctx, page, size)
+	res, err := c.repo.ListUsers(ctx, page, size, sort, filters)
 	if err != nil {
 		zap.L().Debug(
 			"failed to list users",
@@ -103,9 +103,10 @@ func (c *Controller) ListUsers(ctx context.Context, page, size int) (*dto.Pagina
 		return nil, err
 	}
 
-	if bytes, err := json.Marshal(res); err == nil {
-		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
-	}
+	//var bytes []byte
+	//if bytes, err = json.Marshal(res); err == nil {
+	//	c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
+	//}
 	return res, nil
 }
 
@@ -114,11 +115,11 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &md.User{}
-	cacheKey := fmt.Sprintf(userCacheKey, userID)
-	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
-		return cached, nil
-	}
+	//cached := &md.User{}
+	//cacheKey := fmt.Sprintf(userCacheKey, userID)
+	//if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
+	//	return cached, nil
+	//}
 
 	res, err := c.repo.GetUserByID(ctx, userID)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
@@ -139,9 +140,9 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		return nil, err
 	}
 
-	if bytes, err := json.Marshal(res); err == nil {
-		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
-	}
+	//if bytes, err := json.Marshal(res); err == nil {
+	//	c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
+	//}
 	return res, nil
 }
 

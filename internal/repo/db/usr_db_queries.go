@@ -2,7 +2,7 @@ package db
 
 const userSelectQ = `
 SELECT COUNT(*)
-FROM users
+FROM users u
 `
 
 const userSearchSelectQ = `
@@ -41,7 +41,7 @@ SELECT
 FROM users u
 LEFT JOIN user_roles ur ON ur.user_id = u.id
 LEFT JOIN roles r ON r.id = ur.role_id
-GROUP BY u.id, u.created_at
+GROUP BY u.id
 ORDER BY created_at DESC 
 LIMIT $1 OFFSET $2
 `

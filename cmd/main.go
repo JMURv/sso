@@ -42,7 +42,7 @@ func main() {
 	conf := config.MustLoad(configPath)
 	mustRegisterLogger(conf.Mode)
 
-	go prometheus.New(conf.Server.Port + 5).Start(ctx)
+	go prometheus.New(conf.Prometheus.Port).Start(ctx)
 	go jaeger.Start(ctx, conf.ServiceName, conf)
 
 	au := auth.New(conf)

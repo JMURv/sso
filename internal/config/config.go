@@ -9,14 +9,15 @@ import (
 )
 
 type Config struct {
-	Mode        string       `yaml:"mode" env:"MODE" envDefault:"dev"`
-	ServiceName string       `yaml:"serviceName" env:"SERVICE_NAME" envDefault:"sso"`
-	Auth        AuthConfig   `yaml:"auth"`
-	Server      ServerConfig `yaml:"server"`
-	Email       EmailConfig  `yaml:"email"`
-	DB          DBConfig     `yaml:"db"`
-	Redis       RedisConfig  `yaml:"redis"`
-	Jaeger      JaegerConfig `yaml:"jaeger"`
+	Mode        string           `yaml:"mode" env:"MODE" envDefault:"dev"`
+	ServiceName string           `yaml:"serviceName" env:"SERVICE_NAME" envDefault:"sso"`
+	Auth        AuthConfig       `yaml:"auth"`
+	Server      ServerConfig     `yaml:"server"`
+	Email       EmailConfig      `yaml:"email"`
+	DB          DBConfig         `yaml:"db"`
+	Redis       RedisConfig      `yaml:"redis"`
+	Prometheus  PrometheusConfig `yaml:"prometheus"`
+	Jaeger      JaegerConfig     `yaml:"jaeger"`
 }
 
 type AuthConfig struct {
@@ -75,6 +76,10 @@ type DBConfig struct {
 type RedisConfig struct {
 	Addr string `yaml:"addr" env:"REDIS_ADDR" envDefault:"localhost:6379"`
 	Pass string `yaml:"pass" env:"REDIS_PASS" envDefault:""`
+}
+
+type PrometheusConfig struct {
+	Port int `yaml:"port" env:"PROMETHEUS_PORT" envDefault:"9090"`
 }
 
 type JaegerConfig struct {

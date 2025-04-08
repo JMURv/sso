@@ -80,7 +80,7 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_P
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
-	u, err := h.ctrl.ListUsers(ctx, int(page), int(size))
+	u, err := h.ctrl.ListUsers(ctx, int(page), int(size), "", map[string]any{})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}

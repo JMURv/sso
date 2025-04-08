@@ -45,11 +45,12 @@ CREATE TABLE IF NOT EXISTS user_roles (
 
 CREATE INDEX IF NOT EXISTS idx_permissions_name ON permission (name);
 CREATE INDEX IF NOT EXISTS idx_roles_name ON roles (name);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id);
 
 -- USER DEVICES
 CREATE TABLE IF NOT EXISTS user_devices (
     id          VARCHAR(36) PRIMARY KEY,
-    user_id     UUID         NOT NULL REFERENCES users (id),
+    user_id     UUID         NOT NULL,
     name        VARCHAR(100) NOT NULL,
     device_type VARCHAR(50),
     os          VARCHAR(50),
@@ -86,7 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_device_id ON refresh_tokens (devic
 -- OAUTH2
 CREATE TABLE IF NOT EXISTS oauth2_connections (
     id            SERIAL PRIMARY KEY,
-    user_id       UUID         NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    user_id       UUID         NOT NULL,
     provider      VARCHAR(50)  NOT NULL, -- google, github etc.
     provider_id   VARCHAR(255) NOT NULL, -- User ID from provider
     access_token  TEXT,
@@ -94,6 +95,7 @@ CREATE TABLE IF NOT EXISTS oauth2_connections (
     id_token      TEXT,
     expires_at    TIMESTAMPTZ,
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
     UNIQUE (provider, provider_id)
 );
 
@@ -107,8 +109,9 @@ CREATE TABLE IF NOT EXISTS wa_credentials (
     public_key       BYTEA NOT NULL,
     attestation_type TEXT  NOT NULL,
     authenticator    JSONB NOT NULL,
-    user_id          UUID REFERENCES users (id) ON DELETE CASCADE,
-    PRIMARY KEY (id, user_id)
+    user_id          UUID  NOT NULL,
+    PRIMARY KEY (id, user_id),
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
 -- Initial inserts

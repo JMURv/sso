@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
+	"github.com/JMURv/sso/internal/repo/db/utils"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/opentracing/opentracing-go"
@@ -75,17 +77,40 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 	}, nil
 }
 
-func (r *Repository) ListUsers(ctx context.Context, page, size int) (*dto.PaginatedUserResponse, error) {
+func (r *Repository) ListUsers(ctx context.Context, page, size int, sort string, filters map[string]any) (*dto.PaginatedUserResponse, error) {
 	const op = "users.ListUsers.repo"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	var count int64
-	if err := r.conn.QueryRowContext(ctx, userSelectQ).Scan(&count); err != nil {
+	clauses, args := utils.BuildFilterQuery(filters)
+	q := fmt.Sprintf("SELECT COUNT(*) FROM users u %s", clauses)
+	if err := r.conn.QueryRowContext(ctx, q, args...).Scan(&count); err != nil {
 		return nil, err
 	}
 
-	rows, err := r.conn.QueryContext(ctx, userListQ, size, (page-1)*size)
+	q = fmt.Sprintf(
+		`
+		SELECT 
+			u.id, 
+			u.name, 
+			u.email, 
+			u.avatar, 
+			u.created_at, 
+			u.updated_at,
+			ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles
+		FROM users u
+		LEFT JOIN user_roles ur ON ur.user_id = u.id
+		LEFT JOIN roles r ON r.id = ur.role_id
+		%s
+		GROUP BY u.id
+		ORDER BY created_at DESC 
+		LIMIT $%d OFFSET $%d
+		`, clauses, len(args)+1, len(args)+2,
+	)
+
+	args = append(args, size, (page-1)*size)
+	rows, err := r.conn.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}

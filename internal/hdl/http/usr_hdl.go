@@ -103,7 +103,10 @@ func (h *Handler) searchUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	page, size := utils.ParsePaginationValues(r)
-	res, err := h.ctrl.ListUsers(r.Context(), page, size)
+	sort := r.URL.Query().Get("sort")
+	filters := utils.ParseFiltersByURL(r)
+
+	res, err := h.ctrl.ListUsers(r.Context(), page, size, sort, filters)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return

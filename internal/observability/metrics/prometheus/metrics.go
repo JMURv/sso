@@ -57,13 +57,16 @@ func (m *Metric) Start(ctx context.Context) {
 	)
 
 	m.srv.Handler = mux
-	go m.srv.ListenAndServe()
-
+	go func() {
+		if err := m.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			zap.L().Error("Prometheus server has been stopped with error", zap.Error(err))
+		}
+	}()
 	zap.L().Debug(fmt.Sprintf("Prometheus server has been started on port:%v", m.srv.Addr))
 
 	<-ctx.Done()
 	if err := m.srv.Shutdown(ctx); err != nil {
-		zap.L().Debug("Prometheus server shutdown failed", zap.Error(err))
+		zap.L().Error("Prometheus server shutdown failed", zap.Error(err))
 	}
 	zap.L().Debug("Prometheus server has been stopped")
 }

@@ -9,7 +9,7 @@ const roleDelete = `DELETE FROM roles WHERE id = $1`
 
 const roleSearchSelectQ = `
 SELECT COUNT(*)
-FROM user_roles 
+FROM roles 
 WHERE name ILIKE $1
 `
 
@@ -18,7 +18,7 @@ SELECT
 	ur.id, 
 	ur.name, 
 	ur.description 
-FROM user_roles ur
+FROM roles ur
 WHERE ur.name ILIKE $1
 LIMIT $2 OFFSET $3
 `

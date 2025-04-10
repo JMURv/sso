@@ -44,6 +44,7 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 	for rows.Next() {
 		user := &md.User{}
 		roles := make([]string, 0, 5)
+		oauth2 := make([]string, 0, 5)
 		if err = rows.Scan(
 			&user.ID,
 			&user.Name,
@@ -52,11 +53,17 @@ func (r *Repository) SearchUser(ctx context.Context, query string, page, size in
 			&user.CreatedAt,
 			&user.UpdatedAt,
 			pq.Array(&roles),
+			pq.Array(&oauth2),
 		); err != nil {
 			return nil, err
 		}
 
 		user.Roles, err = ScanRoles(roles)
+		if err != nil {
+			return nil, err
+		}
+
+		user.Oauth2Connections, err = ScanOauth2Connections(roles)
 		if err != nil {
 			return nil, err
 		}
@@ -98,8 +105,21 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, sort string,
 			u.avatar, 
 			u.created_at, 
 			u.updated_at,
-			ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles
+			ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles,
+			ARRAY_AGG(oth2.provider || '|' || oth2.provider_id) FILTER (WHERE oth2.id IS NOT NULL) AS oauth2_connections,
+			ARRAY_AGG(
+				DISTINCT ud.id || '|' || 
+				ud.name || '|' || 
+				ud.device_type || '|' ||
+				ud.os || '|' || 
+				ud.user_agent || '|' ||
+				ud.browser || '|' || 
+				ud.ip || '|' ||
+				ud.last_active
+			) FILTER (WHERE ud.id IS NOT NULL) AS devices
 		FROM users u
+		LEFT JOIN user_devices ud ON ud.user_id = u.id
+		LEFT JOIN oauth2_connections oth2 ON oth2.user_id = u.id
 		LEFT JOIN user_roles ur ON ur.user_id = u.id
 		LEFT JOIN roles r ON r.id = ur.role_id
 		%s
@@ -128,6 +148,8 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, sort string,
 	for rows.Next() {
 		user := &md.User{}
 		roles := make([]string, 0, 5)
+		oauth2 := make([]string, 0, 5)
+		devices := make([]string, 0, 5)
 		if err = rows.Scan(
 			&user.ID,
 			&user.Name,
@@ -136,11 +158,23 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, sort string,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 			pq.Array(&roles),
+			pq.Array(&oauth2),
+			pq.Array(&devices),
 		); err != nil {
 			return nil, err
 		}
 
+		user.Devices, err = ScanDevices(devices)
+		if err != nil {
+			return nil, err
+		}
+
 		user.Roles, err = ScanRoles(roles)
+		if err != nil {
+			return nil, err
+		}
+
+		user.Oauth2Connections, err = ScanOauth2Connections(oauth2)
 		if err != nil {
 			return nil, err
 		}

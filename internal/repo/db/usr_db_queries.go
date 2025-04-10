@@ -19,8 +19,21 @@ SELECT
 	u.avatar, 
 	u.created_at, 
 	u.updated_at,
-	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles
+	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles,
+	ARRAY_AGG(oth2.provider || '|' || oth2.provider_id) FILTER (WHERE oth2.id IS NOT NULL) AS oauth2_connections,
+	ARRAY_AGG(
+		ud.id || '|' || 
+		ud.name || '|' || 
+		ud.device_type || '|' ||
+		ud.os || '|' || 
+		ud.user_agent || '|' ||
+		ud.browser || '|' || 
+		ud.ip || '|' ||
+		ud.last_active
+	) FILTER (WHERE ud.id IS NOT NULL) AS devices
 FROM users u
+LEFT JOIN user_devices ud ON ud.user_id = u.id
+LEFT JOIN oauth2_connections oth2 ON oth2.user_id = u.id
 LEFT JOIN user_roles ur ON ur.user_id = u.id
 LEFT JOIN roles r ON r.id = ur.role_id
 WHERE u.name ILIKE $1 OR u.email ILIKE $2
@@ -37,8 +50,21 @@ SELECT
 	u.avatar, 
 	u.created_at, 
 	u.updated_at,
-	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles
+	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles,
+	ARRAY_AGG(oth2.provider || '|' || oth2.provider_id) FILTER (WHERE oth2.id IS NOT NULL) AS oauth2_connections,
+	ARRAY_AGG(
+		ud.id || '|' || 
+		ud.name || '|' || 
+		ud.device_type || '|' ||
+		ud.os || '|' || 
+		ud.user_agent || '|' ||
+		ud.browser || '|' || 
+		ud.ip || '|' ||
+		ud.last_active
+	) FILTER (WHERE ud.id IS NOT NULL) AS devices
 FROM users u
+LEFT JOIN user_devices ud ON ud.user_id = u.id
+LEFT JOIN oauth2_connections oth2 ON oth2.user_id = u.id
 LEFT JOIN user_roles ur ON ur.user_id = u.id
 LEFT JOIN roles r ON r.id = ur.role_id
 GROUP BY u.id

@@ -16,6 +16,7 @@ type User struct {
 	IsEmailVerified   bool               `json:"is_email_verified"`
 	Roles             []Role             `json:"roles"`
 	Oauth2Connections []Oauth2Connection `json:"oauth2_connections"`
+	Devices           []Device           `json:"devices"`
 	CreatedAt         time.Time          `json:"created_at"`
 	UpdatedAt         time.Time          `json:"updated_at"`
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
+	"github.com/lib/pq"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"strings"
@@ -91,11 +92,17 @@ func (r *Repository) ListRoles(ctx context.Context, page, size int) (*dto.Pagina
 	res := make([]*md.Role, 0, size)
 	for rows.Next() {
 		var p md.Role
+		perms := make([]string, 0, 5)
 		if err = rows.Scan(
 			&p.ID,
 			&p.Name,
 			&p.Description,
+			pq.Array(&perms),
 		); err != nil {
+			return nil, err
+		}
+
+		if p.Permissions, err = ScanPerms(perms); err != nil {
 			return nil, err
 		}
 		res = append(res, &p)

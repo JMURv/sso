@@ -14,6 +14,7 @@ import (
 	"strings"
 )
 
+// TODO: Middleware для проверки прав или авторства девайса
 func RegisterDeviceRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
 	mux.HandleFunc(
 		"/api/device", mid.Apply(

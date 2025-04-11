@@ -17,18 +17,14 @@ func (r *Repository) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	rows, err := r.conn.QueryContext(
-		ctx, `
-		SELECT 
-		    id, 
-		    public_key,
-		    attestation_type,
-		    authenticator
-		FROM wa_credentials
-		WHERE user_id = $1`,
-		userID,
-	)
+	rows, err := r.conn.QueryContext(ctx, getWACredentials, userID)
 	if err != nil {
+		zap.L().Error(
+			"failed to get WebAuthn credentials",
+			zap.String("op", op),
+			zap.String("userID", userID.String()),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 	defer func(rows *sql.Rows) {
@@ -56,11 +52,21 @@ func (r *Repository) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]
 			&attestationType,
 			&authenticator,
 		); err != nil {
+			zap.L().Error(
+				"failed to scan WebAuthn credential",
+				zap.String("op", op),
+				zap.Error(err),
+			)
 			return nil, err
 		}
 
 		authJSON := webauthn.Authenticator{}
 		if err = json.Unmarshal(authenticator, &authJSON); err != nil {
+			zap.L().Error(
+				"failed to unmarshal authenticator",
+				zap.String("op", op),
+				zap.Error(err),
+			)
 			return nil, err
 		}
 
@@ -75,6 +81,11 @@ func (r *Repository) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]
 	}
 
 	if err = rows.Err(); err != nil {
+		zap.L().Error(
+			"failed to get WebAuthn credentials",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 	return creds, nil
@@ -87,15 +98,12 @@ func (r *Repository) CreateWACredential(ctx context.Context, userID uuid.UUID, c
 
 	authenticatorJSON, err := json.Marshal(cred.Authenticator)
 	if err != nil {
-		zap.L().Error("Failed to marshal authenticator", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to marshal authenticator", zap.String("op", op), zap.Error(err))
 		return err
 	}
 
 	_, err = r.conn.ExecContext(
-		ctx, `
-		INSERT INTO wa_credentials 
-		(id, public_key, attestation_type, authenticator, user_id)
-		VALUES ($1, $2, $3, $4, $5)`,
+		ctx, createWACredential,
 		cred.ID,
 		cred.PublicKey,
 		cred.AttestationType,
@@ -104,17 +112,17 @@ func (r *Repository) CreateWACredential(ctx context.Context, userID uuid.UUID, c
 	)
 	if err != nil {
 		zap.L().Error(
-			"Failed to create WebAuthn credential",
+			"failed to create WebAuthn credential",
 			zap.String("op", op),
 			zap.Error(err),
 		)
 		return err
 	}
 
-	_, err = r.conn.ExecContext(ctx, `UPDATE users SET is_wa = TRUE WHERE id = $1`, userID)
+	_, err = r.conn.ExecContext(ctx, setIsWA, userID)
 	if err != nil {
 		zap.L().Error(
-			"Failed to update user is_wa",
+			"failed to update user is_wa",
 			zap.String("op", op),
 			zap.Error(err),
 		)
@@ -130,17 +138,12 @@ func (r *Repository) UpdateWACredential(ctx context.Context, cred *webauthn.Cred
 
 	authenticatorJSON, err := json.Marshal(cred.Authenticator)
 	if err != nil {
-		zap.L().Error("Failed to marshal authenticator", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to marshal authenticator", zap.String("op", op), zap.Error(err))
 		return err
 	}
 
 	res, err := r.conn.ExecContext(
-		ctx, `
-		UPDATE wa_credentials
-		SET public_key = $1,
-			attestation_type = $2,
-			authenticator = $3
-		WHERE id = $4;`,
+		ctx, updateWACredentials,
 		cred.PublicKey,
 		cred.AttestationType,
 		authenticatorJSON,
@@ -148,7 +151,7 @@ func (r *Repository) UpdateWACredential(ctx context.Context, cred *webauthn.Cred
 	)
 	if err != nil {
 		zap.L().Error(
-			"Failed to update WebAuthn credential",
+			"failed to update WebAuthn credential",
 			zap.String("op", op),
 			zap.Error(err),
 		)
@@ -157,10 +160,19 @@ func (r *Repository) UpdateWACredential(ctx context.Context, cred *webauthn.Cred
 
 	aff, err := res.RowsAffected()
 	if err != nil {
+		zap.L().Error(
+			"failed to get affected rows",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if aff == 0 {
+		zap.L().Debug(
+			"failed to find WebAuthn credential",
+			zap.String("op", op),
+		)
 		return repo.ErrNotFound
 	}
 	return nil
@@ -171,11 +183,13 @@ func (r *Repository) DeleteWACredential(ctx context.Context, id int, uid uuid.UU
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res, err := r.conn.ExecContext(ctx, `DELETE FROM wa_credentials WHERE id = $1 AND user_id = $2`, id, uid)
+	res, err := r.conn.ExecContext(ctx, deleteWACredential, id, uid)
 	if err != nil {
 		zap.L().Error(
-			"Failed to delete WebAuthn credential",
+			"failed to delete WebAuthn credential",
 			zap.String("op", op),
+			zap.String("uid", uid.String()),
+			zap.Int("id", id),
 			zap.Error(err),
 		)
 		return err
@@ -183,10 +197,24 @@ func (r *Repository) DeleteWACredential(ctx context.Context, id int, uid uuid.UU
 
 	aff, err := res.RowsAffected()
 	if err != nil {
+		zap.L().Error(
+			"failed to get affected rows",
+			zap.String("op", op),
+			zap.String("uid", uid.String()),
+			zap.Int("id", id),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if aff == 0 {
+		zap.L().Debug(
+			"failed to find WebAuthn credential",
+			zap.String("op", op),
+			zap.String("uid", uid.String()),
+			zap.Int("id", id),
+			zap.Error(err),
+		)
 		return repo.ErrNotFound
 	}
 	return nil

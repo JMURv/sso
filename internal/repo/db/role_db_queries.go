@@ -1,6 +1,6 @@
 package db
 
-const roleSelect = `SELECT COUNT(*) FROM roles`
+const roleSelect = `SELECT COUNT(*) FROM roles %s`
 const roleList = `
 SELECT 
 	r.id,
@@ -10,9 +10,10 @@ SELECT
 FROM roles r
 LEFT JOIN role_permissions rp ON rp.role_id = r.id
 LEFT JOIN permission p ON p.id = rp.permission_id
+%s
 GROUP BY r.id
 ORDER BY name 
-LIMIT $1 OFFSET $2
+LIMIT $%d OFFSET $%d
 `
 const roleGet = `SELECT id, name, description FROM roles WHERE id = $1`
 const roleCreate = `INSERT INTO roles (name, description) VALUES ($1, $2) RETURNING id`

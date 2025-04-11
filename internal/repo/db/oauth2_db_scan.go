@@ -24,10 +24,10 @@ func ScanOauth2Connections(conns []string) ([]md.Oauth2Connection, error) {
 	return res, nil
 }
 
-func ScanRoles(roles []string) ([]md.Role, error) {
-	res := make([]md.Role, 0, len(roles))
-	for _, role := range roles {
-		parts := strings.Split(role, "|")
+func ScanRoles(req []string) ([]md.Role, error) {
+	res := make([]md.Role, 0, len(req))
+	for _, v := range req {
+		parts := strings.Split(v, "|")
 		if len(parts) != 3 {
 			continue
 		}

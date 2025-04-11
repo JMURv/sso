@@ -10,131 +10,41 @@ import (
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/JMURv/sso/internal/repo/db/utils"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 )
 
-func (r *Repository) SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error) {
-	const op = "users.SearchUser.repo"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
-
-	var count int64
-	if err := r.conn.QueryRowContext(ctx, userSearchSelectQ, "%"+query+"%", "%"+query+"%").
-		Scan(&count); err != nil {
-		return nil, err
-	}
-
-	rows, err := r.conn.QueryContext(ctx, userSearchQ, "%"+query+"%", "%"+query+"%", size, (page-1)*size)
-	if err != nil {
-		return nil, err
-	}
-	defer func(rows *sql.Rows) {
-		if err = rows.Close(); err != nil {
-			zap.L().Debug(
-				"failed to close rows",
-				zap.String("op", op),
-				zap.Error(err),
-			)
-		}
-	}(rows)
-
-	res := make([]*md.User, 0, size)
-	for rows.Next() {
-		user := &md.User{}
-		roles := make([]string, 0, 5)
-		oauth2 := make([]string, 0, 5)
-		if err = rows.Scan(
-			&user.ID,
-			&user.Name,
-			&user.Email,
-			&user.Avatar,
-			&user.CreatedAt,
-			&user.UpdatedAt,
-			pq.Array(&roles),
-			pq.Array(&oauth2),
-		); err != nil {
-			return nil, err
-		}
-
-		user.Roles, err = ScanRoles(roles)
-		if err != nil {
-			return nil, err
-		}
-
-		user.Oauth2Connections, err = ScanOauth2Connections(roles)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, user)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	totalPages := int((count + int64(size) - 1) / int64(size))
-	return &dto.PaginatedUserResponse{
-		Data:        res,
-		Count:       count,
-		TotalPages:  totalPages,
-		CurrentPage: page,
-		HasNextPage: page < totalPages,
-	}, nil
-}
-
-func (r *Repository) ListUsers(ctx context.Context, page, size int, sort string, filters map[string]any) (*dto.PaginatedUserResponse, error) {
+func (r *Repository) ListUsers(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedUserResponse, error) {
 	const op = "users.ListUsers.repo"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
 	var count int64
 	clauses, args := utils.BuildFilterQuery(filters)
-	q := fmt.Sprintf("SELECT COUNT(*) FROM users u %s", clauses)
+	q := fmt.Sprintf(userSelectQ, clauses)
+
 	if err := r.conn.QueryRowContext(ctx, q, args...).Scan(&count); err != nil {
+		zap.L().Error("failed to count users", zap.String("op", op), zap.Error(err))
 		return nil, err
 	}
 
-	q = fmt.Sprintf(
-		`
-		SELECT 
-			u.id, 
-			u.name, 
-			u.email, 
-			u.avatar, 
-			u.created_at, 
-			u.updated_at,
-			ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles,
-			ARRAY_AGG(oth2.provider || '|' || oth2.provider_id) FILTER (WHERE oth2.id IS NOT NULL) AS oauth2_connections,
-			ARRAY_AGG(
-				DISTINCT ud.id || '|' || 
-				ud.name || '|' || 
-				ud.device_type || '|' ||
-				ud.os || '|' || 
-				ud.user_agent || '|' ||
-				ud.browser || '|' || 
-				ud.ip || '|' ||
-				ud.last_active
-			) FILTER (WHERE ud.id IS NOT NULL) AS devices
-		FROM users u
-		LEFT JOIN user_devices ud ON ud.user_id = u.id
-		LEFT JOIN oauth2_connections oth2 ON oth2.user_id = u.id
-		LEFT JOIN user_roles ur ON ur.user_id = u.id
-		LEFT JOIN roles r ON r.id = ur.role_id
-		%s
-		GROUP BY u.id
-		ORDER BY created_at DESC 
-		LIMIT $%d OFFSET $%d
-		`, clauses, len(args)+1, len(args)+2,
-	)
-
+	q = fmt.Sprintf(userListQ, clauses, utils.GetSort(filters["sort"]), len(args)+1, len(args)+2)
 	args = append(args, size, (page-1)*size)
-	rows, err := r.conn.QueryContext(ctx, q, args...)
+	rows, err := r.conn.QueryxContext(ctx, q, args...)
 	if err != nil {
+		zap.L().Error(
+			"failed to list users",
+			zap.String("op", op),
+			zap.Int("page", page),
+			zap.Int("size", size),
+			zap.Any("filters", filters),
+			zap.Error(err),
+		)
 		return nil, err
 	}
-	defer func(rows *sql.Rows) {
+	defer func(rows *sqlx.Rows) {
 		if err := rows.Close(); err != nil {
 			zap.L().Debug(
 				"failed to close rows",
@@ -161,21 +71,41 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, sort string,
 			pq.Array(&oauth2),
 			pq.Array(&devices),
 		); err != nil {
-			return nil, err
-		}
-
-		user.Devices, err = ScanDevices(devices)
-		if err != nil {
+			zap.L().Error(
+				"failed to scan user",
+				zap.String("op", op),
+				zap.Error(err),
+			)
 			return nil, err
 		}
 
 		user.Roles, err = ScanRoles(roles)
 		if err != nil {
+			zap.L().Error(
+				"failed to scan roles",
+				zap.String("op", op),
+				zap.Error(err),
+			)
 			return nil, err
 		}
 
 		user.Oauth2Connections, err = ScanOauth2Connections(oauth2)
 		if err != nil {
+			zap.L().Error(
+				"failed to scan oauth2 connections",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+
+		user.Devices, err = ScanDevices(devices)
+		if err != nil {
+			zap.L().Error(
+				"failed to scan devices",
+				zap.String("op", op),
+				zap.Error(err),
+			)
 			return nil, err
 		}
 
@@ -183,9 +113,13 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, sort string,
 	}
 
 	if err = rows.Err(); err != nil {
+		zap.L().Error(
+			"failed to scan rows",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return nil, err
 	}
-
 	totalPages := int((count + int64(size) - 1) / int64(size))
 	return &dto.PaginatedUserResponse{
 		Data:        res,
@@ -201,11 +135,10 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	var err error
 	res := &md.User{}
 	roles := make([]string, 0, 5)
 	oauth2 := make([]string, 0, 5)
-	err = r.conn.QueryRowContext(ctx, userGetByIDQ, userID).Scan(
+	err := r.conn.QueryRowContext(ctx, userGetByIDQ, userID).Scan(
 		&res.ID,
 		&res.Name,
 		&res.Email,
@@ -220,18 +153,39 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
+		zap.L().Debug(
+			"no user found",
+			zap.String("op", op),
+			zap.String("userID", userID.String()),
+		)
 		return nil, repo.ErrNotFound
 	} else if err != nil {
+		zap.L().Error(
+			"failed to get user",
+			zap.String("op", op),
+			zap.String("userID", userID.String()),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
 	res.Roles, err = ScanRoles(roles)
 	if err != nil {
+		zap.L().Error(
+			"failed to scan roles",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
 	res.Oauth2Connections, err = ScanOauth2Connections(oauth2)
 	if err != nil {
+		zap.L().Error(
+			"failed to scan oauth2 connections",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
@@ -261,13 +215,29 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*md.User
 		)
 
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		zap.L().Debug(
+			"no user found",
+			zap.String("op", op),
+			zap.String("email", email),
+		)
 		return nil, repo.ErrNotFound
 	} else if err != nil {
+		zap.L().Error(
+			"failed to get user",
+			zap.String("op", op),
+			zap.String("email", email),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
 	res.Roles, err = ScanRoles(roles)
 	if err != nil {
+		zap.L().Error(
+			"failed to scan roles",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 	return res, nil
@@ -278,8 +248,13 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	tx, err := r.conn.Begin()
+	tx, err := r.conn.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
+		zap.L().Error(
+			"failed to begin transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return uuid.Nil, err
 	}
 	defer func() {
@@ -306,20 +281,39 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 
 	if err != nil {
 		if err, ok := err.(*pq.Error); ok && err.Code == "23505" {
+			zap.L().Debug(
+				"user already exists",
+				zap.String("op", op),
+			)
 			return uuid.Nil, repo.ErrAlreadyExists
 		}
+		zap.L().Error(
+			"failed to create user",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return uuid.Nil, err
 	}
 
 	if len(req.Roles) > 0 {
 		for i := 0; i < len(req.Roles); i++ {
 			if _, err = tx.ExecContext(ctx, userAddRoleQ, id, req.Roles[i]); err != nil {
+				zap.L().Error(
+					"failed to add role to user",
+					zap.String("op", op),
+					zap.Error(err),
+				)
 				return uuid.Nil, err
 			}
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
+		zap.L().Error(
+			"failed to commit transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return uuid.Nil, err
 	}
 	return id, nil
@@ -330,8 +324,13 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	tx, err := r.conn.Begin()
+	tx, err := r.conn.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
+		zap.L().Error(
+			"failed to begin transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
 	defer func() {
@@ -356,29 +355,58 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 		id,
 	)
 	if err != nil {
+		zap.L().Error(
+			"failed to update user",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	aff, err := res.RowsAffected()
 	if err != nil {
+		zap.L().Error(
+			"failed to get affected rows",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if aff == 0 {
+		zap.L().Debug(
+			"failed to find user",
+			zap.String("op", op),
+		)
 		return repo.ErrNotFound
 	}
 
 	if _, err = tx.ExecContext(ctx, userRemoveRoleQ, id); err != nil {
+		zap.L().Error(
+			"failed to remove user roles",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	for i := 0; i < len(req.Roles); i++ {
 		if _, err = tx.ExecContext(ctx, userAddRoleQ, id, req.Roles[i]); err != nil {
+			zap.L().Error(
+				"failed to add role to user",
+				zap.String("op", op),
+				zap.Error(err),
+			)
 			return err
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
+		zap.L().Error(
+			"failed to commit transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
 	return nil
@@ -391,15 +419,29 @@ func (r *Repository) DeleteUser(ctx context.Context, id uuid.UUID) error {
 
 	res, err := r.conn.ExecContext(ctx, userDeleteQ, id)
 	if err != nil {
+		zap.L().Error(
+			"failed to delete user",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	aff, err := res.RowsAffected()
 	if err != nil {
+		zap.L().Error(
+			"failed to get affected rows",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if aff == 0 {
+		zap.L().Debug(
+			"failed to find user",
+			zap.String("op", op),
+		)
 		return repo.ErrNotFound
 	}
 	return nil

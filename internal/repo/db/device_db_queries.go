@@ -22,6 +22,22 @@ FROM user_devices
 WHERE id = $1 AND user_id = $2
 `
 
+const getDeviceByID = `
+SELECT
+	id,
+	user_id,
+	name,
+	device_type,
+	os,
+	browser,
+	user_agent,
+	ip,
+	last_active,
+	created_at
+FROM user_devices
+WHERE id = $1
+`
+
 const updateDevice = `
 UPDATE user_devices
 SET name = $1

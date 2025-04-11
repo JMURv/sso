@@ -13,66 +13,15 @@ import (
 	"net/http"
 )
 
-func RegisterAuthRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
-	mux.HandleFunc(
-		"/api/auth/jwt", mid.Apply(
-			h.authenticate,
-			mid.AllowedMethods(http.MethodPost),
-			mid.Device,
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/jwt/parse", mid.Apply(
-			h.parseClaims,
-			mid.AllowedMethods(http.MethodPost),
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/jwt/refresh", mid.Apply(
-			h.refresh,
-			mid.AllowedMethods(http.MethodPost),
-			mid.Device,
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/email/send", mid.Apply(
-			h.sendLoginCode,
-			mid.AllowedMethods(http.MethodPost),
-			mid.Device,
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/email/check", mid.Apply(
-			h.checkLoginCode,
-			mid.AllowedMethods(http.MethodPost),
-			mid.Device,
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/recovery/send", mid.Apply(
-			h.sendForgotPasswordEmail,
-			mid.AllowedMethods(http.MethodPost),
-		),
-	)
-	mux.HandleFunc(
-		"/api/auth/recovery/check", mid.Apply(
-			h.checkForgotPasswordEmail,
-			mid.AllowedMethods(http.MethodPost),
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/logout", mid.Apply(
-			h.logout,
-			mid.AllowedMethods(http.MethodPost),
-			mid.Auth(au),
-		),
-	)
+func (h *Handler) RegisterAuthRoutes() {
+	h.router.With(mid.Device).Post("/api/auth/jwt", h.authenticate)
+	h.router.Post("/api/auth/jwt/parse", h.parseClaims)
+	h.router.With(mid.Device).Post("/api/auth/jwt/refresh", h.refresh)
+	h.router.With(mid.Device).Post("/api/auth/email/send", h.sendLoginCode)
+	h.router.With(mid.Device).Post("/api/auth/email/check", h.checkLoginCode)
+	h.router.Post("/api/auth/recovery/send", h.sendForgotPasswordEmail)
+	h.router.Post("/api/auth/recovery/check", h.checkForgotPasswordEmail)
+	h.router.With(mid.Auth(h.au)).Post("/api/auth/logout", h.logout)
 }
 
 func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {

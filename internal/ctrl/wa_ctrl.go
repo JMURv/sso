@@ -92,11 +92,6 @@ func (c *Controller) FinishRegistration(ctx context.Context, uid uuid.UUID, r *h
 	}
 
 	if err = c.repo.CreateWACredential(ctx, uid, credential); err != nil {
-		zap.L().Error(
-			"failed to create webAuthn credential",
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		return err
 	}
 	return nil
@@ -172,11 +167,6 @@ func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.Device
 	}
 
 	if err = c.repo.UpdateWACredential(ctx, cred); err != nil {
-		zap.L().Error(
-			"user failed to update credential during finish login",
-			zap.Error(err),
-			zap.Any("user", user),
-		)
 		return res, err
 	}
 
@@ -239,49 +229,22 @@ func (c *Controller) GetUserForWA(ctx context.Context, uid uuid.UUID, email stri
 		user, err = c.repo.GetUserByID(ctx, uid)
 		if err != nil {
 			if errors.Is(err, repo.ErrNotFound) {
-				zap.L().Debug(
-					"user not found",
-					zap.String("op", op),
-					zap.Any("uid", uid),
-				)
 				return nil, ErrNotFound
 			}
-			zap.L().Error(
-				"failed to get user",
-				zap.String("op", op),
-				zap.Any("uid", uid),
-				zap.Error(err),
-			)
 			return nil, err
 		}
 	} else {
 		user, err = c.repo.GetUserByEmail(ctx, email)
 		if err != nil {
 			if errors.Is(err, repo.ErrNotFound) {
-				zap.L().Debug(
-					repo.ErrNotFound.Error(),
-					zap.String("op", op),
-					zap.String("email", email),
-				)
 				return nil, ErrNotFound
 			}
-			zap.L().Error(
-				"failed to get user",
-				zap.String("op", op),
-				zap.String("email", email),
-				zap.Error(err),
-			)
 			return nil, err
 		}
 	}
 
 	credentials, err := c.repo.GetWACredentials(ctx, user.ID)
 	if err != nil {
-		zap.L().Error(
-			"failed to get webAuthn credentials",
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 	return &md.WebauthnUser{

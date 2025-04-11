@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/opentracing/opentracing-go"
+	"go.uber.org/zap"
 )
 
 func (r *Repository) GetUserByOAuth2(ctx context.Context, provider, providerID string) (*md.User, error) {
@@ -24,13 +25,31 @@ func (r *Repository) GetUserByOAuth2(ctx context.Context, provider, providerID s
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			zap.L().Debug(
+				"no user found",
+				zap.String("op", op),
+				zap.String("provider", provider),
+				zap.String("providerID", providerID),
+			)
 			return nil, repo.ErrNotFound
 		}
+		zap.L().Error(
+			"failed to get user",
+			zap.String("op", op),
+			zap.String("provider", provider),
+			zap.String("providerID", providerID),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
 	res.Roles, err = ScanRoles(roles)
 	if err != nil {
+		zap.L().Error(
+			"failed to scan roles",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
@@ -46,5 +65,14 @@ func (r *Repository) CreateOAuth2Connection(ctx context.Context, userID uuid.UUI
 		ctx, createOAuth2Connection,
 		userID, provider, req.ProviderID, req.AccessToken, req.RefreshToken, req.Expiry,
 	)
+	if err != nil {
+		zap.L().Error(
+			"failed to create oauth2 connection",
+			zap.String("op", op),
+			zap.String("userID", userID.String()),
+			zap.String("provider", provider),
+			zap.Error(err),
+		)
+	}
 	return err
 }

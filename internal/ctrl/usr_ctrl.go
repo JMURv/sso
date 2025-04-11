@@ -11,12 +11,10 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
-	"go.uber.org/zap"
 )
 
 type userRepo interface {
-	SearchUser(ctx context.Context, query string, page int, size int) (*dto.PaginatedUserResponse, error)
-	ListUsers(ctx context.Context, page, size int, sort string, filters map[string]any) (*dto.PaginatedUserResponse, error)
+	ListUsers(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedUserResponse, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
 	CreateUser(ctx context.Context, req *dto.CreateUserRequest) (uuid.UUID, error)
@@ -25,7 +23,6 @@ type userRepo interface {
 }
 
 const userCacheKey = "user:%v"
-const usersSearchCacheKey = "users-search:%v:%v:%v"
 const usersListKey = "users-list:%v:%v:%v:%v"
 const userPattern = "users-*"
 
@@ -39,11 +36,6 @@ func (c *Controller) IsUserExist(ctx context.Context, email string) (*dto.Exists
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		return res, nil
 	} else if err != nil {
-		zap.L().Error(
-			"failed to get user",
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -51,36 +43,7 @@ func (c *Controller) IsUserExist(ctx context.Context, email string) (*dto.Exists
 	return res, nil
 }
 
-func (c *Controller) SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error) {
-	const op = "users.SearchUser.ctrl"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
-
-	cached := &dto.PaginatedUserResponse{}
-	cacheKey := fmt.Sprintf(usersSearchCacheKey, query, page, size)
-	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
-		return cached, nil
-	}
-
-	res, err := c.repo.SearchUser(ctx, query, page, size)
-	if err != nil {
-		zap.L().Error(
-			"failed to search users",
-			zap.String("op", op),
-			zap.String("query", query),
-			zap.Error(err),
-		)
-		return nil, err
-	}
-
-	if bytes, err := json.Marshal(res); err == nil {
-		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
-	}
-
-	return res, nil
-}
-
-func (c *Controller) ListUsers(ctx context.Context, page, size int, sort string, filters map[string]any) (*dto.PaginatedUserResponse, error) {
+func (c *Controller) ListUsers(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedUserResponse, error) {
 	const op = "users.ListUsers.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -91,15 +54,8 @@ func (c *Controller) ListUsers(ctx context.Context, page, size int, sort string,
 	//	return cached, nil
 	//}
 
-	res, err := c.repo.ListUsers(ctx, page, size, sort, filters)
+	res, err := c.repo.ListUsers(ctx, page, size, filters)
 	if err != nil {
-		zap.L().Debug(
-			"failed to list users",
-			zap.String("op", op),
-			zap.Int("page", page),
-			zap.Int("size", size),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -123,20 +79,8 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 
 	res, err := c.repo.GetUserByID(ctx, userID)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find user",
-			zap.String("op", op),
-			zap.String("id", userID.String()),
-			zap.Error(err),
-		)
 		return nil, ErrNotFound
 	} else if err != nil {
-		zap.L().Debug(
-			"failed to get user",
-			zap.String("op", op),
-			zap.String("id", userID.String()),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -159,20 +103,8 @@ func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*md.User
 
 	res, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find user",
-			zap.String("op", op),
-			zap.String("email", email),
-			zap.Error(err),
-		)
 		return nil, ErrNotFound
 	} else if err != nil {
-		zap.L().Debug(
-			"failed to get user",
-			zap.String("op", op),
-			zap.String("email", email),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -195,18 +127,8 @@ func (c *Controller) CreateUser(ctx context.Context, u *dto.CreateUserRequest) (
 
 	id, err := c.repo.CreateUser(ctx, u)
 	if err != nil && errors.Is(err, repo.ErrAlreadyExists) {
-		zap.L().Debug(
-			"user already exists",
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		return nil, ErrAlreadyExists
 	} else if err != nil {
-		zap.L().Debug(
-			"failed to create user",
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -224,11 +146,6 @@ func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 	if req.Password != "" {
 		hash, err := c.au.Hash(req.Password)
 		if err != nil {
-			zap.L().Debug(
-				"failed to hash password",
-				zap.String("op", op),
-				zap.Error(err),
-			)
 			return err
 		}
 		req.Password = hash
@@ -236,20 +153,8 @@ func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 
 	err := c.repo.UpdateUser(ctx, id, req)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find user",
-			zap.String("op", op),
-			zap.String("id", id.String()),
-			zap.Error(err),
-		)
 		return ErrNotFound
 	} else if err != nil {
-		zap.L().Debug(
-			"failed to update user",
-			zap.String("op", op),
-			zap.String("id", id.String()),
-			zap.Error(err),
-		)
 		return err
 	}
 
@@ -265,20 +170,8 @@ func (c *Controller) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 
 	err := c.repo.DeleteUser(ctx, userID)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find user",
-			zap.String("op", op),
-			zap.String("id", userID.String()),
-			zap.Error(err),
-		)
 		return ErrNotFound
 	} else if err != nil {
-		zap.L().Debug(
-			"failed to delete user",
-			zap.String("op", op),
-			zap.String("id", userID.String()),
-			zap.Error(err),
-		)
 		return err
 	}
 

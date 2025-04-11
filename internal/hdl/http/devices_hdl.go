@@ -2,42 +2,22 @@ package http
 
 import (
 	"errors"
-	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"net/http"
-	"strings"
 )
 
-// TODO: Middleware для проверки прав или авторства девайса
-func RegisterDeviceRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
-	mux.HandleFunc(
-		"/api/device", mid.Apply(
-			h.listDevices,
-			mid.AllowedMethods(http.MethodGet),
-			mid.Auth(au),
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/device/", func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				mid.Apply(h.getDevice, mid.Auth(au))(w, r)
-			case http.MethodPut:
-				mid.Apply(h.updateDevice, mid.Auth(au))(w, r)
-			case http.MethodDelete:
-				mid.Apply(h.deleteDevice, mid.Auth(au))(w, r)
-			default:
-				utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-			}
-		},
-	)
+func (h *Handler) RegisterDeviceRoutes() {
+	h.router.With(mid.Auth(h.au)).Get("/api/device", h.listDevices)
+	h.router.With(mid.Auth(h.au)).Get("/api/device/{id}", h.getDevice)
+	h.router.With(mid.Auth(h.au), mid.CheckRights(h.ctrl)).Put("/api/device/{id}", h.updateDevice)
+	h.router.With(mid.Auth(h.au), mid.CheckRights(h.ctrl)).Delete("/api/device/{id}", h.deleteDevice)
 }
 
 func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +45,7 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
-	dID := strings.TrimPrefix(r.URL.Path, "/api/device/")
+	dID := chi.URLParam(r, "id")
 	if dID == "" {
 		zap.L().Debug(
 			hdl.ErrToRetrievePathArg.Error(),
@@ -99,7 +79,7 @@ func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
-	dID := strings.TrimPrefix(r.URL.Path, "/api/device/")
+	dID := chi.URLParam(r, "id")
 	if dID == "" {
 		zap.L().Debug(
 			hdl.ErrToRetrievePathArg.Error(),
@@ -138,7 +118,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
-	dID := strings.TrimPrefix(r.URL.Path, "/api/device/")
+	dID := chi.URLParam(r, "id")
 	if dID == "" {
 		zap.L().Debug(
 			hdl.ErrToRetrievePathArg.Error(),

@@ -39,12 +39,6 @@ func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid
 
 	device := auth.GenerateDevice(d)
 	if err = c.repo.CreateToken(ctx, uid, refresh, c.au.GetRefreshTime(), &device); err != nil {
-		zap.L().Error(
-			"failed to create token",
-			zap.String("op", op),
-			zap.String("refresh", refresh),
-			zap.Error(err),
-		)
 		return res, err
 	}
 
@@ -60,20 +54,8 @@ func (c *Controller) Authenticate(ctx context.Context, d *dto.DeviceRequest, req
 
 	res, err := c.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find user",
-			zap.String("op", op),
-			zap.Any("req", req),
-			zap.Error(err),
-		)
 		return nil, ErrNotFound
 	} else if err != nil {
-		zap.L().Error(
-			"failed to get user",
-			zap.String("op", op),
-			zap.Any("req", req),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -105,14 +87,6 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 	device := auth.GenerateDevice(d)
 	isValid, err := c.repo.IsTokenValid(ctx, claims.UID, &device, req.Refresh)
 	if err != nil {
-		zap.L().Error(
-			"Failed to validate token",
-			zap.String("op", op),
-			zap.String("token", req.Refresh),
-			zap.Any("claims", claims),
-			zap.Any("device", d),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -131,24 +105,11 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 	}
 
 	if err = c.repo.RevokeAllTokens(ctx, claims.UID); err != nil {
-		zap.L().Error(
-			"Failed to revoke tokens",
-			zap.String("op", op),
-			zap.Any("claims", claims),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
 	err = c.repo.CreateToken(ctx, claims.UID, refresh, c.au.GetRefreshTime(), &device)
 	if err != nil {
-		zap.L().Error(
-			"Failed to create token",
-			zap.String("op", op),
-			zap.String("refresh", refresh),
-			zap.Any("claims", claims),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -176,12 +137,6 @@ func (c *Controller) Logout(ctx context.Context, uid uuid.UUID) error {
 	defer span.Finish()
 
 	if err := c.repo.RevokeAllTokens(ctx, uid); err != nil {
-		zap.L().Error(
-			"failed to revoke tokens",
-			zap.String("op", op),
-			zap.Any("uid", uid),
-			zap.Error(err),
-		)
 		return err
 	}
 	return nil
@@ -209,20 +164,8 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, req *dto.Chec
 
 	u, err := c.repo.GetUserByID(ctx, req.ID)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find user",
-			zap.String("op", op),
-			zap.String("uid", req.ID.String()),
-			zap.Error(err),
-		)
 		return ErrNotFound
 	} else if err != nil {
-		zap.L().Error(
-			"Error getting user",
-			zap.String("op", op),
-			zap.String("uid", req.ID.String()),
-			zap.Error(err),
-		)
 		return err
 	}
 
@@ -239,22 +182,10 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, req *dto.Chec
 			Avatar:   u.Avatar,
 		},
 	); err != nil {
-		zap.L().Error(
-			"Error updating user",
-			zap.String("op", op),
-			zap.String("uid", req.ID.String()),
-			zap.Error(err),
-		)
 		return err
 	}
 
 	if err = c.repo.RevokeAllTokens(ctx, u.ID); err != nil {
-		zap.L().Error(
-			"Failed to revoke tokens",
-			zap.String("op", op),
-			zap.Any("uid", u.ID),
-			zap.Error(err),
-		)
 		return err
 	}
 
@@ -269,20 +200,8 @@ func (c *Controller) SendForgotPasswordEmail(ctx context.Context, email string) 
 
 	res, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find user",
-			zap.String("op", op),
-			zap.String("email", email),
-			zap.Error(err),
-		)
 		return auth.ErrInvalidCredentials
 	} else if err != nil {
-		zap.L().Error(
-			"failed to get user",
-			zap.String("op", op),
-			zap.String("email", email),
-			zap.Error(err),
-		)
 		return err
 	}
 
@@ -302,20 +221,8 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 	var tokens dto.TokenPair
 	res, err := c.repo.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"Failed to find user",
-			zap.String("op", op),
-			zap.String("email", email),
-			zap.Error(err),
-		)
 		return tokens, auth.ErrInvalidCredentials
 	} else if err != nil {
-		zap.L().Error(
-			"Failed to get user",
-			zap.String("op", op),
-			zap.String("email", email),
-			zap.Error(err),
-		)
 		return tokens, err
 	}
 
@@ -334,12 +241,6 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 
 			err = c.repo.CreateToken(ctx, res.ID, refresh, c.au.GetRefreshTime(), &device)
 			if err != nil {
-				zap.L().Error(
-					"Failed to create token",
-					zap.String("op", op),
-					zap.String("refresh", refresh),
-					zap.Error(err),
-				)
 				return tokens, err
 			}
 
@@ -375,20 +276,8 @@ func (c *Controller) CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, r
 
 	res, err := c.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find user",
-			zap.String("op", op),
-			zap.String("email", req.Email),
-			zap.Error(err),
-		)
 		return nil, ErrNotFound
 	} else if err != nil {
-		zap.L().Error(
-			"failed to get user",
-			zap.String("op", op),
-			zap.String("email", req.Email),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -399,12 +288,6 @@ func (c *Controller) CheckLoginCode(ctx context.Context, d *dto.DeviceRequest, r
 
 	device := auth.GenerateDevice(d)
 	if err = c.repo.CreateToken(ctx, res.ID, refresh, c.au.GetRefreshTime(), &device); err != nil {
-		zap.L().Error(
-			"Failed to create token",
-			zap.String("op", op),
-			zap.String("refresh", refresh),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 

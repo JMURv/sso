@@ -1,45 +1,8 @@
 package db
 
 const userSelectQ = `
-SELECT COUNT(*)
-FROM users u
-`
-
-const userSearchSelectQ = `
-SELECT COUNT(*)
-FROM users 
-WHERE name ILIKE $1 OR email ILIKE $2
-`
-
-const userSearchQ = `
-SELECT 
-	u.id, 
-	u.name, 
-	u.email, 
-	u.avatar, 
-	u.created_at, 
-	u.updated_at,
-	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles,
-	ARRAY_AGG(oth2.provider || '|' || oth2.provider_id) FILTER (WHERE oth2.id IS NOT NULL) AS oauth2_connections,
-	ARRAY_AGG(
-		ud.id || '|' || 
-		ud.name || '|' || 
-		ud.device_type || '|' ||
-		ud.os || '|' || 
-		ud.user_agent || '|' ||
-		ud.browser || '|' || 
-		ud.ip || '|' ||
-		ud.last_active
-	) FILTER (WHERE ud.id IS NOT NULL) AS devices
-FROM users u
-LEFT JOIN user_devices ud ON ud.user_id = u.id
-LEFT JOIN oauth2_connections oth2 ON oth2.user_id = u.id
-LEFT JOIN user_roles ur ON ur.user_id = u.id
-LEFT JOIN roles r ON r.id = ur.role_id
-WHERE u.name ILIKE $1 OR u.email ILIKE $2
-GROUP BY u.id, u.name
-ORDER BY u.name DESC 
-LIMIT $3 OFFSET $4
+SELECT COUNT(DISTINCT u.id)
+FROM users u %s
 `
 
 const userListQ = `
@@ -53,7 +16,7 @@ SELECT
 	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles,
 	ARRAY_AGG(oth2.provider || '|' || oth2.provider_id) FILTER (WHERE oth2.id IS NOT NULL) AS oauth2_connections,
 	ARRAY_AGG(
-		ud.id || '|' || 
+		DISTINCT ud.id || '|' || 
 		ud.name || '|' || 
 		ud.device_type || '|' ||
 		ud.os || '|' || 
@@ -67,9 +30,10 @@ LEFT JOIN user_devices ud ON ud.user_id = u.id
 LEFT JOIN oauth2_connections oth2 ON oth2.user_id = u.id
 LEFT JOIN user_roles ur ON ur.user_id = u.id
 LEFT JOIN roles r ON r.id = ur.role_id
+%s
 GROUP BY u.id
-ORDER BY created_at DESC 
-LIMIT $1 OFFSET $2
+ORDER BY %s 
+LIMIT $%d OFFSET $%d
 `
 
 const userGetByIDQ = `

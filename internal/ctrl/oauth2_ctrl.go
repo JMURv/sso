@@ -83,41 +83,17 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 				},
 			)
 			if err != nil {
-				zap.L().Error(
-					"failed to create user",
-					zap.String("op", op),
-					zap.Any("user", user),
-					zap.Error(err),
-				)
 				return nil, err
 			}
 
 			user.ID = id
 			if err = c.repo.CreateOAuth2Connection(ctx, user.ID, provider, oauthUser); err != nil {
-				zap.L().Error(
-					"failed to create oauth2 connection",
-					zap.String("op", op),
-					zap.Any("oauthUser", oauthUser),
-					zap.Error(err),
-				)
 				return nil, err
 			}
 		} else if err != nil {
-			zap.L().Error(
-				"Failed to get user by email",
-				zap.String("op", op),
-				zap.String("email", oauthUser.Email),
-				zap.Error(err),
-			)
 			return nil, err
 		} else if err == nil {
 			if err = c.repo.CreateOAuth2Connection(ctx, user.ID, provider, oauthUser); err != nil {
-				zap.L().Error(
-					"failed to create oauth2 connection",
-					zap.String("op", op),
-					zap.Any("oauthUser", oauthUser),
-					zap.Error(err),
-				)
 				return nil, err
 			}
 		}

@@ -129,32 +129,17 @@ func ParseDeviceByRequest(r *http.Request) (dto.DeviceRequest, bool) {
 }
 
 func ParseFiltersByURL(r *http.Request) map[string]any {
-	filters := make(map[string]any)
+	filters := make(map[string]any, len(r.URL.Query()))
 	for key, values := range r.URL.Query() {
-		switch {
-		case key == "page":
+		switch key {
+		case "page", "size":
 			continue
-		case key == "size":
-			continue
-		case key == "sort":
-			continue
-		case len(values) > 0:
-			if strings.HasSuffix(key, "[min]") || strings.HasSuffix(key, "[max]") {
-				baseKey := strings.TrimSuffix(key, "[min]")
-				baseKey = strings.TrimSuffix(baseKey, "[max]")
-
-				if filters[baseKey] == nil {
-					filters[baseKey] = make(map[string]any)
-				}
-
-				if strings.HasSuffix(key, "[min]") {
-					filters[baseKey].(map[string]any)["min"] = values[0]
-				} else {
-					filters[baseKey].(map[string]any)["max"] = values[0]
-				}
-			} else {
-				filters[key] = strings.Split(values[0], ",")
-			}
+		case "roles":
+			filters[key] = strings.Split(values[0], ",")
+		case "sort":
+			filters[key] = values[0]
+		default:
+			filters[key] = values[0]
 		}
 	}
 	return filters

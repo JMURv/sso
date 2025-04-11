@@ -10,7 +10,6 @@ import (
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/goccy/go-json"
 	"github.com/opentracing/opentracing-go"
-	"go.uber.org/zap"
 )
 
 const permKey = "perm:%v"
@@ -38,13 +37,6 @@ func (c *Controller) ListPermissions(ctx context.Context, page, size int) (*dto.
 
 	res, err := c.repo.ListPermissions(ctx, page, size)
 	if err != nil {
-		zap.L().Error(
-			"failed to list permissions",
-			zap.String("op", op),
-			zap.Int("page", page),
-			zap.Int("size", size),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -68,20 +60,8 @@ func (c *Controller) GetPermission(ctx context.Context, id uint64) (*md.Permissi
 
 	res, err := c.repo.GetPermission(ctx, id)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find permission",
-			zap.String("op", op),
-			zap.Uint64("id", id),
-			zap.Error(err),
-		)
 		return nil, ErrNotFound
 	} else if err != nil {
-		zap.L().Error(
-			"failed to get permission",
-			zap.String("op", op),
-			zap.Uint64("id", id),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -99,18 +79,8 @@ func (c *Controller) CreatePerm(ctx context.Context, req *dto.CreatePermissionRe
 
 	res, err := c.repo.CreatePerm(ctx, req)
 	if err != nil && errors.Is(err, repo.ErrAlreadyExists) {
-		zap.L().Debug(
-			"permission already exists",
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		return 0, ErrAlreadyExists
 	} else if err != nil {
-		zap.L().Error(
-			"failed to create permission",
-			zap.String("op", op),
-			zap.Error(err),
-		)
 		return 0, err
 	}
 
@@ -125,20 +95,8 @@ func (c *Controller) UpdatePerm(ctx context.Context, id uint64, req *dto.UpdateP
 
 	err := c.repo.UpdatePerm(ctx, id, req)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to find permission",
-			zap.String("op", op),
-			zap.Uint64("id", id),
-			zap.Error(err),
-		)
 		return ErrNotFound
 	} else if err != nil {
-		zap.L().Error(
-			"failed to update permission",
-			zap.String("op", op),
-			zap.Uint64("id", id),
-			zap.Error(err),
-		)
 		return err
 	}
 
@@ -154,20 +112,8 @@ func (c *Controller) DeletePerm(ctx context.Context, id uint64) error {
 
 	err := c.repo.DeletePerm(ctx, id)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
-		zap.L().Debug(
-			"failed to delete permission",
-			zap.String("op", op),
-			zap.Uint64("id", id),
-			zap.Error(err),
-		)
 		return ErrNotFound
 	} else if err != nil {
-		zap.L().Error(
-			"failed to delete permission",
-			zap.String("op", op),
-			zap.Uint64("id", id),
-			zap.Error(err),
-		)
 		return err
 	}
 

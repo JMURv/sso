@@ -4,35 +4,23 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
+	"github.com/go-chi/chi/v5"
 	"net/http"
-	"strings"
 )
 
-func RegisterOIDCRoutes(mux *http.ServeMux, h *Handler) {
-	mux.HandleFunc(
-		"/api/auth/oidc/{provider}/start", mid.Apply(
-			h.startOIDC,
-			mid.AllowedMethods(http.MethodGet),
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/oidc/{provider}/callback", mid.Apply(
-			h.handleOIDCCallback,
-			mid.AllowedMethods(http.MethodGet),
-			mid.Device,
-		),
-	)
+func (h *Handler) RegisterOIDCRoutes() {
+	h.router.Get("/api/auth/oidc/{provider}/start", h.startOIDC)
+	h.router.With(mid.Device).Get("/api/auth/oidc/{provider}/callback", h.handleOIDCCallback)
 }
 
 func (h *Handler) startOIDC(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 6 {
+	provider := chi.URLParam(r, "provider")
+	if provider == "" {
 		utils.ErrResponse(w, http.StatusBadRequest, ErrInvalidURL)
 		return
 	}
 
-	res, err := h.ctrl.GetOIDCAuthURL(r.Context(), parts[4])
+	res, err := h.ctrl.GetOIDCAuthURL(r.Context(), provider)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, err)
 		return
@@ -42,8 +30,8 @@ func (h *Handler) startOIDC(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 6 {
+	provider := chi.URLParam(r, "provider")
+	if provider == "" {
 		utils.ErrResponse(w, http.StatusBadRequest, ErrInvalidURL)
 		return
 	}
@@ -56,7 +44,7 @@ func (h *Handler) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.ctrl.HandleOIDCCallback(r.Context(), &d, parts[4], code, state)
+	res, err := h.ctrl.HandleOIDCCallback(r.Context(), &d, provider, code, state)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, err)
 		return

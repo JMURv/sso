@@ -18,37 +18,15 @@ func (r *Repository) ListDevices(ctx context.Context, uid uuid.UUID) ([]md.Devic
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	rows, err := r.conn.QueryContext(ctx, listDevices, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func(rows *sql.Rows) {
-		if err := rows.Close(); err != nil {
-			zap.L().Error(
-				"failed to close rows",
-				zap.String("op", op),
-				zap.Error(err),
-			)
-		}
-	}(rows)
-
 	devices := make([]md.Device, 0, config.DefaultSize)
-	for rows.Next() {
-		var device md.Device
-		if err = rows.Scan(
-			&device.ID,
-			&device.Name,
-			&device.DeviceType,
-			&device.OS,
-			&device.UA,
-			&device.Browser,
-			&device.IP,
-			&device.LastActive,
-		); err != nil {
-			return nil, err
-		}
-		devices = append(devices, device)
+	if err := r.conn.SelectContext(ctx, &devices, listDevices, uid); err != nil {
+		zap.L().Error(
+			"failed to list devices",
+			zap.String("op", op),
+			zap.String("uid", uid.String()),
+			zap.Error(err),
+		)
+		return nil, err
 	}
 
 	return devices, nil
@@ -59,27 +37,55 @@ func (r *Repository) GetDevice(ctx context.Context, uid uuid.UUID, dID string) (
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	var err error
-	res := &md.Device{}
-	err = r.conn.QueryRowContext(ctx, getDevice, dID, uid).Scan(
-		&res.ID,
-		&res.Name,
-		&res.DeviceType,
-		&res.OS,
-		&res.Browser,
-		&res.UA,
-		&res.IP,
-		&res.LastActive,
-		&res.CreatedAt,
-	)
-
+	res := md.Device{}
+	err := r.conn.GetContext(ctx, &res, getDevice, dID, uid)
 	if errors.Is(err, sql.ErrNoRows) {
+		zap.L().Debug(
+			"no device found",
+			zap.String("op", op),
+			zap.String("userID", uid.String()),
+			zap.String("deviceID", dID),
+		)
 		return nil, repo.ErrNotFound
 	} else if err != nil {
+		zap.L().Error(
+			"failed to get device",
+			zap.String("op", op),
+			zap.String("userID", uid.String()),
+			zap.String("deviceID", dID),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
-	return res, nil
+	return &res, nil
+}
+
+func (r *Repository) GetDeviceByID(ctx context.Context, dID string) (*md.Device, error) {
+	const op = "auth.GetDevice.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	res := md.Device{}
+	err := r.conn.GetContext(ctx, &res, getDeviceByID, dID)
+	if errors.Is(err, sql.ErrNoRows) {
+		zap.L().Debug(
+			"no device found",
+			zap.String("op", op),
+			zap.String("deviceID", dID),
+		)
+		return nil, repo.ErrNotFound
+	} else if err != nil {
+		zap.L().Error(
+			"failed to get device",
+			zap.String("op", op),
+			zap.String("deviceID", dID),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	return &res, nil
 }
 
 func (r *Repository) UpdateDevice(ctx context.Context, uid uuid.UUID, dID string, req *dto.UpdateDeviceRequest) error {
@@ -89,15 +95,35 @@ func (r *Repository) UpdateDevice(ctx context.Context, uid uuid.UUID, dID string
 
 	res, err := r.conn.ExecContext(ctx, updateDevice, req.Name, dID, uid)
 	if err != nil {
+		zap.L().Error(
+			"failed to update device",
+			zap.String("op", op),
+			zap.String("userID", uid.String()),
+			zap.String("deviceID", dID),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	aff, err := res.RowsAffected()
 	if err != nil {
+		zap.L().Error(
+			"failed to get affected rows",
+			zap.String("op", op),
+			zap.String("userID", uid.String()),
+			zap.String("deviceID", dID),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if aff == 0 {
+		zap.L().Debug(
+			"failed to find device",
+			zap.String("op", op),
+			zap.String("userID", uid.String()),
+			zap.String("deviceID", dID),
+		)
 		return repo.ErrNotFound
 	}
 
@@ -115,15 +141,35 @@ func (r *Repository) DeleteDevice(ctx context.Context, userID uuid.UUID, deviceI
 
 	res, err := r.conn.ExecContext(ctx, deleteDevice, deviceID, userID)
 	if err != nil {
+		zap.L().Error(
+			"failed to delete device",
+			zap.String("op", op),
+			zap.String("userID", userID.String()),
+			zap.String("deviceID", deviceID),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	aff, err := res.RowsAffected()
 	if err != nil {
+		zap.L().Error(
+			"failed to get affected rows",
+			zap.String("op", op),
+			zap.String("userID", userID.String()),
+			zap.String("deviceID", deviceID),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if aff == 0 {
+		zap.L().Debug(
+			"failed to find device",
+			zap.String("op", op),
+			zap.String("userID", userID.String()),
+			zap.String("deviceID", deviceID),
+		)
 		return repo.ErrNotFound
 	}
 	return err

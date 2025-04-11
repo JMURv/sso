@@ -48,29 +48,6 @@ func (h *Handler) GetMe(ctx context.Context, req *pb.SSO_Empty) (*pb.SSO_User, e
 	return utils.ModelToProto(res), nil
 }
 
-func (h *Handler) SearchUser(ctx context.Context, req *pb.SSO_SearchReq) (*pb.SSO_PaginatedUsersRes, error) {
-	const op = "sso.SearchUser.hdl"
-
-	q, page, size := req.Query, req.Page, req.Size
-	if q == "" || page == 0 || size == 0 {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
-		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
-	}
-
-	u, err := h.ctrl.SearchUser(ctx, q, int(page), int(size))
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
-	}
-
-	return &pb.SSO_PaginatedUsersRes{
-		Data:        utils.ListModelToProto(u.Data),
-		Count:       u.Count,
-		TotalPages:  int64(u.TotalPages),
-		CurrentPage: int64(u.CurrentPage),
-		HasNextPage: u.HasNextPage,
-	}, nil
-}
-
 func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_PaginatedUsersRes, error) {
 	const op = "sso.ListUsers.hdl"
 
@@ -80,7 +57,7 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_P
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
-	u, err := h.ctrl.ListUsers(ctx, int(page), int(size), "", map[string]any{})
+	u, err := h.ctrl.ListUsers(ctx, int(page), int(size), map[string]any{})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}

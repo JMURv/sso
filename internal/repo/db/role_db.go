@@ -4,79 +4,46 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/lib/pq"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"strings"
 )
 
-func (r *Repository) SearchRole(ctx context.Context, query string, page, size int) (*dto.PaginatedRoleResponse, error) {
-	const op = "roles.SearchRole.repo"
-	span, _ := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
-
-	var count int64
-	if err := r.conn.QueryRowContext(ctx, roleSearchSelectQ, "%"+query+"%").
-		Scan(&count); err != nil {
-		return nil, err
-	}
-
-	rows, err := r.conn.QueryContext(ctx, roleSearchQ, "%"+query+"%", size, (page-1)*size)
-	if err != nil {
-		return nil, err
-	}
-	defer func(rows *sql.Rows) {
-		if err = rows.Close(); err != nil {
-			zap.L().Debug(
-				"failed to close rows",
-				zap.String("op", op),
-				zap.Error(err),
-			)
-		}
-	}(rows)
-
-	res := make([]*md.Role, 0, size)
-	for rows.Next() {
-		role := &md.Role{}
-		if err = rows.Scan(
-			&role.ID,
-			&role.Name,
-			&role.Description,
-		); err != nil {
-			return nil, err
-		}
-		res = append(res, role)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	totalPages := int((count + int64(size) - 1) / int64(size))
-	return &dto.PaginatedRoleResponse{
-		Data:        res,
-		Count:       count,
-		TotalPages:  totalPages,
-		CurrentPage: page,
-		HasNextPage: page < totalPages,
-	}, nil
-}
-
-func (r *Repository) ListRoles(ctx context.Context, page, size int) (*dto.PaginatedRoleResponse, error) {
+func (r *Repository) ListRoles(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedRoleResponse, error) {
 	const op = "roles.ListRoles.repo"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
+	idx := 1
+	args := make([]any, 0, len(filters))
+	clauses := make([]any, 0, len(filters))
+	if name, ok := filters["name"]; ok && name != "" {
+		clauses = append(clauses, "WHERE r.name ILIKE $1")
+		args = append(args, fmt.Sprintf("%%%s%%", name))
+		idx++
+	}
+
 	var count int64
-	if err := r.conn.QueryRowContext(ctx, roleSelect).Scan(&count); err != nil {
+	q := fmt.Sprintf(roleSelect, clauses)
+	if err := r.conn.QueryRowContext(ctx, q, args...).Scan(&count); err != nil {
+		zap.L().Error("failed to count roles", zap.String("op", op), zap.Error(err))
 		return nil, err
 	}
 
-	rows, err := r.conn.QueryContext(ctx, roleList, size, (page-1)*size)
+	q = fmt.Sprintf(roleList, clauses, idx, idx+1)
+	rows, err := r.conn.QueryContext(ctx, q, size, (page-1)*size)
 	if err != nil {
+		zap.L().Error(
+			"failed to list roles",
+			zap.String("op", op),
+			zap.Int("page", page),
+			zap.Int("size", size),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 	defer func(rows *sql.Rows) {
@@ -99,16 +66,19 @@ func (r *Repository) ListRoles(ctx context.Context, page, size int) (*dto.Pagina
 			&p.Description,
 			pq.Array(&perms),
 		); err != nil {
+			zap.L().Error("failed to scan role", zap.String("op", op), zap.Error(err))
 			return nil, err
 		}
 
 		if p.Permissions, err = ScanPerms(perms); err != nil {
+			zap.L().Error("failed to scan permissions", zap.String("op", op), zap.Error(err))
 			return nil, err
 		}
 		res = append(res, &p)
 	}
 
 	if err = rows.Err(); err != nil {
+		zap.L().Error("failed to iterate rows", zap.String("op", op), zap.Error(err))
 		return nil, err
 	}
 
@@ -127,15 +97,27 @@ func (r *Repository) GetRole(ctx context.Context, id uint64) (*md.Role, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res := &md.Role{}
-	err := r.conn.QueryRowContext(ctx, roleGet, id).Scan(&res.ID, &res.Name, &res.Description)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return nil, repo.ErrNotFound
-	} else if err != nil {
+	res := md.Role{}
+	err := r.conn.GetContext(ctx, &res, roleGet, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			zap.L().Debug(
+				"failed to find role",
+				zap.String("op", op),
+				zap.Uint64("id", id),
+			)
+			return nil, repo.ErrNotFound
+		}
+		zap.L().Error(
+			"failed to get role",
+			zap.String("op", op),
+			zap.Uint64("id", id),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
-	return res, nil
+	return &res, nil
 }
 
 func (r *Repository) CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (uint64, error) {
@@ -146,9 +128,18 @@ func (r *Repository) CreateRole(ctx context.Context, req *dto.CreateRoleRequest)
 	var id uint64
 	err := r.conn.QueryRowContext(ctx, roleCreate, req.Name, req.Description).Scan(&id)
 	if err != nil {
-		if strings.Contains(err.Error(), "unique constraint") {
+		if err, ok := err.(*pq.Error); ok && err.Code == "23505" {
+			zap.L().Debug(
+				"role already exists",
+				zap.String("op", op),
+			)
 			return 0, repo.ErrAlreadyExists
 		}
+		zap.L().Error(
+			"failed to create role",
+			zap.String("op", op),
+			zap.Error(err),
+		)
 		return 0, err
 	}
 
@@ -162,15 +153,32 @@ func (r *Repository) UpdateRole(ctx context.Context, id uint64, req *dto.UpdateR
 
 	res, err := r.conn.ExecContext(ctx, roleUpdate, req.Name, req.Description, id)
 	if err != nil {
+		zap.L().Error(
+			"failed to update role",
+			zap.String("op", op),
+			zap.Uint64("id", id),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	aff, err := res.RowsAffected()
 	if err != nil {
+		zap.L().Error(
+			"failed to get affected rows",
+			zap.String("op", op),
+			zap.Uint64("id", id),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if aff == 0 {
+		zap.L().Debug(
+			"failed to find role",
+			zap.String("op", op),
+			zap.Uint64("id", id),
+		)
 		return repo.ErrNotFound
 	}
 
@@ -184,15 +192,32 @@ func (r *Repository) DeleteRole(ctx context.Context, id uint64) error {
 
 	res, err := r.conn.ExecContext(ctx, roleDelete, id)
 	if err != nil {
+		zap.L().Error(
+			"failed to delete role",
+			zap.String("op", op),
+			zap.Uint64("id", id),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	aff, err := res.RowsAffected()
 	if err != nil {
+		zap.L().Error(
+			"failed to get affected rows",
+			zap.String("op", op),
+			zap.Uint64("id", id),
+			zap.Error(err),
+		)
 		return err
 	}
 
 	if aff == 0 {
+		zap.L().Debug(
+			"failed to find role",
+			zap.String("op", op),
+			zap.Uint64("id", id),
+		)
 		return repo.ErrNotFound
 	}
 	return nil

@@ -2,7 +2,6 @@ package http
 
 import (
 	"errors"
-	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
@@ -13,32 +12,11 @@ import (
 	"net/http"
 )
 
-func RegisterWebAuthnRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
-	mux.HandleFunc(
-		"/api/auth/webauthn/register/start", mid.Apply(
-			h.registrationStart,
-			mid.Auth(au),
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/webauthn/register/finish", mid.Apply(
-			h.registrationFinish,
-			mid.Auth(au),
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/webauthn/login/start",
-		h.loginStart,
-	)
-
-	mux.HandleFunc(
-		"/api/auth/webauthn/login/finish", mid.Apply(
-			h.loginFinish,
-			mid.Device,
-		),
-	)
+func (h *Handler) RegisterWebAuthnRoutes() {
+	h.router.With(mid.Auth(h.au)).Post("/api/auth/webauthn/register/start", h.registrationStart)
+	h.router.With(mid.Auth(h.au)).Post("/api/auth/webauthn/register/finish", h.registrationFinish)
+	h.router.Post("/api/auth/webauthn/login/start", h.loginStart)
+	h.router.With(mid.Device).Post("/api/auth/webauthn/login/finish", h.loginFinish)
 }
 
 func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {

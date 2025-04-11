@@ -52,8 +52,7 @@ type AppCtrl interface {
 	GetWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID) (*webauthn.SessionData, error)
 
 	IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error)
-	SearchUser(ctx context.Context, query string, page, size int) (*dto.PaginatedUserResponse, error)
-	ListUsers(ctx context.Context, page, size int, sort string, filters map[string]any) (*dto.PaginatedUserResponse, error)
+	ListUsers(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedUserResponse, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
 	CreateUser(ctx context.Context, u *dto.CreateUserRequest) (*dto.CreateUserResponse, error)
@@ -66,15 +65,11 @@ type AppCtrl interface {
 	UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error
 	DeletePerm(ctx context.Context, id uint64) error
 
-	SearchRole(ctx context.Context, query string, page, size int) (*dto.PaginatedRoleResponse, error)
-	ListRoles(ctx context.Context, page, size int) (*dto.PaginatedRoleResponse, error)
-	CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (uint64, error)
-	GetRole(ctx context.Context, uid uint64) (*md.Role, error)
-	UpdateRole(ctx context.Context, uid uint64, req *dto.UpdateRoleRequest) error
-	DeleteRole(ctx context.Context, uid uint64) error
+	roleCtrl
 
 	ListDevices(ctx context.Context, uid uuid.UUID) ([]md.Device, error)
 	GetDevice(ctx context.Context, uid uuid.UUID, dID string) (*md.Device, error)
+	GetDeviceByID(ctx context.Context, dID string) (*md.Device, error)
 	UpdateDevice(ctx context.Context, uid uuid.UUID, dID string, req *dto.UpdateDeviceRequest) error
 	DeleteDevice(ctx context.Context, uid uuid.UUID, dID string) error
 }

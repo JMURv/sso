@@ -8,7 +8,6 @@ import (
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
-	"go.uber.org/zap"
 )
 
 type deviceRepo interface {
@@ -17,6 +16,7 @@ type deviceRepo interface {
 
 	ListDevices(ctx context.Context, uid uuid.UUID) ([]md.Device, error)
 	GetDevice(ctx context.Context, uid uuid.UUID, dID string) (*md.Device, error)
+	GetDeviceByID(ctx context.Context, dID string) (*md.Device, error)
 	UpdateDevice(ctx context.Context, uid uuid.UUID, dID string, req *dto.UpdateDeviceRequest) error
 	DeleteDevice(ctx context.Context, uid uuid.UUID, deviceID string) error
 }
@@ -48,6 +48,21 @@ func (c *Controller) GetDevice(ctx context.Context, uid uuid.UUID, dID string) (
 	return res, nil
 }
 
+func (c *Controller) GetDeviceByID(ctx context.Context, dID string) (*md.Device, error) {
+	const op = "devices.GetDeviceByID.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	res, err := c.repo.GetDeviceByID(ctx, dID)
+	if err != nil {
+		if errors.Is(err, repo.ErrNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return res, nil
+}
+
 func (c *Controller) UpdateDevice(ctx context.Context, uid uuid.UUID, dID string, req *dto.UpdateDeviceRequest) error {
 	const op = "devices.UpdateDevice.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
@@ -58,13 +73,6 @@ func (c *Controller) UpdateDevice(ctx context.Context, uid uuid.UUID, dID string
 		if errors.Is(err, repo.ErrNotFound) {
 			return ErrNotFound
 		}
-
-		zap.L().Error(
-			"failed to update device",
-			zap.String("op", op),
-			zap.String("id", dID),
-			zap.Error(err),
-		)
 		return err
 	}
 	return nil

@@ -1,20 +1,20 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	conf "github.com/JMURv/sso/internal/config"
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
 type Repository struct {
-	conn *sql.DB
+	conn *sqlx.DB
 }
 
 func New(conf conf.Config) *Repository {
-	conn, err := sql.Open(
-		"postgres", fmt.Sprintf(
+	conn, err := sqlx.Open(
+		"pgx", fmt.Sprintf(
 			"postgres://%s:%s@%s:%d/%s?sslmode=disable",
 			conf.DB.User,
 			conf.DB.Password,
@@ -31,11 +31,11 @@ func New(conf conf.Config) *Repository {
 		zap.L().Fatal("failed to ping the database", zap.Error(err))
 	}
 
-	if err = applyMigrations(conn, conf); err != nil {
+	if err = applyMigrations(conn.DB, conf); err != nil {
 		zap.L().Fatal("failed to apply migrations", zap.Error(err))
 	}
 
-	mustPrecreate(conn)
+	mustPrecreate(conn.DB)
 	return &Repository{conn: conn}
 }
 

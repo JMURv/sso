@@ -6,34 +6,21 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
+	"github.com/go-chi/chi/v5"
 	"net/http"
-	"strings"
 )
 
-func RegisterOAuth2Routes(mux *http.ServeMux, h *Handler) {
-	mux.HandleFunc(
-		"/api/auth/oauth2/{provider}/start", mid.Apply(
-			h.startOAuth2,
-			mid.AllowedMethods(http.MethodGet),
-		),
-	)
-
-	mux.HandleFunc(
-		"/api/auth/oauth2/{provider}/callback", mid.Apply(
-			h.handleOAuth2Callback,
-			mid.AllowedMethods(http.MethodGet),
-			mid.Device,
-		),
-	)
+func (h *Handler) RegisterOAuth2Routes() {
+	h.router.Get("/api/auth/oauth2/{provider}/start", h.startOAuth2)
+	h.router.With(mid.Device).Get("/api/auth/oauth2/{provider}/callback", h.handleOAuth2Callback)
 }
 
 func (h *Handler) startOAuth2(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 6 {
+	provider := chi.URLParam(r, "provider")
+	if provider == "" {
 		utils.ErrResponse(w, http.StatusBadRequest, ErrInvalidURL)
 		return
 	}
-	provider := parts[4]
 
 	res, err := h.ctrl.GetOAuth2AuthURL(r.Context(), provider)
 	if err != nil {
@@ -45,11 +32,12 @@ func (h *Handler) startOAuth2(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 6 {
+	provider := chi.URLParam(r, "provider")
+	if provider == "" {
 		utils.ErrResponse(w, http.StatusBadRequest, ErrInvalidURL)
 		return
 	}
+
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 
@@ -59,7 +47,7 @@ func (h *Handler) handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.ctrl.HandleOAuth2Callback(r.Context(), &d, parts[4], code, state)
+	res, err := h.ctrl.HandleOAuth2Callback(r.Context(), &d, provider, code, state)
 	if err != nil {
 		if errors.Is(err, ctrl.ErrNotFound) {
 			utils.ErrResponse(w, http.StatusNotFound, err)

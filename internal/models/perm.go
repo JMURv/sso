@@ -1,7 +1,7 @@
 package models
 
 type Permission struct {
-	ID          uint64 `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID          uint64 `json:"id" db:"id"`
+	Name        string `json:"name" db:"name"`
+	Description string `json:"description" db:"description"`
 }

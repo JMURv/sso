@@ -2,46 +2,24 @@ package http
 
 import (
 	"errors"
-	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
-func RegisterPermRoutes(mux *http.ServeMux, au auth.Core, h *Handler) {
-	mux.HandleFunc(
-		"/api/perm", func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				h.listPerms(w, r)
-			case http.MethodPost:
-				h.createPerm(w, r)
-			default:
-				utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-			}
-		},
-	)
+func (h *Handler) RegisterPermRoutes() {
+	h.router.Get("/api/perm", h.listPerms)
+	h.router.Post("/api/perm", h.createPerm)
 
-	mux.HandleFunc(
-		"/api/perm/", func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				h.getPerm(w, r)
-			case http.MethodPut:
-				mid.Apply(h.updatePerm, mid.Auth(au))(w, r)
-			case http.MethodDelete:
-				mid.Apply(h.deletePerm, mid.Auth(au))(w, r)
-			default:
-				utils.ErrResponse(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-			}
-		},
-	)
+	h.router.Get("/api/perm/{id}", h.getPerm)
+	h.router.With(mid.Auth(h.au)).Put("/api/perm/{id}", h.updatePerm)
+	h.router.With(mid.Auth(h.au)).Delete("/api/perm/{id}", h.deletePerm)
 }
 
 func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +52,7 @@ func (h *Handler) createPerm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
-	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
+	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		zap.L().Debug(
 			ErrRetrievePathVars.Error(),
@@ -98,7 +76,7 @@ func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
-	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
+	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		zap.L().Debug(
 			ErrRetrievePathVars.Error(),
@@ -127,7 +105,7 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
-	uid, err := strconv.ParseUint(strings.TrimPrefix(r.URL.Path, "/api/perm/"), 10, 64)
+	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		zap.L().Debug(
 			ErrRetrievePathVars.Error(),

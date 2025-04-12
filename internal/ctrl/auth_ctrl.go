@@ -94,7 +94,7 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 		zap.L().Debug(
 			"token is invalid",
 			zap.String("op", op),
-			zap.String("token", req.Refresh),
+			zap.String("userID", claims.UID.String()),
 		)
 		return nil, auth.ErrTokenRevoked
 	}

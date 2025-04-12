@@ -66,14 +66,15 @@ func (h *Handler) Start(port int) {
 	gen.RegisterRoleServer(h.srv, h)
 	grpc_health_v1.RegisterHealthServer(h.srv, h.hsrv)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
+	portStr := fmt.Sprintf(":%v", port)
+	lis, err := net.Listen("tcp", portStr)
 	if err != nil {
 		zap.L().Fatal("failed to listen", zap.Error(err))
 	}
 
 	zap.L().Info(
 		"Starting GRPC server",
-		zap.String("addr", lis.Addr().String()),
+		zap.String("addr", portStr),
 	)
 	if err = h.srv.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 		zap.L().Fatal("failed to serve", zap.Error(err))

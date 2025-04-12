@@ -11,11 +11,13 @@ type PaginatedRoleResponse struct {
 }
 
 type CreateRoleRequest struct {
-	Name        string `json:"name" validate:"required"`
-	Description string `json:"description"`
+	Name        string   `json:"name" validate:"required"`
+	Description string   `json:"description"`
+	Permissions []uint64 `json:"permissions"`
 }
 
 type UpdateRoleRequest struct {
-	Name        string `json:"name" validate:"required"`
-	Description string `json:"description"`
+	Name        string   `json:"name" validate:"required"`
+	Description string   `json:"description"`
+	Permissions []uint64 `json:"permissions"`
 }

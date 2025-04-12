@@ -13,7 +13,7 @@ import (
 )
 
 const roleKey = "role:%v"
-const roleListKey = "roles-list:%v:%v"
+const roleListKey = "roles-list:%v:%v:%v"
 const rolePattern = "roles-*"
 
 type roleCtrl interface {
@@ -38,7 +38,7 @@ func (c *Controller) ListRoles(ctx context.Context, page, size int, filters map[
 	defer span.Finish()
 
 	cached := &dto.PaginatedRoleResponse{}
-	key := fmt.Sprintf(roleListKey, page, size)
+	key := fmt.Sprintf(roleListKey, page, size, filters)
 	if err := c.cache.GetToStruct(ctx, key, &cached); err == nil {
 		return cached, nil
 	}

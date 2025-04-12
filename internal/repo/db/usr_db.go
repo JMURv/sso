@@ -24,13 +24,13 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, filters map[
 	var count int64
 	clauses, args := utils.BuildFilterQuery(filters)
 	q := fmt.Sprintf(userSelectQ, clauses)
-
 	if err := r.conn.QueryRowContext(ctx, q, args...).Scan(&count); err != nil {
 		zap.L().Error("failed to count users", zap.String("op", op), zap.Error(err))
 		return nil, err
 	}
 
 	q = fmt.Sprintf(userListQ, clauses, utils.GetSort(filters["sort"]), len(args)+1, len(args)+2)
+
 	args = append(args, size, (page-1)*size)
 	rows, err := r.conn.QueryxContext(ctx, q, args...)
 	if err != nil {
@@ -65,6 +65,9 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, filters map[
 			&user.Name,
 			&user.Email,
 			&user.Avatar,
+			&user.IsWA,
+			&user.IsActive,
+			&user.IsEmailVerified,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 			pq.Array(&roles),

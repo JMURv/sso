@@ -2,7 +2,12 @@ package db
 
 const userSelectQ = `
 SELECT COUNT(DISTINCT u.id)
-FROM users u %s
+FROM users u
+LEFT JOIN user_devices ud ON ud.user_id = u.id
+LEFT JOIN oauth2_connections oth2 ON oth2.user_id = u.id
+LEFT JOIN user_roles ur ON ur.user_id = u.id
+LEFT JOIN roles r ON r.id = ur.role_id
+%s
 `
 
 const userListQ = `
@@ -10,7 +15,10 @@ SELECT
 	u.id, 
 	u.name, 
 	u.email, 
-	u.avatar, 
+	u.avatar,
+	u.is_wa,
+	u.is_active,
+	u.is_email_verified,
 	u.created_at, 
 	u.updated_at,
 	ARRAY_AGG(r.id || '|' || r.name || '|' || r.description) FILTER (WHERE r.id IS NOT NULL) AS roles,

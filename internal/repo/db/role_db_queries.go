@@ -1,6 +1,9 @@
 package db
 
-const roleSelect = `SELECT COUNT(*) FROM roles %s`
+const roleSelect = `
+SELECT COUNT(*) 
+FROM roles r %s`
+
 const roleList = `
 SELECT 
 	r.id,
@@ -20,18 +23,13 @@ const roleCreate = `INSERT INTO roles (name, description) VALUES ($1, $2) RETURN
 const roleUpdate = `UPDATE roles SET name = $1, description = $2 WHERE id = $3`
 const roleDelete = `DELETE FROM roles WHERE id = $1`
 
-const roleSearchSelectQ = `
-SELECT COUNT(*)
-FROM roles 
-WHERE name ILIKE $1
+const roleAddPermQ = `
+INSERT INTO role_permissions (role_id, permission_id) 
+VALUES ($1, $2)
+ON CONFLICT (role_id, permission_id) DO NOTHING
 `
 
-const roleSearchQ = `
-SELECT 
-	ur.id, 
-	ur.name, 
-	ur.description 
-FROM roles ur
-WHERE ur.name ILIKE $1
-LIMIT $2 OFFSET $3
+const roleRemovePermQ = `
+DELETE FROM role_permissions 
+WHERE role_id = $1
 `

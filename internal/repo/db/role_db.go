@@ -19,23 +19,24 @@ func (r *Repository) ListRoles(ctx context.Context, page, size int, filters map[
 	defer span.Finish()
 
 	idx := 1
+	var clause string
 	args := make([]any, 0, len(filters))
-	clauses := make([]any, 0, len(filters))
-	if name, ok := filters["name"]; ok && name != "" {
-		clauses = append(clauses, "WHERE r.name ILIKE $1")
+	if name, ok := filters["search"]; ok && name != "" {
+		clause = "WHERE r.name ILIKE $1"
 		args = append(args, fmt.Sprintf("%%%s%%", name))
 		idx++
 	}
 
 	var count int64
-	q := fmt.Sprintf(roleSelect, clauses)
+	q := fmt.Sprintf(roleSelect, clause)
 	if err := r.conn.QueryRowContext(ctx, q, args...).Scan(&count); err != nil {
 		zap.L().Error("failed to count roles", zap.String("op", op), zap.Error(err))
 		return nil, err
 	}
 
-	q = fmt.Sprintf(roleList, clauses, idx, idx+1)
-	rows, err := r.conn.QueryContext(ctx, q, size, (page-1)*size)
+	q = fmt.Sprintf(roleList, clause, idx, idx+1)
+	args = append(args, size, (page-1)*size)
+	rows, err := r.conn.QueryContext(ctx, q, args...)
 	if err != nil {
 		zap.L().Error(
 			"failed to list roles",
@@ -125,8 +126,27 @@ func (r *Repository) CreateRole(ctx context.Context, req *dto.CreateRoleRequest)
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
+	tx, err := r.conn.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		zap.L().Error(
+			"failed to begin transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return 0, err
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			zap.L().Debug(
+				"error while transaction rollback",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+		}
+	}()
+
 	var id uint64
-	err := r.conn.QueryRowContext(ctx, roleCreate, req.Name, req.Description).Scan(&id)
+	err = tx.QueryRowContext(ctx, roleCreate, req.Name, req.Description).Scan(&id)
 	if err != nil {
 		if err, ok := err.(*pq.Error); ok && err.Code == "23505" {
 			zap.L().Debug(
@@ -143,6 +163,28 @@ func (r *Repository) CreateRole(ctx context.Context, req *dto.CreateRoleRequest)
 		return 0, err
 	}
 
+	if len(req.Permissions) > 0 {
+		for i := 0; i < len(req.Permissions); i++ {
+			if _, err = tx.ExecContext(ctx, roleAddPermQ, id, req.Permissions[i]); err != nil {
+				zap.L().Error(
+					"failed to add permission to role",
+					zap.String("op", op),
+					zap.Error(err),
+				)
+				return 0, err
+			}
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		zap.L().Error(
+			"failed to commit transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return 0, err
+	}
+
 	return id, nil
 }
 
@@ -151,7 +193,26 @@ func (r *Repository) UpdateRole(ctx context.Context, id uint64, req *dto.UpdateR
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	res, err := r.conn.ExecContext(ctx, roleUpdate, req.Name, req.Description, id)
+	tx, err := r.conn.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		zap.L().Error(
+			"failed to begin transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return err
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			zap.L().Debug(
+				"error while transaction rollback",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+		}
+	}()
+
+	res, err := tx.ExecContext(ctx, roleUpdate, req.Name, req.Description, id)
 	if err != nil {
 		zap.L().Error(
 			"failed to update role",
@@ -180,6 +241,35 @@ func (r *Repository) UpdateRole(ctx context.Context, id uint64, req *dto.UpdateR
 			zap.Uint64("id", id),
 		)
 		return repo.ErrNotFound
+	}
+
+	if _, err = tx.ExecContext(ctx, roleRemovePermQ, id); err != nil {
+		zap.L().Error(
+			"failed to remove role permissions",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	for i := 0; i < len(req.Permissions); i++ {
+		if _, err = tx.ExecContext(ctx, roleAddPermQ, id, req.Permissions[i]); err != nil {
+			zap.L().Error(
+				"failed to add permission to role",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+			return err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		zap.L().Error(
+			"failed to commit transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return err
 	}
 
 	return nil

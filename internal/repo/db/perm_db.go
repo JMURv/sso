@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
@@ -12,19 +13,31 @@ import (
 	"go.uber.org/zap"
 )
 
-func (r *Repository) ListPermissions(ctx context.Context, page, size int) (*dto.PaginatedPermissionResponse, error) {
+func (r *Repository) ListPermissions(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedPermissionResponse, error) {
 	const op = "sso.ListPermissions.repo"
 	span, _ := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
+	idx := 1
+	var clause string
+	args := make([]any, 0, len(filters))
+	if name, ok := filters["search"]; ok && name != "" {
+		clause = "WHERE p.name ILIKE $1"
+		args = append(args, fmt.Sprintf("%%%s%%", name))
+		idx++
+	}
+
 	var count int64
-	if err := r.conn.QueryRowContext(ctx, permSelect).Scan(&count); err != nil {
+	q := fmt.Sprintf(permSelect, clause)
+	if err := r.conn.QueryRowContext(ctx, q, args...).Scan(&count); err != nil {
 		zap.L().Error("failed to count permissions", zap.String("op", op), zap.Error(err))
 		return nil, err
 	}
 
 	res := make([]*md.Permission, 0, size)
-	err := r.conn.SelectContext(ctx, &res, permList, size, (page-1)*size)
+	q = fmt.Sprintf(permList, clause, idx, idx+1)
+	args = append(args, size, (page-1)*size)
+	err := r.conn.SelectContext(ctx, &res, q, args...)
 	if err != nil {
 		zap.L().Error(
 			"failed to list permissions",

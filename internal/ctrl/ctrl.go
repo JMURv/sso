@@ -59,12 +59,7 @@ type AppCtrl interface {
 	UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
-	ListPermissions(ctx context.Context, page, size int) (*dto.PaginatedPermissionResponse, error)
-	GetPermission(ctx context.Context, id uint64) (*md.Permission, error)
-	CreatePerm(ctx context.Context, req *dto.CreatePermissionRequest) (uint64, error)
-	UpdatePerm(ctx context.Context, id uint64, req *dto.UpdatePermissionRequest) error
-	DeletePerm(ctx context.Context, id uint64) error
-
+	permCtrl
 	roleCtrl
 
 	ListDevices(ctx context.Context, uid uuid.UUID) ([]md.Device, error)

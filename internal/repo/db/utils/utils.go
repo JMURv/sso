@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"strings"
 )
 
@@ -26,14 +27,23 @@ func BuildFilterQuery(filters map[string]any) (string, []any) {
 			idx++
 		case "roles":
 			if roles, ok := value.([]string); ok && len(roles) > 0 {
-				placeholders := make([]string, len(roles))
-
-				for i, role := range roles {
+				for _, role := range roles {
+					placeholder := fmt.Sprintf("$%d", idx)
+					conds = append(
+						conds, fmt.Sprintf(
+							`
+						EXISTS (
+							SELECT 1 
+							FROM user_roles ur2
+							JOIN roles r2 ON r2.id = ur2.role_id
+							WHERE ur2.user_id = u.id
+							AND r2.name = %s
+						)`, placeholder,
+						),
+					)
 					args = append(args, role)
-					placeholders[i] = fmt.Sprintf("$%d", idx+i)
+					idx++
 				}
-				conds = append(conds, fmt.Sprintf("r.name IN (%s)", strings.Join(placeholders, ",")))
-				idx += len(roles)
 			}
 		}
 	}
@@ -47,7 +57,7 @@ func BuildFilterQuery(filters map[string]any) (string, []any) {
 }
 
 func GetSort(sort any) string {
-	order := "DESC"
+	order := "ASC"
 	if sort == nil {
 		return "u.created_at DESC"
 	}
@@ -63,6 +73,7 @@ func GetSort(sort any) string {
 		order = "DESC"
 		sortStr = sortStr[1:]
 	}
+	zap.L().Debug("sort", zap.Any("sort", sort), zap.String("order", order), zap.String("sortStr", sortStr))
 
 	if field, ok := sortMap[sortStr]; ok {
 		return fmt.Sprintf("%s %s", field, order)

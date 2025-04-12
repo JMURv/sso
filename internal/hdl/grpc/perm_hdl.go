@@ -27,7 +27,7 @@ func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_ListReq) (*pb
 		size = config.DefaultSize
 	}
 
-	res, err := h.ctrl.ListPermissions(ctx, int(page), int(size))
+	res, err := h.ctrl.ListPermissions(ctx, int(page), int(size), map[string]any{})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}

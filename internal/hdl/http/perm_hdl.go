@@ -23,8 +23,9 @@ func (h *Handler) RegisterPermRoutes() {
 }
 
 func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {
+	filters := utils.ParseFiltersByURL(r)
 	page, size := utils.ParsePaginationValues(r)
-	res, err := h.ctrl.ListPermissions(r.Context(), page, size)
+	res, err := h.ctrl.ListPermissions(r.Context(), page, size, filters)
 	if err != nil {
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return

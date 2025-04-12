@@ -23,7 +23,7 @@ type Device struct {
 	DeviceType string    `json:"device_type" db:"device_type"`
 	OS         string    `json:"os" db:"os"`
 	Browser    string    `json:"browser" db:"browser"`
-	UA         string    `json:"ua" db:"ua"`
+	UA         string    `json:"ua" db:"user_agent"`
 	IP         string    `json:"ip" db:"ip"`
 	LastActive time.Time `json:"last_active" db:"last_active"`
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`

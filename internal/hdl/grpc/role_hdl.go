@@ -29,7 +29,7 @@ func (h *Handler) ListRoles(ctx context.Context, req *gen.SSO_ListReq) (*gen.SSO
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
-	res, err := h.ctrl.ListRoles(ctx, int(page), int(size))
+	res, err := h.ctrl.ListRoles(ctx, int(page), int(size), map[string]any{})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}

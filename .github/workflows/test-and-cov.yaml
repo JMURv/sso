@@ -17,30 +17,37 @@ jobs:
           go-version: '1.23.1'
 
       - name: Install dependencies
+        working-directory: backend
         run: go mod tidy
 
       - name: Install gocovmerge
+        working-directory: backend
         run: go install github.com/wadey/gocovmerge@latest
 
       - name: Run repository tests
+        working-directory: backend
         run: go test -coverprofile=cov_repo.out ./internal/repo/db
 
       - name: Run controller tests
+        working-directory: backend
         run: go test -coverprofile=cov_ctrl.out ./internal/ctrl
 
       - name: Run HTTP handler tests
+        working-directory: backend
         run: go test -coverprofile=cov_http.out ./internal/hdl/http
 
       - name: Run gRPC handler tests
+        working-directory: backend
         run: go test -coverprofile=cov_grpc.out ./internal/hdl/grpc
 
       - name: Merge coverage reports
+        working-directory: backend
         run: gocovmerge cov_repo.out cov_ctrl.out cov_http.out cov_grpc.out > coverage.out
 
       - name: Update coverage report
         uses: ncruces/go-coverage-report@v0
         with:
-          coverage-file: coverage.out
+          coverage-file: backend/coverage.out
           report: true
           chart: true
           amend: true

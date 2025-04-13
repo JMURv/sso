@@ -1,0 +1,78 @@
+import ModalBase from "./ModalBase"
+import {Fingerprint} from "@mui/icons-material"
+import {toast} from "sonner"
+import {base64UrlToArrayBuffer} from "../../lib/auth/wa"
+import {useRouter} from "next/navigation"
+
+export default function WAModal({t, isWA, setIsWA}) {
+    const router = useRouter()
+
+    const handleWebAuthnStartReg = async () => {
+        const r = await fetch("/api/auth/webauthn/register/start", {
+            method: "POST",
+            headers: {"Authorization": `Bearer ${t}`},
+        })
+
+        if (!r.ok) {
+            const data = await r.json()
+            return toast.error(data.error)
+        }
+        const options = await r.json()
+
+        let credential
+        try {
+            credential = await navigator.credentials.create({
+                publicKey: {
+                    ...options.publicKey,
+                    challenge: base64UrlToArrayBuffer(options.publicKey.challenge),
+                    user: {
+                        ...options.publicKey.user,
+                        id: base64UrlToArrayBuffer(options.publicKey.user.id),
+                    },
+                },
+            });
+        } catch (err) {
+            console.error(err)
+            toast.error("Authentication failed")
+            return
+        }
+
+        const fin = await fetch("/api/auth/webauthn/register/finish", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${t}`,
+            },
+            body: JSON.stringify(credential),
+        });
+
+        if (!fin.ok) {
+            const data = await fin.json()
+            toast.error(data.error)
+            return
+        }
+
+        setIsWA(false)
+        toast.success("success")
+        router.refresh()
+    }
+
+    return (
+        <ModalBase title={"WebAuthn"} isOpen={isWA} setIsOpen={setIsWA} >
+            <div className={`flex flex-col gap-3 bg-zinc-950 p-5`}>
+                <div className={`flex gap-3 w-full justify-between items-center`}>
+                    <p>Use WebAuthn?</p>
+                    <Fingerprint style={{fontSize: 30}} />
+                </div>
+                <div className={`flex gap-3 w-full`}>
+                    <button onClick={handleWebAuthnStartReg} className={`w-full primary-b flex justify-center items-center`}>
+                        Yes
+                    </button>
+                    <button onClick={() => setIsWA(false)} className={`w-full primary-b flex justify-center items-center`}>
+                        No
+                    </button>
+                </div>
+            </div>
+        </ModalBase>
+    )
+}

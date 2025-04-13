@@ -6,6 +6,7 @@ import (
 	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
+	"github.com/JMURv/sso/internal/repo/s3"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
@@ -51,14 +52,7 @@ type AppCtrl interface {
 	StoreWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID, req *webauthn.SessionData) error
 	GetWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID) (*webauthn.SessionData, error)
 
-	IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error)
-	ListUsers(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedUserResponse, error)
-	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
-	CreateUser(ctx context.Context, u *dto.CreateUserRequest) (*dto.CreateUserResponse, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error
-	DeleteUser(ctx context.Context, userID uuid.UUID) error
-
+	userCtrl
 	permCtrl
 	roleCtrl
 
@@ -67,6 +61,10 @@ type AppCtrl interface {
 	GetDeviceByID(ctx context.Context, dID string) (*md.Device, error)
 	UpdateDevice(ctx context.Context, uid uuid.UUID, dID string, req *dto.UpdateDeviceRequest) error
 	DeleteDevice(ctx context.Context, uid uuid.UUID, dID string) error
+}
+
+type S3Service interface {
+	UploadFile(ctx context.Context, req *s3.UploadFileRequest) (string, error)
 }
 
 type CacheService interface {
@@ -89,14 +87,16 @@ type Controller struct {
 	repo  AppRepo
 	au    *auth.Auth
 	cache CacheService
+	s3    S3Service
 	smtp  EmailService
 }
 
-func New(repo AppRepo, au *auth.Auth, cache CacheService, smtp EmailService) *Controller {
+func New(repo AppRepo, au *auth.Auth, cache CacheService, s3 S3Service, smtp EmailService) *Controller {
 	return &Controller{
 		repo:  repo,
 		au:    au,
 		cache: cache,
+		s3:    s3,
 		smtp:  smtp,
 	}
 }

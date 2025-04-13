@@ -17,14 +17,6 @@ type GoogleProvider struct {
 	*providers.OAuth2Provider
 }
 
-type googleResponse struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Email      string `json:"email"`
-	Picture    string `json:"picture"`
-	VerifEmail bool   `json:"verified_email"`
-}
-
 func NewGoogleOAuth2(config conf.Config) *GoogleProvider {
 	provider := providers.NewOAuth2Provider(
 		config.Auth.Oauth.Google.ClientID,
@@ -48,7 +40,7 @@ func NewGoogleOAuth2(config conf.Config) *GoogleProvider {
 				}
 			}(resp.Body)
 
-			var gRes googleResponse
+			var gRes dto.GoogleResponse
 			if err = json.NewDecoder(resp.Body).Decode(&gRes); err != nil {
 				return nil, err
 			}

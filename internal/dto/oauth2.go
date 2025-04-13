@@ -30,3 +30,19 @@ type ProviderResponse struct {
 	ExpiresIn    int64     `json:"expires_in"`
 	TokenType    string    `json:"token_type"`
 }
+
+type GoogleResponse struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Email      string `json:"email"`
+	Picture    string `json:"picture"`
+	VerifEmail bool   `json:"verified_email"`
+}
+
+type GitHubResponse struct {
+	ID        int64  `json:"id"`
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatar_url"`
+}

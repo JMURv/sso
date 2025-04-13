@@ -35,7 +35,7 @@ func New(conf conf.Config) *Repository {
 		zap.L().Fatal("failed to apply migrations", zap.Error(err))
 	}
 
-	mustPrecreate(conn.DB)
+	mustPrecreate(conf, conn.DB)
 	return &Repository{conn: conn}
 }
 

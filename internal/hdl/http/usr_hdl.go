@@ -7,7 +7,10 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
+	"github.com/JMURv/sso/internal/repo/s3"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"net/http"
@@ -104,16 +107,38 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
-	req := &dto.CreateUserRequest{}
-	if ok := utils.ParseAndValidate(w, r, req); !ok {
+	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10MB
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrFileTooLarge)
 		return
 	}
 
-	res, err := h.ctrl.CreateUser(r.Context(), req)
-	if err != nil && errors.Is(err, ctrl.ErrAlreadyExists) {
-		utils.ErrResponse(w, http.StatusConflict, err)
+	req := &dto.CreateUserRequest{}
+	if err := json.Unmarshal([]byte(r.FormValue("data")), req); err != nil {
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
-	} else if err != nil {
+	}
+
+	if err := validator.New().Struct(req); err != nil {
+		utils.ErrResponse(w, http.StatusBadRequest, err)
+		return
+	}
+
+	fileReq := &s3.UploadFileRequest{}
+	if err := utils.ParseFileField(r, "avatar", fileReq); err != nil {
+		if errors.Is(err, hdl.ErrInternal) {
+			utils.ErrResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+		utils.ErrResponse(w, http.StatusBadRequest, err)
+		return
+	}
+
+	res, err := h.ctrl.CreateUser(r.Context(), req, fileReq)
+	if err != nil {
+		if errors.Is(err, ctrl.ErrAlreadyExists) {
+			utils.ErrResponse(w, http.StatusConflict, err)
+			return
+		}
 		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
 		return
 	}
@@ -133,12 +158,34 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := &dto.UpdateUserRequest{}
-	if ok := utils.ParseAndValidate(w, r, req); !ok {
+	if err = r.ParseMultipartForm(10 << 20); err != nil { // 10MB
+		zap.L().Debug("failed to parse multipart form", zap.Error(err))
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
-	err = h.ctrl.UpdateUser(r.Context(), uid, req)
+	req := &dto.UpdateUserRequest{}
+	if err = json.Unmarshal([]byte(r.FormValue("data")), req); err != nil {
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
+		return
+	}
+
+	if err = validator.New().Struct(req); err != nil {
+		utils.ErrResponse(w, http.StatusBadRequest, err)
+		return
+	}
+
+	fileReq := &s3.UploadFileRequest{}
+	if err = utils.ParseFileField(r, "avatar", fileReq); err != nil {
+		if errors.Is(err, hdl.ErrInternal) {
+			utils.ErrResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+		utils.ErrResponse(w, http.StatusBadRequest, err)
+		return
+	}
+
+	err = h.ctrl.UpdateUser(r.Context(), uid, req, fileReq)
 	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
 		utils.ErrResponse(w, http.StatusNotFound, err)
 		return

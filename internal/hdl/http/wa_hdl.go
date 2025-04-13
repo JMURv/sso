@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"github.com/JMURv/sso/internal/auth/captcha"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
@@ -64,6 +65,17 @@ func (h *Handler) registrationFinish(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) loginStart(w http.ResponseWriter, r *http.Request) {
 	req := &dto.LoginStartRequest{}
 	if ok := utils.ParseAndValidate(w, r, req); !ok {
+		return
+	}
+
+	valid, err := h.au.VerifyRecaptcha(req.Token, captcha.WALogin)
+	if err != nil {
+		utils.ErrResponse(w, http.StatusInternalServerError, captcha.ErrVerificationFailed)
+		return
+	}
+
+	if !valid {
+		utils.ErrResponse(w, http.StatusUnauthorized, captcha.ErrValidationFailed)
 		return
 	}
 

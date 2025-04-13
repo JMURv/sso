@@ -20,13 +20,12 @@ import (
 )
 
 type Flow string
+type Providers string
 
 const (
 	OIDC   Flow = "oidc"
 	OAuth2 Flow = "oauth2"
 )
-
-type Providers string
 
 const (
 	Google Providers = "google"

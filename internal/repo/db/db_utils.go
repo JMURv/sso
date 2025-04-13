@@ -1,22 +1,23 @@
 package db
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"errors"
-	conf "github.com/JMURv/sso/internal/config"
-	md "github.com/JMURv/sso/internal/models"
-	"github.com/goccy/go-json"
+	"github.com/JMURv/sso/internal/config"
 	"github.com/golang-migrate/migrate/v4"
 	pgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-func applyMigrations(db *sql.DB, conf conf.Config) error {
+func applyMigrations(db *sql.DB, conf config.Config) error {
 	driver, err := pgx.WithInstance(db, &pgx.Config{})
 	if err != nil {
 		return err
@@ -49,74 +50,86 @@ func applyMigrations(db *sql.DB, conf conf.Config) error {
 	return nil
 }
 
-func mustPrecreate(db *sql.DB) {
-	var count int64
-	if err := db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count); err != nil {
+const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func GenerateRandomPassword(n int) (string, error) {
+	password := make([]byte, n)
+	l := big.NewInt(int64(len(letters)))
+	for i := range password {
+		num, err := rand.Int(rand.Reader, l)
+		if err != nil {
+			return "", err
+		}
+		password[i] = letters[num.Int64()]
+	}
+	return string(password), nil
+}
+
+func mustPrecreate(conf config.Config, db *sql.DB) {
+	tx, err := db.Begin()
+	if err != nil {
 		panic(err)
 	}
-
-	if count == 0 {
-		type usrWithPerms struct {
-			Name     string          `json:"name"`
-			Password string          `json:"password"`
-			Email    string          `json:"email"`
-			Avatar   string          `json:"avatar"`
-			Address  string          `json:"address"`
-			Phone    string          `json:"phone"`
-			Perms    []md.Permission `json:"permissions"`
-		}
-		bytes, err := os.ReadFile("precreate.json")
-		if err != nil && errors.Is(err, os.ErrNotExist) {
-			zap.L().Info("precreate.json not found")
-			return
-		} else if err != nil {
+	defer func() {
+		if err = tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			panic(err)
 		}
+	}()
 
-		p := make([]usrWithPerms, 0, 2)
-		if err = json.Unmarshal(bytes, &p); err != nil {
-			panic(err)
+	roleID := 1
+	err = tx.QueryRow(`SELECT id FROM roles WHERE name='admin'`).Scan(&roleID)
+	if err != nil {
+		zap.L().Error("failed to get admin role", zap.Error(err))
+		return
+	}
+
+	for i := 0; i < len(conf.Auth.Admins); i++ {
+		email := conf.Auth.Admins[i]
+		name := strings.Split(email, "@")[0]
+
+		var userID uuid.UUID
+		if err = tx.QueryRow(`SELECT id FROM users WHERE email = $1`, email).Scan(&userID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				randomPassword, err := GenerateRandomPassword(12)
+				if err != nil {
+					zap.L().Error("failed to generate random password", zap.Error(err))
+					return
+				}
+
+				password, err := bcrypt.GenerateFromPassword([]byte(randomPassword), bcrypt.DefaultCost)
+				if err != nil {
+					zap.L().Error("failed to generate password", zap.Error(err))
+					return
+				}
+
+				if err = tx.QueryRow(
+					`INSERT INTO users (name, password, email, avatar, is_active, is_email_verified) 
+			 		 VALUES ($1, $2, $3, $4, $5, $6)
+			 		 RETURNING id`, name, password, email, "", true, true,
+				).Scan(&userID); err != nil {
+					zap.L().Error("failed to insert user", zap.Error(err))
+					return
+				}
+
+				if _, err = tx.Exec(
+					`INSERT INTO user_roles (user_id, role_id) 
+			 		 VALUES ($1, $2)
+			 		 ON CONFLICT (user_id, role_id) DO NOTHING`, userID, roleID,
+				); err != nil {
+					zap.L().Error("failed to insert user role", zap.Error(err))
+					return
+				}
+
+				zap.L().Info(
+					"user has been created",
+					zap.String("email", email),
+					zap.String("pass", randomPassword),
+				)
+			}
 		}
-
-		for _, v := range p {
-			tx, err := db.Begin()
-			if err != nil {
-				panic(err)
-			}
-
-			password, err := bcrypt.GenerateFromPassword([]byte(v.Password), bcrypt.DefaultCost)
-			if err != nil {
-				panic(err)
-			}
-			v.Password = string(password)
-
-			var userID uuid.UUID
-			err = tx.QueryRow(
-				`INSERT INTO users (name, password, email, avatar, address, phone) 
-				VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-				v.Name,
-				v.Password,
-				v.Email,
-				v.Avatar,
-				v.Address,
-				v.Phone,
-			).Scan(&userID)
-
-			if err != nil {
-				panic(err)
-			}
-
-			for _, perm := range v.Perms {
-				zap.L().Debug("debug", zap.Any("perm", perm))
-			}
-
-			if err = tx.Commit(); err != nil {
-				panic(err)
-			}
-		}
-
-		zap.L().Info("users and permissions have been created")
-	} else {
-		zap.L().Info("users and permissions already exist")
+	}
+	if err = tx.Commit(); err != nil {
+		zap.L().Error("failed to commit transaction", zap.Error(err))
+		return
 	}
 }

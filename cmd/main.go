@@ -11,6 +11,7 @@ import (
 	"github.com/JMURv/sso/internal/observability/metrics/prometheus"
 	"github.com/JMURv/sso/internal/observability/tracing/jaeger"
 	"github.com/JMURv/sso/internal/repo/db"
+	"github.com/JMURv/sso/internal/repo/s3"
 	"github.com/JMURv/sso/internal/smtp"
 	"go.uber.org/zap"
 	"os"
@@ -49,7 +50,7 @@ func main() {
 	au := auth.New(conf)
 	cache := redis.New(conf)
 	repo := db.New(conf)
-	svc := ctrl.New(repo, au, cache, smtp.New(conf))
+	svc := ctrl.New(repo, au, cache, s3.New(conf), smtp.New(conf))
 	h := http.New(svc, au)
 	hg := grpc.New(conf.ServiceName, svc, au)
 

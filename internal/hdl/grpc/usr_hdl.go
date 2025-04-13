@@ -9,6 +9,7 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	"github.com/JMURv/sso/internal/hdl/validation"
 	utils "github.com/JMURv/sso/internal/models/mapper"
+	"github.com/JMURv/sso/internal/repo/s3"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -93,7 +94,7 @@ func (h *Handler) CreateUser(ctx context.Context, req *pb.SSO_CreateUserReq) (*p
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := h.ctrl.CreateUser(ctx, r)
+	res, err := h.ctrl.CreateUser(ctx, r, &s3.UploadFileRequest{})
 	if err != nil {
 		if errors.Is(err, ctrl.ErrAlreadyExists) {
 			return nil, status.Errorf(codes.AlreadyExists, err.Error())
@@ -145,7 +146,7 @@ func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UpdateUserReq) (*p
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	err := h.ctrl.UpdateUser(ctx, uid, r)
+	err := h.ctrl.UpdateUser(ctx, uid, r, &s3.UploadFileRequest{})
 	if err != nil {
 		if errors.Is(err, ctrl.ErrNotFound) {
 			return nil, status.Errorf(codes.NotFound, err.Error())

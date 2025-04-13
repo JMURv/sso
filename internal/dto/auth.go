@@ -23,11 +23,13 @@ type RefreshRequest struct {
 type EmailAndPasswordRequest struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
+	Token    string `json:"token" validate:"required"`
 }
 
 type LoginCodeRequest struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
+	Token    string `json:"token" validate:"required"`
 }
 
 type CheckLoginCodeRequest struct {
@@ -51,4 +53,5 @@ type CheckForgotPasswordEmailRequest struct {
 
 type SendForgotPasswordEmail struct {
 	Email string `json:"email" validate:"required,email"`
+	Token string `json:"token" validate:"required"`
 }

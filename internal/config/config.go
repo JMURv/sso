@@ -15,15 +15,23 @@ type Config struct {
 	Server      ServerConfig     `yaml:"server"`
 	Email       EmailConfig      `yaml:"email"`
 	DB          DBConfig         `yaml:"db"`
+	Minio       MinioConfig      `yaml:"minio"`
 	Redis       RedisConfig      `yaml:"redis"`
 	Prometheus  PrometheusConfig `yaml:"prometheus"`
 	Jaeger      JaegerConfig     `yaml:"jaeger"`
 }
 
 type AuthConfig struct {
-	Secret             string `yaml:"secret" env:"SECRET,required"`
-	ProviderSignSecret string `yaml:"providerSignSecret" env:"PROVIDER_SIGN_SECRET"`
-	Oauth              struct {
+	Secret             string   `yaml:"secret" env:"SECRET,required"`
+	ProviderSignSecret string   `yaml:"providerSignSecret" env:"PROVIDER_SIGN_SECRET"`
+	Admins             []string `yaml:"admins" env:"ADMIN_USERS" envSeparator:","`
+
+	Captcha struct {
+		SiteKey string `yaml:"siteKey" env:"CAPTCHA_SITE_KEY"`
+		Secret  string `yaml:"secret" env:"CAPTCHA_SECRET"`
+	} `yaml:"captcha"`
+
+	Oauth struct {
 		SuccessURL string `yaml:"successURL" env:"OAUTH2_SUCCESS_URL"`
 		Google     struct {
 			ClientID     string   `yaml:"clientID" env:"OAUTH2_GOOGLE_CLIENT_ID" envDefault:""`
@@ -71,6 +79,15 @@ type DBConfig struct {
 	User     string `yaml:"user" env:"DB_USER" envDefault:"postgres"`
 	Password string `yaml:"password" env:"DB_PASSWORD" envDefault:"postgres"`
 	Database string `yaml:"database" env:"DB_DATABASE" envDefault:"db"`
+}
+
+type MinioConfig struct {
+	Addr       string `yaml:"addr" env:"MINIO_ADDR" envDefault:"localhost:9000"`
+	PublicAddr string `yaml:"public_addr" env:"MINIO_PUBLIC_ADDR" envDefault:"http://localhost:9000"`
+	AccessKey  string `yaml:"access_key" env:"MINIO_ACCESS_KEY" envDefault:""`
+	SecretKey  string `yaml:"secret_key" env:"MINIO_SECRET_KEY" envDefault:""`
+	Bucket     string `yaml:"bucket" env:"MINIO_BUCKET" envDefault:""`
+	UseSSL     bool   `yaml:"use_ssl" env:"MINIO_SSL" envDefault:"false"`
 }
 
 type RedisConfig struct {

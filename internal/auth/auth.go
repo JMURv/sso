@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"github.com/JMURv/sso/internal/auth/captcha"
 	"github.com/JMURv/sso/internal/auth/providers"
 	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/config"
@@ -25,6 +26,7 @@ type Core interface {
 	NewToken(ctx context.Context, uid uuid.UUID, perms []md.Role, d time.Duration) (string, error)
 	ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
 	GenPair(ctx context.Context, uid uuid.UUID, perms []md.Role) (string, string, error)
+	VerifyRecaptcha(token string, action captcha.Actions) (bool, error)
 }
 
 type Claims struct {
@@ -35,6 +37,7 @@ type Claims struct {
 
 type Auth struct {
 	secret   []byte
+	Captcha  *captcha.Recaptcha
 	Provider *providers.Provider
 	Wa       *wa.WAuthn
 }
@@ -42,9 +45,14 @@ type Auth struct {
 func New(conf config.Config) *Auth {
 	return &Auth{
 		secret:   []byte(conf.Auth.Secret),
+		Captcha:  captcha.New(conf),
 		Provider: providers.New(conf),
 		Wa:       wa.New(conf),
 	}
+}
+
+func (a *Auth) VerifyRecaptcha(token string, action captcha.Actions) (bool, error) {
+	return a.Captcha.VerifyRecaptcha(token, action)
 }
 
 func (a *Auth) Hash(val string) (string, error) {

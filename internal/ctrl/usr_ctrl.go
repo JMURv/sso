@@ -8,10 +8,21 @@ import (
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
+	"github.com/JMURv/sso/internal/repo/s3"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 )
+
+type userCtrl interface {
+	IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error)
+	ListUsers(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedUserResponse, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*md.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
+	CreateUser(ctx context.Context, u *dto.CreateUserRequest, file *s3.UploadFileRequest) (*dto.CreateUserResponse, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest, file *s3.UploadFileRequest) error
+	DeleteUser(ctx context.Context, userID uuid.UUID) error
+}
 
 type userRepo interface {
 	ListUsers(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedUserResponse, error)
@@ -114,7 +125,7 @@ func (c *Controller) GetUserByEmail(ctx context.Context, email string) (*md.User
 	return res, nil
 }
 
-func (c *Controller) CreateUser(ctx context.Context, u *dto.CreateUserRequest) (*dto.CreateUserResponse, error) {
+func (c *Controller) CreateUser(ctx context.Context, u *dto.CreateUserRequest, file *s3.UploadFileRequest) (*dto.CreateUserResponse, error) {
 	const op = "users.CreateUser.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -124,6 +135,14 @@ func (c *Controller) CreateUser(ctx context.Context, u *dto.CreateUserRequest) (
 		return nil, err
 	}
 	u.Password = hash
+
+	if len(file.File) > 0 {
+		url, err := c.s3.UploadFile(ctx, file)
+		if err != nil {
+			return nil, err
+		}
+		u.Avatar = url
+	}
 
 	id, err := c.repo.CreateUser(ctx, u)
 	if err != nil && errors.Is(err, repo.ErrAlreadyExists) {
@@ -138,7 +157,7 @@ func (c *Controller) CreateUser(ctx context.Context, u *dto.CreateUserRequest) (
 	}, nil
 }
 
-func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error {
+func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest, file *s3.UploadFileRequest) error {
 	const op = "users.UpdateUser.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -149,6 +168,14 @@ func (c *Controller) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 			return err
 		}
 		req.Password = hash
+	}
+
+	if len(file.File) > 0 {
+		url, err := c.s3.UploadFile(ctx, file)
+		if err != nil {
+			return err
+		}
+		req.Avatar = url
 	}
 
 	err := c.repo.UpdateUser(ctx, id, req)

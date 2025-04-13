@@ -21,14 +21,6 @@ type GitHubProvider struct {
 	*providers.OAuth2Provider
 }
 
-type gitHubResponse struct {
-	ID        int64  `json:"id"`
-	Login     string `json:"login"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	AvatarURL string `json:"avatar_url"`
-}
-
 func NewGitHubOAuth2(config conf.Config) *GitHubProvider {
 	provider := providers.NewOAuth2Provider(
 		config.Auth.Oauth.GitHub.ClientID,
@@ -64,7 +56,7 @@ func NewGitHubOAuth2(config conf.Config) *GitHubProvider {
 				}
 			}(resp.Body)
 
-			var ghRes gitHubResponse
+			var ghRes dto.GitHubResponse
 			if err = json.NewDecoder(resp.Body).Decode(&ghRes); err != nil {
 				zap.L().Error(
 					"Failed to decode response",

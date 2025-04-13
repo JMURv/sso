@@ -2,14 +2,18 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
 	"github.com/JMURv/sso/internal/hdl/validation"
+	"github.com/JMURv/sso/internal/repo/s3"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -83,6 +87,46 @@ func ParseAndValidate(w http.ResponseWriter, r *http.Request, dst any) bool {
 	}
 
 	return true
+}
+
+var ErrInvalidFileUpload = errors.New("invalid file upload")
+var ErrFileTooLarge = errors.New("file too large")
+var ErrInvalidFileType = errors.New("invalid file type")
+
+func ParseFileField(r *http.Request, fieldName string, fileReq *s3.UploadFileRequest) error {
+	file, header, err := r.FormFile(fieldName)
+	if err != nil && err != http.ErrMissingFile {
+		return ErrInvalidFileUpload
+	}
+
+	if header != nil {
+		defer func(file multipart.File) {
+			if err = file.Close(); err != nil {
+				zap.L().Error("failed to close file", zap.Error(err))
+			}
+		}(file)
+
+		if header.Size > 10<<20 {
+			zap.L().Debug("file too large", zap.String("field", fieldName), zap.Int64("size", header.Size))
+			return ErrFileTooLarge
+		}
+
+		fileReq.File, err = io.ReadAll(file)
+		if err != nil {
+			zap.L().Error("failed to read file", zap.Error(err))
+			return hdl.ErrInternal
+		}
+
+		fileReq.ContentType = http.DetectContentType(fileReq.File)
+		if !strings.HasPrefix(fileReq.ContentType, "image/") {
+			zap.L().Debug("invalid file type", zap.String("field", fieldName), zap.String("type", fileReq.ContentType))
+			return ErrInvalidFileType
+		}
+
+		fileReq.Filename = header.Filename
+	}
+
+	return nil
 }
 
 func SetAuthCookies(w http.ResponseWriter, access, refresh string) {

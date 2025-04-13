@@ -3,6 +3,7 @@ package http
 import (
 	"errors"
 	"github.com/JMURv/sso/internal/auth"
+	"github.com/JMURv/sso/internal/auth/captcha"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
@@ -36,12 +37,24 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	valid, err := h.au.VerifyRecaptcha(req.Token, captcha.PassAuth)
+	if err != nil {
+		utils.ErrResponse(w, http.StatusInternalServerError, captcha.ErrVerificationFailed)
+		return
+	}
+
+	if !valid {
+		utils.ErrResponse(w, http.StatusUnauthorized, captcha.ErrValidationFailed)
+		return
+	}
+
 	res, err := h.ctrl.Authenticate(r.Context(), &d, req)
 	if err != nil {
 		if errors.Is(err, ctrl.ErrNotFound) {
 			utils.ErrResponse(w, http.StatusNotFound, err)
 			return
-		} else if errors.Is(err, auth.ErrInvalidCredentials) {
+		}
+		if errors.Is(err, auth.ErrInvalidCredentials) {
 			utils.ErrResponse(w, http.StatusUnauthorized, err)
 			return
 		}
@@ -164,6 +177,17 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	valid, err := h.au.VerifyRecaptcha(req.Token, captcha.EmailAuth)
+	if err != nil {
+		utils.ErrResponse(w, http.StatusInternalServerError, captcha.ErrVerificationFailed)
+		return
+	}
+
+	if !valid {
+		utils.ErrResponse(w, http.StatusUnauthorized, captcha.ErrValidationFailed)
+		return
+	}
+
 	res, err := h.ctrl.SendLoginCode(r.Context(), &d, req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
@@ -214,7 +238,18 @@ func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err := h.ctrl.SendForgotPasswordEmail(r.Context(), req.Email)
+	valid, err := h.au.VerifyRecaptcha(req.Token, captcha.ForgotPass)
+	if err != nil {
+		utils.ErrResponse(w, http.StatusInternalServerError, captcha.ErrVerificationFailed)
+		return
+	}
+
+	if !valid {
+		utils.ErrResponse(w, http.StatusUnauthorized, captcha.ErrValidationFailed)
+		return
+	}
+
+	err = h.ctrl.SendForgotPasswordEmail(r.Context(), req.Email)
 	if err != nil {
 		if errors.Is(err, ctrl.ErrNotFound) {
 			utils.ErrResponse(w, http.StatusNotFound, err)
@@ -239,13 +274,13 @@ func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Reques
 		if errors.Is(err, ctrl.ErrNotFound) {
 			utils.ErrResponse(w, http.StatusNotFound, err)
 			return
-		} else if errors.Is(err, ctrl.ErrCodeIsNotValid) {
+		}
+		if errors.Is(err, ctrl.ErrCodeIsNotValid) {
 			utils.ErrResponse(w, http.StatusUnauthorized, hdl.ErrInternal)
 			return
-		} else {
-			utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
-			return
 		}
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+		return
 	}
 
 	utils.StatusResponse(w, http.StatusOK)

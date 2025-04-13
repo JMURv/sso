@@ -4,6 +4,14 @@ serviceName: "sso"
 auth:
   secret: "DYHlaJpPiZ"
   providerSignSecret: "DYHlaJpPiZ"
+  admins: [
+    "architect.lock@outlook.com"
+  ]
+
+  captcha:
+    sitekey: ""
+    secret: ""
+
   ouath:
     successURL: "http://localhost:3000/"
     google:
@@ -42,9 +50,20 @@ db:
   password: "app_password"
   database: "sso_db"
 
+minio:
+  addr: "localhost:9000"
+  public_addr: "http://localhost:9000"
+  access_key: "minio"
+  secret_key: "minio123"
+  bucket: "sso"
+  use_ssl: false
+
 redis:
   addr: "localhost:6379"
   pass: ""
+
+prometheus:
+  port: 9000
 
 jaeger:
   sampler:

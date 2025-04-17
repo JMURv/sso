@@ -19,13 +19,15 @@ import Dropdown from "../../../components/dropdowns/Dropdown"
 import UserNew from "./UserNew"
 import CroppedScreen from "../../../components/subscreen/CroppedScreen"
 import UserEdit from "./UserEdit"
+import {useAuth} from "../../../providers/AuthProvider"
 
 
 const DefaultUserImage = "/defaults/user.png"
 
-export default function UserAdm({t, usrs, roles}) {
+export default function UserAdm({usrs, roles}) {
     const router = useRouter()
     const sp = useSearchParams()
+    const {authFetch} = useAuth()
 
     const [q, setQ] = useState("")
     const [filterURL, setFilterURL] = useState("")
@@ -47,7 +49,6 @@ export default function UserAdm({t, usrs, roles}) {
     const handleSearchChange = async (e) => {
         e.preventDefault()
         const {value} = e.target
-
         setQ(value)
         if (value.length < 3) {
             setUsers(usrs)
@@ -55,7 +56,7 @@ export default function UserAdm({t, usrs, roles}) {
         }
 
         try {
-            const r = await fetch(`/api/users?search=${e.target.value}`, {
+            const r = await fetch(`/api/users?search=${value}`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -136,32 +137,23 @@ export default function UserAdm({t, usrs, roles}) {
     }
 
     const removeUser = async (id) => {
-        try {
-            const r = await fetch(`/api/users/${id}`, {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${t}`,
-                }
-            })
+        const response = await authFetch(`/api/users/${id}`, {
+            method: "DELETE",
+        })
 
-            if (!r.ok) {
-                const data = await r.json()
-                toast.error(data.errors)
-                return null
-            }
-
-            setUsers(prev => ({
-                ...prev,
-                data: prev.data.filter(u => u.id !== id)
-            }))
-            setUserToDelete(null)
-            setAreUSure(false)
-            toast.success("User deleted")
-        } catch (e) {
-            console.log(e)
-            toast.error("Unexpected error")
+        if (!response.ok) {
+            const data = await response.json()
+            toast.error(data.errors)
+            return
         }
+
+        setUsers(prev => ({
+            ...prev,
+            data: prev.data.filter(u => u.id !== id)
+        }))
+        setUserToDelete(null)
+        setAreUSure(false)
+        toast.success("User deleted")
     }
 
     const successCreateCallback = (usr) => {
@@ -186,7 +178,6 @@ export default function UserAdm({t, usrs, roles}) {
                 <div className={`w-full flex py-20 flex-col justify-center items-center`}>
                     <div className={`max-w-2xl w-full flex flex-col gap-5`}>
                         <UserNew
-                            t={t}
                             close={() => setOpenNewUsrScreen(false)}
                             successCallback={successCreateCallback}
                         />
@@ -385,7 +376,6 @@ export default function UserAdm({t, usrs, roles}) {
                         <div className={`w-full flex py-20 flex-col justify-center items-center`}>
                             <div className={`max-w-2xl w-full flex flex-col gap-5`}>
                                 <UserEdit
-                                    t={t}
                                     usr={u}
                                     close={() => setOpenedUserId(null)}
                                     successCallback={successEditCallback}

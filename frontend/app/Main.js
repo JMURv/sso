@@ -1,14 +1,13 @@
 "use client"
-import {Check, Close, Delete, Fingerprint, Logout, Person} from "@mui/icons-material"
+import {Check, Close, Fingerprint, Logout, Person} from "@mui/icons-material"
 import Image from "next/image"
 import {useState} from "react"
 import {toast} from "sonner"
 import WAModal from "../components/modals/WAModal"
 import ModalBase from "../components/modals/ModalBase"
-import {uploadImage} from "../lib/inputs/file"
 import Oauth2Conns from "../components/oauth2/Oauth2Conns"
-import {useRouter} from "next/navigation"
 import DeviceList from "../components/ui/DeviceList"
+import {useAuth} from "../providers/AuthProvider"
 
 const DefaultUserImage = "/defaults/user.png"
 
@@ -27,40 +26,33 @@ const gradientClasses = [
     "from-sky-500 to-indigo-500"
 ]
 
-export default function Main({t, usr, device}) {
-    const router = useRouter()
+export default function Main({usr, device}) {
+    const { authFetch, logout } = useAuth()
     const [me, setMe] = useState(usr)
     const [isWA, setIsWA] = useState(false)
     const [isProfile, setIsProfile] = useState(false)
 
     const [avatarFile, setAvatarFile] = useState(null)
-    const [avatarPreview, setAvatarPreview] = useState(me.avatar)
+    const [avatarPreview, setAvatarPreview] = useState(me?.avatar || DefaultUserImage)
 
     const updateUser = async () => {
-        try {
-            const fd = new FormData()
-            fd.append("avatar", avatarFile)
-            fd.append("data", JSON.stringify({
-                name: me.name,
-                email: usr.email,
-                is_active: me.is_active === "true",
-                is_email: me.is_email === "true"
-            }))
+        const fd = new FormData()
+        fd.append("avatar", avatarFile)
+        fd.append("data", JSON.stringify({
+            name: me.name,
+            email: usr.email,
+            is_active: me.is_active === "true",
+            is_email: me.is_email === "true"
+        }))
 
-            const r = await fetch(`/api/users/${me.id}`, {
-                method: "PUT",
-                headers: {"Authorization": `Bearer ${t}`},
-                body: fd,
-            })
+        const response = await authFetch(`/api/users/${me.id}`, {
+            method: "PUT",
+            body: fd,
+        })
 
-            if (!r.ok) {
-                const data = await r.json()
-                toast.error(data.errors)
-                return
-            }
-
-        } catch (e) {
-            console.error(e)
+        if (!response.ok) {
+            const data = await response.json()
+            toast.error(data.errors)
             return
         }
 
@@ -80,33 +72,9 @@ export default function Main({t, usr, device}) {
         }
     }
 
-    async function logout(e) {
-        e.preventDefault()
-        try {
-            const r = await fetch(`/api/auth/logout`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${t}`,
-                },
-            })
-
-            if (!r.ok) {
-                const data = await r.json()
-                toast.error(data.errors)
-                return null
-            }
-
-            toast.success("Logout successful")
-            await router.push("/auth")
-        } catch (e) {
-            console.error(e)
-        }
-    }
-
     return (
         <div className={`flex justify-center items-center min-h-screen min-w-screen gap-10`}>
-            <WAModal t={t} isWA={isWA} setIsWA={setIsWA} />
+            <WAModal isWA={isWA} setIsWA={setIsWA} />
             <ModalBase isOpen={isProfile} setIsOpen={setIsProfile}>
                 <div className={`flex flex-col bg-zinc-950 gap-5 p-5 max-w-xs`}>
 
@@ -221,7 +189,7 @@ export default function Main({t, usr, device}) {
 
                 <div className={`mb-5 flex flex-col gap-3`}>
                     <h2>My devices</h2>
-                    <DeviceList t={t} devices={device} />
+                    <DeviceList devices={device} />
                 </div>
 
                 <div className={`flex flex-col gap-3`}>

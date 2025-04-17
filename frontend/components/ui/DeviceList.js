@@ -5,8 +5,10 @@ import {Check, Delete} from "@mui/icons-material"
 import {toast} from "sonner"
 import {useState} from "react"
 import formatDate from "../../lib/helpers/helpers"
+import {useAuth} from "../../providers/AuthProvider"
 
-export default function DeviceList({t, devices}) {
+export default function DeviceList({devices}) {
+    const {authFetch} = useAuth()
     const [myDevices, setMyDevices] = useState(devices)
 
     const onDeviceChange = (e) => {
@@ -21,52 +23,34 @@ export default function DeviceList({t, devices}) {
 
     const updateDevice = async (dID) => {
         const d = myDevices.find(d => d.id === dID)
-        try {
-            const r = await fetch(`/api/device/${dID}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${t}`,
-                },
-                body: JSON.stringify(d),
-            })
+        const response = await authFetch(`/api/device/${dID}`, {
+            method: "PUT",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(d),
+        })
 
-            if (!r.ok) {
-                const data = await r.json()
-                toast.error(data.errors)
-                return null
-            }
-
-        } catch (e) {
-            console.error(e)
-            return null
+        if (!response.ok) {
+            const data = await response.json()
+            toast.error(data.errors)
+            return
         }
 
         toast.success("Update successful")
     }
 
-    const deleteDevice = async (e, dID) => {
-        e.preventDefault()
-        try {
-            const r = await fetch(`/api/device/${dID}`, {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${t}`,
-                },
-            })
+    const deleteDevice = async (dID) => {
+        const response = await authFetch(`/api/device/${dID}`, {
+            method: "DELETE",
+        })
 
-            if (!r.ok) {
-                const data = await r.json()
-                toast.error(data.errors)
-                return null
-            }
-
-            setMyDevices(myDevices.filter(d => d.id !== dID))
-            toast.success("Delete successful")
-        } catch (e) {
-            console.error(e)
+        if (!response.ok) {
+            const data = await response.json()
+            toast.error(data.errors)
+            return
         }
+
+        setMyDevices(myDevices.filter(d => d.id !== dID))
+        toast.success("Delete successful")
     }
 
     return (
@@ -136,7 +120,7 @@ export default function DeviceList({t, devices}) {
                                     </button>
                                     <button
                                         type="submit"
-                                        onClick={(e) => deleteDevice(e, d.id)}
+                                        onClick={() => deleteDevice(d.id)}
                                         className="flex items-center cursor-pointer h-full p-2 bg-zinc-800 hover:bg-red-400 hover:text-zinc-900 duration-100"
                                     >
                                         <Delete fontSize="small" />

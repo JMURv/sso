@@ -1,12 +1,10 @@
 "use client"
 import {
-    Add,
-    Check, Delete,
+    Check,
     KeyboardArrowDown,
 } from "@mui/icons-material"
 import {useState} from "react"
 import {toast} from "sonner"
-import PermModal from "../../../components/modals/PermModal"
 
 export default function Edit({t, srvOBJ, close, successCallback}) {
     const [obj, setOBJ] = useState(srvOBJ)

@@ -3,14 +3,15 @@ import {Fingerprint} from "@mui/icons-material"
 import {toast} from "sonner"
 import {base64UrlToArrayBuffer} from "../../lib/auth/wa"
 import {useRouter} from "next/navigation"
+import {useAuth} from "../../providers/AuthProvider"
 
-export default function WAModal({t, isWA, setIsWA}) {
+export default function WAModal({isWA, setIsWA}) {
     const router = useRouter()
+    const {authFetch} = useAuth()
 
     const handleWebAuthnStartReg = async () => {
-        const r = await fetch("/api/auth/webauthn/register/start", {
+        const r = await authFetch("/api/auth/webauthn/register/start", {
             method: "POST",
-            headers: {"Authorization": `Bearer ${t}`},
         })
 
         if (!r.ok) {
@@ -37,14 +38,11 @@ export default function WAModal({t, isWA, setIsWA}) {
             return
         }
 
-        const fin = await fetch("/api/auth/webauthn/register/finish", {
+        const fin = await authFetch("/api/auth/webauthn/register/start", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${t}`,
-            },
+            headers: {"Content-Type": "application/json"},
             body: JSON.stringify(credential),
-        });
+        })
 
         if (!fin.ok) {
             const data = await fin.json()
@@ -54,7 +52,7 @@ export default function WAModal({t, isWA, setIsWA}) {
 
         setIsWA(false)
         toast.success("success")
-        router.refresh()
+        await router.refresh()
     }
 
     return (

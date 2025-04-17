@@ -1,27 +1,22 @@
 "use client";
 import {useState} from "react";
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
-import {Email, Fingerprint, GitHub, Google, Key, KeyboardArrowRight, Login, Person} from "@mui/icons-material"
+import {Key, KeyboardArrowRight, Person} from "@mui/icons-material"
 import {toast} from "sonner"
 import {useRouter} from "next/navigation"
 
 export default function Page() {
     const router = useRouter()
+    const [fd, setFD] = useState({
+        name: "",
+        email: "",
+        password: "",
+    })
 
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const handleNameChange = (event) => {
-        setName(event.target.value);
-    };
-
-    const handleEmailChange = (event) => {
-        setEmail(event.target.value);
-    };
-
-    const handlePasswordChange = (event) => {
-        setPassword(event.target.value);
-    };
+    const handleFDChange = (event) => {
+        const { name, value } = event.target
+        setFD((prev) => ({ ...prev, [name]: value }))
+    }
 
     const handleReg = async () => {
         const r = await fetch("/api/users", {
@@ -29,9 +24,9 @@ export default function Page() {
             headers: {"Content-Type": "application/json"},
             cache: "no-store",
             body: JSON.stringify({
-                name: name,
-                email: email,
-                password: password,
+                name: fd.name,
+                email: fd.email,
+                password: fd.password,
             })
 
         })
@@ -41,7 +36,7 @@ export default function Page() {
             return toast.error(data.error)
         }
 
-        router.push("/")
+        await router.push("/")
     }
 
     return (
@@ -63,7 +58,7 @@ export default function Page() {
                                 name={"name"}
                                 value={name}
                                 placeholder={"johndoe"}
-                                onChange={handleNameChange}
+                                onChange={handleFDChange}
                                 className={`icon-input`}
                             />
                         </div>
@@ -77,7 +72,7 @@ export default function Page() {
                                 name={"email"}
                                 value={email}
                                 placeholder={"johndoe@gmail.com"}
-                                onChange={handleEmailChange}
+                                onChange={handleFDChange}
                                 className={`icon-input`}
                             />
                         </div>
@@ -91,7 +86,7 @@ export default function Page() {
                                 name={"password"}
                                 value={password}
                                 placeholder={"*********"}
-                                onChange={handlePasswordChange}
+                                onChange={handleFDChange}
                                 className={`icon-input`}
                             />
                         </div>
@@ -110,5 +105,5 @@ export default function Page() {
                 </div>
             </div>
         </div>
-    );
+    )
 }

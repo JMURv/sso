@@ -3,8 +3,8 @@ import "./globals.css";
 import {Toaster} from "sonner"
 import { ReCaptchaProvider } from "next-recaptcha-v3";
 import Header from "../components/base/Header"
-import {getSessionToken} from "../lib/auth/token"
-import GetMe from "../lib/fetches/users/me"
+import {getRefreshToken, getSessionToken} from "../lib/auth/token"
+import {AuthProvider} from "../providers/AuthProvider"
 
 const Mont = Montserrat({
     variable: "--font-montserrat",
@@ -17,25 +17,23 @@ export const metadata = {
 };
 
 export default async function RootLayout({children}) {
-    const t = await getSessionToken()
-    let isAdmin = false
-    if (t) {
-        const [me] = await Promise.all([GetMe(t)])
-        isAdmin = me.roles.some(role => role.name === "admin")
-    }
+    const access = await getSessionToken()
+    const refresh = await getRefreshToken()
 
     return (
         <html lang="en">
             <body className={`${Mont.variable} ${Mont.className} antialiased overflow-x-hidden`}>
                 <Toaster theme={"dark"}/>
-                <ReCaptchaProvider>
-                    <Header t={t} isAdmin={isAdmin}/>
-                    <div className={`-z-50 fixed`}>
-                        <div className={`absolute bg-zinc-950/40 w-screen h-screen`}/>
-                        <video loop muted autoPlay src={`/bg/vids/main3.mp4`} className={`object-cover w-screen h-screen`} />
-                    </div>
-                    {children}
-                </ReCaptchaProvider>
+                <AuthProvider accessSrv={access} refreshSrv={refresh}>
+                    <ReCaptchaProvider>
+                        <Header/>
+                        <div className={`-z-50 fixed`}>
+                            <div className={`absolute bg-zinc-950/40 w-screen h-screen`}/>
+                            <video loop muted autoPlay src={`/bg/vids/main3.mp4`} className={`object-cover w-screen h-screen`} />
+                        </div>
+                        {children}
+                    </ReCaptchaProvider>
+                </AuthProvider>
             </body>
         </html>
     );

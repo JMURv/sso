@@ -1,24 +1,16 @@
 "use client"
 import RolesModal from "../../../components/modals/RolesModal"
-import {Add, Check, Close, Delete, KeyboardArrowDown, KeyboardArrowLeft, WbSunny} from "@mui/icons-material"
+import {Add, Check, Close, Delete, KeyboardArrowDown, WbSunny} from "@mui/icons-material"
 import AlternateEmailIcon from "@mui/icons-material/AlternateEmail"
 import Image from "next/image"
 import {useState} from "react"
 import {toast} from "sonner"
-
-const DefaultUserImage = "/defaults/user.png"
-const userBlueprint = {
-    name: "",
-    email: "",
-    password: "",
-    avatar: DefaultUserImage,
-    is_active: false,
-    is_email_verified: false,
-    roles: [],
-}
+import {DefaultUserImage} from "../../config"
+import {useAuth} from "../../../providers/AuthProvider"
 
 
-export default function UserNew({t, close, successCallback}) {
+export default function UserNew({close, successCallback}) {
+    const {authFetch} = useAuth()
     const [addRoleModal, setAddRoleModal] = useState(false)
     const [avatarFile, setAvatarFile] = useState(null)
     const [avatarPreview, setAvatarPreview] = useState(DefaultUserImage)
@@ -65,39 +57,32 @@ export default function UserNew({t, close, successCallback}) {
     }
 
     const createUser = async () => {
-        try {
-            const fd = new FormData()
-            fd.append("avatar", avatarFile)
-            fd.append("data", JSON.stringify({
-                name: user.name,
-                email: user.email,
-                password: user.password,
-                is_active: user.is_active === "true",
-                is_email: user.is_email === "true",
-                roles: user.roles.map(r => r.id),
-            }))
+        const fd = new FormData()
+        fd.append("avatar", avatarFile)
+        fd.append("data", JSON.stringify({
+            name: user.name,
+            email: user.email,
+            password: user.password,
+            is_active: user.is_active === "true",
+            is_email: user.is_email === "true",
+            roles: user.roles.map(r => r.id),
+        }))
 
+        const response = await authFetch("/api/users/", {
+            method: "POST",
+            body: fd,
+        })
 
-            const r = await fetch(`/api/users`, {
-                method: "POST",
-                headers: {"Authorization": `Bearer ${t}`},
-                body: fd,
-            })
-
-            if (!r.ok) {
-                const data = await r.json()
-                toast.error(data.errors)
-                return
-            }
-
+        if (!response.ok) {
             const data = await r.json()
-            user.id = data.id
-            successCallback(user)
-            toast.success("Create successful")
-        } catch (e) {
-            console.error(e)
-            toast.error("Something went wrong")
+            toast.error(data.errors)
+            return
         }
+
+        const data = await response.json()
+        user.id = data.id
+        successCallback(user)
+        toast.success("Create successful")
     }
 
     const handleFileUpload = (e) => {

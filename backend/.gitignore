@@ -1,8 +1,13 @@
+# common
 *~
 *.out
 .idea
 !.gitkeep
 
+# build
+bin/*
+
+# configs
 .env*
 !.env.example
 !.env.test
@@ -14,4 +19,6 @@
 !test.config.yml
 !test.config.yaml
 
-bin/*
+# observe
+!loki-config.yaml
+!promtail-config.yaml

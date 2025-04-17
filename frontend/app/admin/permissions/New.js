@@ -3,12 +3,6 @@ import {Check, KeyboardArrowDown} from "@mui/icons-material"
 import {useState} from "react"
 import {toast} from "sonner"
 
-const permissionBlueprint = {
-    name: "",
-    description: "",
-}
-
-
 export default function New({t, close, successCallback}) {
     const [obj, setObj] = useState({
         name: "",

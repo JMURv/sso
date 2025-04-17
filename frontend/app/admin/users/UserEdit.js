@@ -5,7 +5,6 @@ import {
     Close,
     Delete,
     Fingerprint, KeyboardArrowDown,
-    KeyboardArrowLeft,
     WbSunny,
 } from "@mui/icons-material"
 import AlternateEmailIcon from "@mui/icons-material/AlternateEmail"
@@ -15,10 +14,12 @@ import {toast} from "sonner"
 import RolesModal from "../../../components/modals/RolesModal"
 import Oauth2Conns from "../../../components/oauth2/Oauth2Conns"
 import DeviceList from "../../../components/ui/DeviceList"
+import {useAuth} from "../../../providers/AuthProvider"
 
 const DefaultUserImage = "/defaults/user.png"
 
-export default function UserEdit({t, usr, close, successCallback}) {
+export default function UserEdit({usr, close, successCallback}) {
+    const {authFetch} = useAuth()
     const [user, setUser] = useState(usr)
     const [avatarFile, setAvatarFile] = useState(null)
     const [avatarPreview, setAvatarPreview] = useState(usr.avatar)
@@ -60,36 +61,30 @@ export default function UserEdit({t, usr, close, successCallback}) {
     }
 
     const updateUser = async () => {
-        try {
-            const fd = new FormData()
-            fd.append("avatar", avatarFile)
-            fd.append("data", JSON.stringify({
-                name: user.name,
-                email: user.email,
-                password: user.password,
-                is_active: user.is_active === "true",
-                is_email: user.is_email === "true",
-                roles: user.roles.map(r => r.id),
-            }))
+        const fd = new FormData()
+        fd.append("avatar", avatarFile)
+        fd.append("data", JSON.stringify({
+            name: user.name,
+            email: user.email,
+            password: user.password,
+            is_active: user.is_active === "true",
+            is_email: user.is_email === "true",
+            roles: user.roles.map(r => r.id),
+        }))
 
-            const r = await fetch(`/api/users/${usr.id}`, {
-                method: "PUT",
-                headers: {"Authorization": `Bearer ${t}`},
-                body: fd,
-            })
+        const response = await authFetch(`/api/users/${usr.id}`, {
+            method: "PUT",
+            body: fd,
+        })
 
-            if (!r.ok) {
-                const data = await r.json()
-                toast.error(data.errors)
-                return
-            }
-
-            successCallback(user)
-            toast.success("Update successful")
-        } catch (e) {
-            console.error(e)
-            toast.error("Something went wrong")
+        if (!response.ok) {
+            const data = await response.json()
+            toast.error(data.errors)
+            return
         }
+
+        successCallback(user)
+        toast.success("Update successful")
     }
 
     const handleFileUpload = (e) => {
@@ -228,7 +223,7 @@ export default function UserEdit({t, usr, close, successCallback}) {
 
                         <div className={`mb-5 flex flex-col gap-3`}>
                             <h2>My devices</h2>
-                            <DeviceList t={t} devices={usr.devices} />
+                            <DeviceList devices={usr.devices} />
                         </div>
 
                         <div className={`flex flex-col gap-3`}>

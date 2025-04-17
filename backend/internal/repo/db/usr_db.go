@@ -384,23 +384,25 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 		return repo.ErrNotFound
 	}
 
-	if _, err = tx.ExecContext(ctx, userRemoveRoleQ, id); err != nil {
-		zap.L().Error(
-			"failed to remove user roles",
-			zap.String("op", op),
-			zap.Error(err),
-		)
-		return err
-	}
-
-	for i := 0; i < len(req.Roles); i++ {
-		if _, err = tx.ExecContext(ctx, userAddRoleQ, id, req.Roles[i]); err != nil {
+	if len(req.Roles) > 0 {
+		if _, err = tx.ExecContext(ctx, userRemoveRoleQ, id); err != nil {
 			zap.L().Error(
-				"failed to add role to user",
+				"failed to remove user roles",
 				zap.String("op", op),
 				zap.Error(err),
 			)
 			return err
+		}
+
+		for i := 0; i < len(req.Roles); i++ {
+			if _, err = tx.ExecContext(ctx, userAddRoleQ, id, req.Roles[i]); err != nil {
+				zap.L().Error(
+					"failed to add role to user",
+					zap.String("op", op),
+					zap.Error(err),
+				)
+				return err
+			}
 		}
 	}
 

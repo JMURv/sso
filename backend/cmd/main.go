@@ -66,6 +66,10 @@ func main() {
 		zap.L().Warn("Error closing handler", zap.Error(err))
 	}
 
+	if err := hg.Close(); err != nil {
+		zap.L().Warn("Error closing grpc handler", zap.Error(err))
+	}
+
 	if err := cache.Close(); err != nil {
 		zap.L().Warn("Failed to close connection to cache: ", zap.Error(err))
 	}

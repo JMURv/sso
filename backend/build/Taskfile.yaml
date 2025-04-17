@@ -6,11 +6,6 @@ vars:
   TEST_ENV_FILE: "compose/env/.env.test"
 
 tasks:
-  dc-local:
-    desc: Run dev compose
-    cmds:
-      - "docker compose --env-file {{.DEV_ENV_FILE}} -f compose/dc.local.yaml up"
-
   dc-dev:
     desc: Run dev compose
     cmds:
@@ -29,12 +24,12 @@ tasks:
   dc-prod:
     desc: Run prod compose
     cmds:
-      - "docker compose --env-file {{.PROD_ENV_FILE}} -f compose/dc.prod.yaml up"
+      - "docker compose --env-file {{.PROD_ENV_FILE}} -f compose/dc.dev.yaml up"
 
   dc-prod-down:
     desc: Shutdown prod compose
     cmds:
-      - "docker compose -f compose/dc.prod.yaml down"
+      - "docker compose -f compose/dc.dev.yaml down"
 
   dc-observe:
     desc: Run metrics compose

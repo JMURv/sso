@@ -4,12 +4,6 @@ import {useState} from "react"
 import {toast} from "sonner"
 import PermModal from "../../../components/modals/PermModal"
 
-const roleBlueprint = {
-    name: "",
-    description: "",
-}
-
-
 export default function New({t, close, successCallback}) {
     const [addPermModal, setAddPermModal] = useState(false)
     const [role, setRole] = useState({

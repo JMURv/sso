@@ -1,10 +1,11 @@
 "use client"
 import Link from "next/link"
 import {usePathname} from "next/navigation"
-import {Menu} from "@mui/icons-material"
+import {useAuth} from "../../providers/AuthProvider"
 
-export default function Header({t, isAdmin}) {
+export default function Header() {
     const pathname = usePathname()
+    const {isAdmin} = useAuth()
     return (
         <header>
             <nav className={`${pathname === "/auth" ? "hidden": "hidden md:block"}`}>

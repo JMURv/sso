@@ -14,12 +14,12 @@ import (
 )
 
 func (h *Handler) RegisterRoleRoutes() {
-	h.router.Get("/api/roles", h.listRoles)
-	h.router.With(mid.Auth(h.au)).Post("/api/roles", h.createRole)
+	h.router.Get("/roles", h.listRoles)
+	h.router.With(mid.Auth(h.au)).Post("/roles", h.createRole)
 
-	h.router.Get("/api/roles/{id}", h.getRole)
-	h.router.With(mid.Auth(h.au)).Put("/api/roles/{id}", h.updateRole)
-	h.router.With(mid.Auth(h.au)).Delete("/api/roles/{id}", h.deleteRole)
+	h.router.Get("/roles/{id}", h.getRole)
+	h.router.With(mid.Auth(h.au)).Put("/roles/{id}", h.updateRole)
+	h.router.With(mid.Auth(h.au)).Delete("/roles/{id}", h.deleteRole)
 }
 
 func (h *Handler) listRoles(w http.ResponseWriter, r *http.Request) {

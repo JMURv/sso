@@ -12,9 +12,8 @@ import (
 )
 
 type S3 struct {
-	cli       *minio.Client
-	bucket    string
-	publicURL string
+	cli    *minio.Client
+	bucket string
 }
 
 func New(conf config.Config) *S3 {
@@ -62,9 +61,8 @@ func New(conf config.Config) *S3 {
 
 	zap.L().Info("MinIO connection established", zap.String("addr", conf.Minio.Addr))
 	return &S3{
-		cli:       client,
-		bucket:    conf.Minio.Bucket,
-		publicURL: conf.Minio.PublicAddr,
+		cli:    client,
+		bucket: conf.Minio.Bucket,
 	}
 }
 
@@ -88,5 +86,5 @@ func (s *S3) UploadFile(ctx context.Context, req *UploadFileRequest) (string, er
 		return "", ErrFailedToUploadFile
 	}
 
-	return fmt.Sprintf("%s/%s/%s", s.publicURL, s.bucket, uniqueName), nil
+	return fmt.Sprintf("s3/%s/%s", s.bucket, uniqueName), nil
 }

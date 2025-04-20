@@ -6,6 +6,7 @@
 
 # build
 bin/*
+!bin/.gitkeep
 
 # configs
 .env*

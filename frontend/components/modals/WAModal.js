@@ -31,14 +31,14 @@ export default function WAModal({isWA, setIsWA}) {
                         id: base64UrlToArrayBuffer(options.publicKey.user.id),
                     },
                 },
-            });
+            })
         } catch (err) {
             console.error(err)
             toast.error("Authentication failed")
             return
         }
 
-        const fin = await authFetch("/api/auth/webauthn/register/start", {
+        const fin = await authFetch("/api/auth/webauthn/register/finish", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(credential),

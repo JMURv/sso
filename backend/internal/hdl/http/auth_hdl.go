@@ -15,14 +15,14 @@ import (
 )
 
 func (h *Handler) RegisterAuthRoutes() {
-	h.router.With(mid.Device).Post("/api/auth/jwt", h.authenticate)
-	h.router.Post("/api/auth/jwt/parse", h.parseClaims)
-	h.router.With(mid.Device).Post("/api/auth/jwt/refresh", h.refresh)
-	h.router.With(mid.Device).Post("/api/auth/email/send", h.sendLoginCode)
-	h.router.With(mid.Device).Post("/api/auth/email/check", h.checkLoginCode)
-	h.router.Post("/api/auth/recovery/send", h.sendForgotPasswordEmail)
-	h.router.Post("/api/auth/recovery/check", h.checkForgotPasswordEmail)
-	h.router.With(mid.Auth(h.au)).Post("/api/auth/logout", h.logout)
+	h.router.With(mid.Device).Post("/auth/jwt", h.authenticate)
+	h.router.Post("/auth/jwt/parse", h.parseClaims)
+	h.router.With(mid.Device).Post("/auth/jwt/refresh", h.refresh)
+	h.router.With(mid.Device).Post("/auth/email/send", h.sendLoginCode)
+	h.router.With(mid.Device).Post("/auth/email/check", h.checkLoginCode)
+	h.router.Post("/auth/recovery/send", h.sendForgotPasswordEmail)
+	h.router.Post("/auth/recovery/check", h.checkForgotPasswordEmail)
+	h.router.With(mid.Auth(h.au)).Post("/auth/logout", h.logout)
 }
 
 func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {

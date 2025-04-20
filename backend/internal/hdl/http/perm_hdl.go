@@ -14,12 +14,12 @@ import (
 )
 
 func (h *Handler) RegisterPermRoutes() {
-	h.router.Get("/api/perm", h.listPerms)
-	h.router.Post("/api/perm", h.createPerm)
+	h.router.Get("/perm", h.listPerms)
+	h.router.Post("/perm", h.createPerm)
 
-	h.router.Get("/api/perm/{id}", h.getPerm)
-	h.router.With(mid.Auth(h.au)).Put("/api/perm/{id}", h.updatePerm)
-	h.router.With(mid.Auth(h.au)).Delete("/api/perm/{id}", h.deletePerm)
+	h.router.Get("/perm/{id}", h.getPerm)
+	h.router.With(mid.Auth(h.au)).Put("/perm/{id}", h.updatePerm)
+	h.router.With(mid.Auth(h.au)).Delete("/perm/{id}", h.deletePerm)
 }
 
 func (h *Handler) listPerms(w http.ResponseWriter, r *http.Request) {

@@ -14,10 +14,10 @@ import (
 )
 
 func (h *Handler) RegisterDeviceRoutes() {
-	h.router.With(mid.Auth(h.au)).Get("/api/device", h.listDevices)
-	h.router.With(mid.Auth(h.au)).Get("/api/device/{id}", h.getDevice)
-	h.router.With(mid.Auth(h.au), mid.CheckRights(h.ctrl)).Put("/api/device/{id}", h.updateDevice)
-	h.router.With(mid.Auth(h.au), mid.CheckRights(h.ctrl)).Delete("/api/device/{id}", h.deleteDevice)
+	h.router.With(mid.Auth(h.au)).Get("/device", h.listDevices)
+	h.router.With(mid.Auth(h.au)).Get("/device/{id}", h.getDevice)
+	h.router.With(mid.Auth(h.au), mid.CheckRights(h.ctrl)).Put("/device/{id}", h.updateDevice)
+	h.router.With(mid.Auth(h.au), mid.CheckRights(h.ctrl)).Delete("/device/{id}", h.deleteDevice)
 }
 
 func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {

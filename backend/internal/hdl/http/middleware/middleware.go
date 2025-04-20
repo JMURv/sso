@@ -130,6 +130,8 @@ func Device(next http.Handler) http.Handler {
 			if ua == "" {
 				utils.ErrResponse(w, http.StatusForbidden, ErrUAIsIncorrect)
 			}
+
+			zap.L().Debug("device info", zap.String("ip", ip), zap.String("ua", ua))
 			ctx := context.WithValue(r.Context(), "ip", ip)
 			ctx = context.WithValue(ctx, "ua", ua)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -156,14 +158,34 @@ func Prometheus(next http.Handler) http.Handler {
 		func(w http.ResponseWriter, r *http.Request) {
 			s := time.Now()
 			op := fmt.Sprintf("%s %s", r.Method, r.RequestURI)
-			span, ctx := opentracing.StartSpanFromContext(r.Context(), op)
-			defer span.Finish()
 
 			lrw := NewLoggingResponseWriter(w)
-			next.ServeHTTP(lrw, r.WithContext(ctx))
+			next.ServeHTTP(lrw, r)
 			metrics.ObserveRequest(time.Since(s), lrw.statusCode, op)
 		},
 	)
+}
+
+func Logger(logger *zap.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				start := time.Now()
+				lrw := NewLoggingResponseWriter(w)
+
+				next.ServeHTTP(lrw, r)
+
+				logger.Info(
+					"HTTP request",
+					zap.String("method", r.Method),
+					zap.String("path", r.URL.Path),
+					zap.Int("status", lrw.statusCode),
+					zap.Duration("duration", time.Since(start)),
+					zap.String("remote", r.RemoteAddr),
+				)
+			},
+		)
+	}
 }
 
 func OT(next http.Handler) http.Handler {

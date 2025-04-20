@@ -32,10 +32,11 @@ func New(ctrl ctrl.AppCtrl, au auth.Core) *Handler {
 
 func (h *Handler) Start(port int) {
 	h.router.Use(
+		mid.Logger(zap.L()),
+		middleware.StripSlashes,
 		middleware.RequestID,
 		middleware.RealIP,
 		middleware.Recoverer,
-		middleware.Logger,
 		mid.Prometheus,
 		mid.OT,
 	)

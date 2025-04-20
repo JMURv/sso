@@ -1,0 +1,32 @@
+{
+  admin :2019
+  metrics
+}
+
+
+:80 {
+  encode gzip
+
+  handle /metrics {
+      metrics
+  }
+
+  handle_path /api/* {
+    uri strip_prefix /api
+    reverse_proxy backend:{env.BACKEND_PORT} {
+        header_up Host {http.request.remote.host}
+        header_up X-Real-IP {http.request.remote.host}
+        header_up X-Forwarded-For "{http.request.header.X-Forwarded-For}, {http.request.remote.host}"
+        header_up User-Agent {http.request.header.User-Agent}
+    }
+  }
+
+  handle_path /s3/* {
+    uri strip_prefix /s3
+    reverse_proxy minio:9000
+  }
+
+  handle {
+    reverse_proxy frontend:{env.FRONTEND_PORT}
+  }
+}

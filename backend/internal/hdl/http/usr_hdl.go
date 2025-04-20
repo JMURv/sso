@@ -17,15 +17,13 @@ import (
 )
 
 func (h *Handler) RegisterUserRoutes() {
-	h.router.Post("/api/users/exists", h.existsUser)
-	h.router.With(mid.Auth(h.au)).Get("/api/users/me", h.getMe)
-
-	h.router.Get("/api/users", h.listUsers)
-	h.router.Post("/api/users", h.createUser)
-
-	h.router.Get("/api/users/{id}", h.getUser)
-	h.router.With(mid.Auth(h.au)).Put("/api/users/{id}", h.updateUser)
-	h.router.With(mid.Auth(h.au)).Delete("/api/users/{id}", h.deleteUser)
+	h.router.Post("/users/exists", h.existsUser)
+	h.router.With(mid.Auth(h.au)).Get("/users/me", h.getMe)
+	h.router.Get("/users", h.listUsers)
+	h.router.Post("/users", h.createUser)
+	h.router.Get("/users/{id}", h.getUser)
+	h.router.With(mid.Auth(h.au)).Put("/users/{id}", h.updateUser)
+	h.router.With(mid.Auth(h.au)).Delete("/users/{id}", h.deleteUser)
 }
 
 func (h *Handler) existsUser(w http.ResponseWriter, r *http.Request) {

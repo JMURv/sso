@@ -14,10 +14,10 @@ import (
 )
 
 func (h *Handler) RegisterWebAuthnRoutes() {
-	h.router.With(mid.Auth(h.au)).Post("/api/auth/webauthn/register/start", h.registrationStart)
-	h.router.With(mid.Auth(h.au)).Post("/api/auth/webauthn/register/finish", h.registrationFinish)
-	h.router.Post("/api/auth/webauthn/login/start", h.loginStart)
-	h.router.With(mid.Device).Post("/api/auth/webauthn/login/finish", h.loginFinish)
+	h.router.With(mid.Auth(h.au)).Post("/auth/webauthn/register/start", h.registrationStart)
+	h.router.With(mid.Auth(h.au)).Post("/auth/webauthn/register/finish", h.registrationFinish)
+	h.router.Post("/auth/webauthn/login/start", h.loginStart)
+	h.router.With(mid.Device).Post("/auth/webauthn/login/finish", h.loginFinish)
 }
 
 func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {

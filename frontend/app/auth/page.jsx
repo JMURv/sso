@@ -41,7 +41,6 @@ export default function Page() {
             headers: {
                 "Content-Type": "application/json",
                 "User-Agent": navigator.userAgent,
-                "X-Forwarded-For": "123.123.123.123",
             },
             cache: "no-store",
             body: JSON.stringify({
@@ -71,7 +70,6 @@ export default function Page() {
             headers: {
                 "Content-Type": "application/json",
                 "User-Agent": navigator.userAgent,
-                "X-Forwarded-For": "123.123.123.123",
             },
             cache: "no-store",
             body: JSON.stringify({
@@ -101,7 +99,6 @@ export default function Page() {
             headers: {
                 "Content-Type": "application/json",
                 "User-Agent": navigator.userAgent,
-                "X-Forwarded-For": "123.123.123.123",
             },
             body: JSON.stringify({
                 email: email,
@@ -123,7 +120,6 @@ export default function Page() {
             headers: {
                 "Content-Type": "application/json",
                 "User-Agent": navigator.userAgent,
-                "X-Forwarded-For": "123.123.123.123",
             },
             body: JSON.stringify({
                 email: email,
@@ -162,7 +158,6 @@ export default function Page() {
             headers: {
                 "Content-Type": "application/json",
                 "User-Agent": navigator.userAgent,
-                "X-Forwarded-For": "123.123.123.123",
                 "X-User-Email": email
             },
             body: JSON.stringify(assertion),
@@ -189,7 +184,6 @@ export default function Page() {
                         headers: {
                             'Content-Type': 'application/json',
                             "User-Agent": navigator.userAgent,
-                            "X-Forwarded-For": "123.123.123.123",
                         },
                         body: JSON.stringify({
                             email: email,

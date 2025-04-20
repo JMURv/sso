@@ -21,7 +21,8 @@ export const AuthProvider = ({accessSrv, refreshSrv, children}) => {
         const opts = { ...options }
         opts.headers = {
             ...opts.headers,
-            Authorization: `Bearer ${access}`
+            Authorization: `Bearer ${access}`,
+            headers: {"User-Agent": navigator.userAgent},
         }
 
         let response = await fetch(url, opts)
@@ -34,7 +35,8 @@ export const AuthProvider = ({accessSrv, refreshSrv, children}) => {
             const retryOpts = { ...options }
             retryOpts.headers = {
                 ...retryOpts.headers,
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${token}`,
+                headers: {"User-Agent": navigator.userAgent},
             }
             response = await fetch(url, retryOpts)
             return response
@@ -48,7 +50,6 @@ export const AuthProvider = ({accessSrv, refreshSrv, children}) => {
                 headers: {
                     "Content-Type": "application/json",
                     "User-Agent": navigator.userAgent,
-                    "X-Forwarded-For": "123.123.123.123"
                 },
                 body: JSON.stringify({ refresh: refresh }),
             })

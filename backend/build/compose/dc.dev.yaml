@@ -9,7 +9,7 @@ services:
 
   db:
     container_name: db
-    image: postgres:15.0-alpine
+    image: postgres:17.4-alpine
     restart: always
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
@@ -18,7 +18,7 @@ services:
       - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_PORT=${POSTGRES_PORT}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     healthcheck:
       test: 'psql -w -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost -c "SELECT 1"'
       interval: 5s
@@ -55,7 +55,7 @@ services:
       context: ../../
       dockerfile: build/docker/Dockerfile
     volumes:
-      - ../../configs/dev.config.yaml:/configs/local.config.yaml
+      - ../../configs/dev.config.yaml:/configs/config.yaml
     ports:
       - "${APP_PORT}:${APP_PORT}"
       - "${APP_METRICS_PORT}:${APP_METRICS_PORT}"

@@ -9,8 +9,8 @@ import (
 )
 
 func (h *Handler) RegisterOIDCRoutes() {
-	h.router.Get("/api/auth/oidc/{provider}/start", h.startOIDC)
-	h.router.With(mid.Device).Get("/api/auth/oidc/{provider}/callback", h.handleOIDCCallback)
+	h.router.Get("/auth/oidc/{provider}/start", h.startOIDC)
+	h.router.With(mid.Device).Get("/auth/oidc/{provider}/callback", h.handleOIDCCallback)
 }
 
 func (h *Handler) startOIDC(w http.ResponseWriter, r *http.Request) {

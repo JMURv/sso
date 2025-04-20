@@ -126,8 +126,7 @@ func (a *Auth) ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
 		zap.L().Error(
 			"Failed to parse claims",
 			zap.String("op", op),
-			zap.String("token", tokenStr),
-			zap.String("alg", token.Method.Alg()),
+			zap.Any("token", tokenStr),
 			zap.Error(err),
 		)
 		return claims, err

@@ -19,7 +19,7 @@ import (
 	"syscall"
 )
 
-const configPath = "configs/local.config.yaml"
+const configPath = "configs/config.yaml"
 
 func mustRegisterLogger(mode string) {
 	switch mode {

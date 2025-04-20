@@ -11,8 +11,8 @@ import (
 )
 
 func (h *Handler) RegisterOAuth2Routes() {
-	h.router.Get("/api/auth/oauth2/{provider}/start", h.startOAuth2)
-	h.router.With(mid.Device).Get("/api/auth/oauth2/{provider}/callback", h.handleOAuth2Callback)
+	h.router.Get("/auth/oauth2/{provider}/start", h.startOAuth2)
+	h.router.With(mid.Device).Get("/auth/oauth2/{provider}/callback", h.handleOAuth2Callback)
 }
 
 func (h *Handler) startOAuth2(w http.ResponseWriter, r *http.Request) {

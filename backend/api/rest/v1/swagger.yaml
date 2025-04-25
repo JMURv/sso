@@ -1,0 +1,1199 @@
+definitions:
+  github_com_JMURv_sso_internal_auth.Claims:
+    properties:
+      aud:
+        description: the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
+        items:
+          type: string
+        type: array
+      exp:
+        allOf:
+        - $ref: '#/definitions/jwt.NumericDate'
+        description: the `exp` (Expiration Time) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4
+      iat:
+        allOf:
+        - $ref: '#/definitions/jwt.NumericDate'
+        description: the `iat` (Issued At) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.6
+      iss:
+        description: the `iss` (Issuer) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1
+        type: string
+      jti:
+        description: the `jti` (JWT ID) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.7
+        type: string
+      nbf:
+        allOf:
+        - $ref: '#/definitions/jwt.NumericDate'
+        description: the `nbf` (Not Before) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.5
+      roles:
+        items:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_models.Role'
+        type: array
+      sub:
+        description: the `sub` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2
+        type: string
+      uid:
+        type: string
+    type: object
+  github_com_JMURv_sso_internal_dto.CheckForgotPasswordEmailRequest:
+    properties:
+      password:
+        type: string
+      token:
+        type: integer
+      uidb64:
+        type: string
+    required:
+    - password
+    - token
+    - uidb64
+    type: object
+  github_com_JMURv_sso_internal_dto.CheckLoginCodeRequest:
+    properties:
+      code:
+        type: integer
+      email:
+        type: string
+    required:
+    - code
+    - email
+    type: object
+  github_com_JMURv_sso_internal_dto.CreatePermissionRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_JMURv_sso_internal_dto.CreateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          type: integer
+        type: array
+    required:
+    - name
+    type: object
+  github_com_JMURv_sso_internal_dto.EmailAndPasswordRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      token:
+        type: string
+    required:
+    - email
+    - password
+    - token
+    type: object
+  github_com_JMURv_sso_internal_dto.LoginCodeRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      token:
+        type: string
+    required:
+    - email
+    - password
+    - token
+    type: object
+  github_com_JMURv_sso_internal_dto.PaginatedPermissionResponse:
+    properties:
+      count:
+        type: integer
+      current_page:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_models.Permission'
+        type: array
+      has_next_page:
+        type: boolean
+      total_pages:
+        type: integer
+    type: object
+  github_com_JMURv_sso_internal_dto.PaginatedRoleResponse:
+    properties:
+      count:
+        type: integer
+      current_page:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_models.Role'
+        type: array
+      has_next_page:
+        type: boolean
+      total_pages:
+        type: integer
+    type: object
+  github_com_JMURv_sso_internal_dto.RefreshRequest:
+    properties:
+      refresh:
+        type: string
+    required:
+    - refresh
+    type: object
+  github_com_JMURv_sso_internal_dto.SendForgotPasswordEmail:
+    properties:
+      email:
+        type: string
+      token:
+        type: string
+    required:
+    - email
+    - token
+    type: object
+  github_com_JMURv_sso_internal_dto.TokenPair:
+    properties:
+      access:
+        type: string
+      refresh:
+        type: string
+    type: object
+  github_com_JMURv_sso_internal_dto.TokenRequest:
+    properties:
+      token:
+        type: string
+    required:
+    - token
+    type: object
+  github_com_JMURv_sso_internal_dto.UpdateDeviceRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_JMURv_sso_internal_dto.UpdatePermissionRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_JMURv_sso_internal_dto.UpdateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          type: integer
+        type: array
+    required:
+    - name
+    type: object
+  github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse:
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_JMURv_sso_internal_models.Device:
+    properties:
+      browser:
+        type: string
+      created_at:
+        type: string
+      device_type:
+        type: string
+      id:
+        type: string
+      ip:
+        type: string
+      last_active:
+        type: string
+      name:
+        type: string
+      os:
+        type: string
+      ua:
+        type: string
+      user_id:
+        type: string
+    type: object
+  github_com_JMURv_sso_internal_models.Permission:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  github_com_JMURv_sso_internal_models.Role:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_models.Permission'
+        type: array
+    type: object
+  jwt.NumericDate:
+    properties:
+      time.Time:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /auth/email/check:
+    post:
+      consumes:
+      - application/json
+      description: Exchange a valid email code for JWT tokens
+      parameters:
+      - description: Client real IP address
+        in: header
+        name: X-Real-IP
+        required: true
+        type: string
+      - description: Client User-Agent
+        in: header
+        name: User-Agent
+        required: true
+        type: string
+      - description: code, reCAPTCHA token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.CheckLoginCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_dto.TokenPair'
+        "400":
+          description: missing device info or bad payload
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: code not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      security:
+      - device: []
+      summary: Check email login code
+      tags:
+      - EmailAuth
+  /auth/email/send:
+    post:
+      consumes:
+      - application/json
+      description: Verify reCAPTCHA, then send a one-time code to the user’s email.
+        May return tokens if password also valid.
+      parameters:
+      - description: Client real IP address
+        in: header
+        name: X-Real-IP
+        required: true
+        type: string
+      - description: Client User-Agent
+        in: header
+        name: User-Agent
+        required: true
+        type: string
+      - description: email, password, reCAPTCHA token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.LoginCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_dto.TokenPair'
+        "400":
+          description: missing device info or bad payload
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "401":
+          description: invalid credentials or reCAPTCHA
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      security:
+      - device: []
+      summary: Send login code via email
+      tags:
+      - EmailAuth
+  /auth/jwt:
+    post:
+      consumes:
+      - application/json
+      description: Verify reCAPTCHA, then authenticate and set JWT cookies
+      parameters:
+      - description: Client real IP address
+        in: header
+        name: X-Real-IP
+        required: true
+        type: string
+      - description: Client User-Agent
+        in: header
+        name: User-Agent
+        required: true
+        type: string
+      - description: email, password, reCAPTCHA token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.EmailAndPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_dto.TokenPair'
+        "400":
+          description: missing device info or bad payload
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "401":
+          description: invalid credentials or reCAPTCHA
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Authenticate using email & password
+      tags:
+      - Authentication
+  /auth/jwt/parse:
+    post:
+      consumes:
+      - application/json
+      description: Decode a token without requiring device header
+      parameters:
+      - description: jwt token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.TokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_auth.Claims'
+        "404":
+          description: token not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Parse JWT claims
+      tags:
+      - Authentication
+  /auth/jwt/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Validate device header and refresh tokens, reset cookies
+      parameters:
+      - description: Client real IP address
+        in: header
+        name: X-Real-IP
+        required: true
+        type: string
+      - description: Client User-Agent
+        in: header
+        name: User-Agent
+        required: true
+        type: string
+      - description: refresh_token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_dto.TokenPair'
+        "400":
+          description: missing device info or bad payload
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "401":
+          description: token revoked or invalid
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: session not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      security:
+      - device: []
+      summary: Refresh JWT tokens
+      tags:
+      - Authentication
+  /auth/logout:
+    post:
+      description: Revoke refresh token, clear JWT cookies
+      parameters:
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: session not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Logout user
+      tags:
+      - Authentication
+  /auth/oauth2/{provider}/callback:
+    get:
+      consumes:
+      - application/json
+      description: Processes provider callback, exchanges code, sets authentication
+        cookies, and redirects to success URL
+      parameters:
+      - description: OAuth2 provider identifier
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: Authorization code returned by provider
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State parameter for CSRF mitigation
+        in: query
+        name: state
+        required: true
+        type: string
+      - description: Client real IP address
+        in: header
+        name: X-Real-IP
+        required: true
+        type: string
+      - description: Client User-Agent
+        in: header
+        name: User-Agent
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to success URL
+        "400":
+          description: invalid request or missing device info
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: provider not supported or resource not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Handle OAuth2 provider callback
+      tags:
+      - OAuth2
+  /auth/oauth2/{provider}/start:
+    get:
+      consumes:
+      - application/json
+      description: Redirects user to the OAuth2 provider's authorization URL
+      parameters:
+      - description: OAuth2 provider identifier
+        in: path
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to provider auth URL
+        "400":
+          description: invalid provider
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Start OAuth2 authentication flow
+      tags:
+      - OAuth2
+  /auth/oidc/{provider}/callback:
+    get:
+      consumes:
+      - application/json
+      description: Processes provider callback, exchanges code, sets authentication
+        cookies, and redirects to success URL
+      parameters:
+      - description: OIDC provider identifier
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: Authorization code returned by provider
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State parameter for CSRF mitigation
+        in: query
+        name: state
+        type: string
+      - description: Client real IP address
+        in: header
+        name: X-Real-IP
+        required: true
+        type: string
+      - description: Client User-Agent
+        in: header
+        name: User-Agent
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to success URL
+        "400":
+          description: invalid request or missing device info
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: provider not supported or resource not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Handle OIDC provider callback
+      tags:
+      - OIDC
+  /auth/oidc/{provider}/start:
+    get:
+      consumes:
+      - application/json
+      description: Redirects user to the OIDC provider's authorization URL
+      parameters:
+      - description: OIDC provider identifier
+        in: path
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to provider auth URL
+        "400":
+          description: invalid provider
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Start OIDC authentication flow
+      tags:
+      - OIDC
+  /auth/recovery/check:
+    post:
+      consumes:
+      - application/json
+      description: Validate a recovery code
+      parameters:
+      - description: code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.CheckForgotPasswordEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: invalid code
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: code not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Check forgot‐password code
+      tags:
+      - PasswordRecovery
+  /auth/recovery/send:
+    post:
+      consumes:
+      - application/json
+      description: Verify reCAPTCHA and send recovery email
+      parameters:
+      - description: email, reCAPTCHA token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.SendForgotPasswordEmail'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: email not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Send forgot‐password email
+      tags:
+      - PasswordRecovery
+  /device:
+    get:
+      description: Retrieve a list of registered devices for the current user
+      parameters:
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/github_com_JMURv_sso_internal_models.Device'
+              type: array
+            type: array
+        "404":
+          description: no devices found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: List all devices for the authenticated user
+      tags:
+      - Device
+  /device/{id}:
+    delete:
+      description: Remove a device owned by the current user
+      parameters:
+      - description: Device UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid device ID
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: device not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Delete a device
+      tags:
+      - Device
+    get:
+      description: Retrieve details of a device owned by the current user
+      parameters:
+      - description: Device UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_models.Device'
+        "400":
+          description: invalid device ID path parameter
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: device not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Get a specific device by ID
+      tags:
+      - Device
+    put:
+      consumes:
+      - application/json
+      description: Modify properties of a device owned by the current user
+      parameters:
+      - description: Device UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.UpdateDeviceRequest'
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid device ID or payload
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: device not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Update a device
+      tags:
+      - Device
+  /perm:
+    get:
+      description: Retrieve a paginated list of permissions with optional filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_dto.PaginatedPermissionResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: List permissions
+      tags:
+      - Permission
+    post:
+      consumes:
+      - application/json
+      description: Add a new permission to the system
+      parameters:
+      - description: Permission details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.CreatePermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Permission ID
+          schema:
+            type: int
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "409":
+          description: permission already exists
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Create a new permission
+      tags:
+      - Permission
+  /perm/{id}:
+    delete:
+      description: Remove a permission by ID
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid ID
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: permission not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a permission
+      tags:
+      - Permission
+    get:
+      description: Retrieve a specific permission
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_models.Permission'
+        "400":
+          description: invalid ID
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: permission not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Get permission by ID
+      tags:
+      - Permission
+    put:
+      consumes:
+      - application/json
+      description: Modify an existing permission
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated permission data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.UpdatePermissionRequest'
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: permission not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Update a permission
+      tags:
+      - Permission
+  /roles:
+    get:
+      description: Retrieve a paginated list of roles with optional filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_dto.PaginatedRoleResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: List roles
+      tags:
+      - Role
+    post:
+      consumes:
+      - application/json
+      description: Add a new role with associated permissions
+      parameters:
+      - description: Role details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.CreateRoleRequest'
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Role ID
+          schema:
+            type: int
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "409":
+          description: role already exists
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Create a new role
+      tags:
+      - Role
+  /roles/{id}:
+    delete:
+      description: Remove a role by ID
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid ID
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: role not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a role
+      tags:
+      - Role
+    get:
+      description: Retrieve details of a specific role
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_models.Role'
+        "400":
+          description: invalid ID
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: role not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Get role by ID
+      tags:
+      - Role
+    put:
+      consumes:
+      - application/json
+      description: Modify an existing role's name or permissions
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated role data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_JMURv_sso_internal_dto.UpdateRoleRequest'
+      - description: Authorization token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: role not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Update a role
+      tags:
+      - Role
+swagger: "2.0"

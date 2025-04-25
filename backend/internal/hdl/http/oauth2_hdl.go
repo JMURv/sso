@@ -15,6 +15,18 @@ func (h *Handler) RegisterOAuth2Routes() {
 	h.router.With(mid.Device).Get("/auth/oauth2/{provider}/callback", h.handleOAuth2Callback)
 }
 
+// startOAuth2 godoc
+//
+//	@Summary		Start OAuth2 authentication flow
+//	@Description	Redirects user to the OAuth2 provider's authorization URL
+//	@Tags			OAuth2
+//	@Accept			json
+//	@Produce		json
+//	@Param			provider	path		string					true	"OAuth2 provider identifier"
+//	@Success		307			{object}	nil						"Redirect to provider auth URL"
+//	@Failure		400			{object}	utils.ErrorsResponse	"invalid provider"
+//	@Failure		500			{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/auth/oauth2/{provider}/start [get]
 func (h *Handler) startOAuth2(w http.ResponseWriter, r *http.Request) {
 	provider := chi.URLParam(r, "provider")
 	if provider == "" {
@@ -31,6 +43,23 @@ func (h *Handler) startOAuth2(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, res.URL, http.StatusTemporaryRedirect)
 }
 
+// handleOAuth2Callback godoc
+//
+//	@Summary		Handle OAuth2 provider callback
+//	@Description	Processes provider callback, exchanges code, sets authentication cookies, and redirects to success URL
+//	@Tags			OAuth2
+//	@Accept			json
+//	@Produce		json
+//	@Param			provider	path		string					true	"OAuth2 provider identifier"
+//	@Param			code		query		string					true	"Authorization code returned by provider"
+//	@Param			state		query		string					true	"State parameter for CSRF mitigation"
+//	@Param			X-Real-IP	header		string					true	"Client real IP address"
+//	@Param			User-Agent	header		string					true	"Client User-Agent"
+//	@Success		307			{object}	nil						"Redirect to success URL"
+//	@Failure		400			{object}	utils.ErrorsResponse	"invalid request or missing device info"
+//	@Failure		404			{object}	utils.ErrorsResponse	"provider not supported or resource not found"
+//	@Failure		500			{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/auth/oauth2/{provider}/callback [get]
 func (h *Handler) handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	provider := chi.URLParam(r, "provider")
 	if provider == "" {

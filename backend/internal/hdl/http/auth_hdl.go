@@ -25,6 +25,22 @@ func (h *Handler) RegisterAuthRoutes() {
 	h.router.With(mid.Auth(h.au)).Post("/auth/logout", h.logout)
 }
 
+// authenticate godoc
+//
+//	@Summary		Authenticate using email & password
+//	@Description	Verify reCAPTCHA, then authenticate and set JWT cookies
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			X-Real-IP	header		string						true	"Client real IP address"
+//	@Param			User-Agent	header		string						true	"Client User-Agent"
+//	@Param			body		body		dto.EmailAndPasswordRequest	true	"email, password, reCAPTCHA token"
+//	@Success		200			{object}	dto.TokenPair
+//	@Failure		400			{object}	utils.ErrorsResponse	"missing device info or bad payload"
+//	@Failure		401			{object}	utils.ErrorsResponse	"invalid credentials or reCAPTCHA"
+//	@Failure		404			{object}	utils.ErrorsResponse	"user not found"
+//	@Failure		500			{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/auth/jwt [post]
 func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
@@ -66,6 +82,23 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// refresh godoc
+//
+//	@Summary		Refresh JWT tokens
+//	@Description	Validate device header and refresh tokens, reset cookies
+//	@Tags			Authentication
+//	@Security		device
+//	@Accept			json
+//	@Produce		json
+//	@Param			X-Real-IP	header		string				true	"Client real IP address"
+//	@Param			User-Agent	header		string				true	"Client User-Agent"
+//	@Param			body		body		dto.RefreshRequest	true	"refresh_token"
+//	@Success		200			{object}	dto.TokenPair
+//	@Failure		400			{object}	utils.ErrorsResponse	"missing device info or bad payload"
+//	@Failure		401			{object}	utils.ErrorsResponse	"token revoked or invalid"
+//	@Failure		404			{object}	utils.ErrorsResponse	"session not found"
+//	@Failure		500			{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/auth/jwt/refresh [post]
 func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
@@ -96,6 +129,18 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// parseClaims godoc
+//
+//	@Summary		Parse JWT claims
+//	@Description	Decode a token without requiring device header
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.TokenRequest	true	"jwt token"
+//	@Success		200		{object}	auth.Claims
+//	@Failure		404		{object}	utils.ErrorsResponse	"token not found"
+//	@Failure		500		{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/auth/jwt/parse [post]
 func (h *Handler) parseClaims(w http.ResponseWriter, r *http.Request) {
 	req := &dto.TokenRequest{}
 	if ok := utils.ParseAndValidate(w, r, req); !ok {
@@ -116,6 +161,17 @@ func (h *Handler) parseClaims(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// logout godoc
+//
+//	@Summary		Logout user
+//	@Description	Revoke refresh token, clear JWT cookies
+//	@Tags			Authentication
+//	@Produce		json
+//	@Param			Authorization	header		string					true	"Authorization token"
+//	@Success		200				{object}	nil						"OK"
+//	@Failure		404				{object}	utils.ErrorsResponse	"session not found"
+//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/auth/logout [post]
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if !ok {
@@ -165,6 +221,22 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	utils.StatusResponse(w, http.StatusOK)
 }
 
+// sendLoginCode godoc
+//
+//	@Summary		Send login code via email
+//	@Description	Verify reCAPTCHA, then send a one-time code to the user’s email. May return tokens if password also valid.
+//	@Tags			EmailAuth
+//	@Security		device
+//	@Accept			json
+//	@Produce		json
+//	@Param			X-Real-IP	header		string					true	"Client real IP address"
+//	@Param			User-Agent	header		string					true	"Client User-Agent"
+//	@Param			body		body		dto.LoginCodeRequest	true	"email, password, reCAPTCHA token"
+//	@Success		200			{object}	dto.TokenPair
+//	@Failure		400			{object}	utils.ErrorsResponse	"missing device info or bad payload"
+//	@Failure		401			{object}	utils.ErrorsResponse	"invalid credentials or reCAPTCHA"
+//	@Failure		500			{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/auth/email/send [post]
 func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
@@ -205,6 +277,22 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// checkLoginCode godoc
+//
+//	@Summary		Check email login code
+//	@Description	Exchange a valid email code for JWT tokens
+//	@Tags			EmailAuth
+//	@Security		device
+//	@Accept			json
+//	@Produce		json
+//	@Param			X-Real-IP	header		string						true	"Client real IP address"
+//	@Param			User-Agent	header		string						true	"Client User-Agent"
+//	@Param			body		body		dto.CheckLoginCodeRequest	true	"code, reCAPTCHA token"
+//	@Success		200			{object}	dto.TokenPair
+//	@Failure		400			{object}	utils.ErrorsResponse	"missing device info or bad payload"
+//	@Failure		404			{object}	utils.ErrorsResponse	"code not found"
+//	@Failure		500			{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/auth/email/check [post]
 func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 	d, ok := utils.ParseDeviceByRequest(r)
 	if !ok {
@@ -232,6 +320,18 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// sendForgotPasswordEmail godoc
+//
+//	@Summary		Send forgot‐password email
+//	@Description	Verify reCAPTCHA and send recovery email
+//	@Tags			PasswordRecovery
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.SendForgotPasswordEmail	true	"email, reCAPTCHA token"
+//	@Success		200		{object}	nil							"OK"
+//	@Failure		404		{object}	utils.ErrorsResponse		"email not found"
+//	@Failure		500		{object}	utils.ErrorsResponse		"internal error"
+//	@Router			/auth/recovery/send [post]
 func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
 	req := &dto.SendForgotPasswordEmail{}
 	if ok := utils.ParseAndValidate(w, r, req); !ok {
@@ -263,6 +363,19 @@ func (h *Handler) sendForgotPasswordEmail(w http.ResponseWriter, r *http.Request
 	utils.StatusResponse(w, http.StatusOK)
 }
 
+// checkForgotPasswordEmail godoc
+//
+//	@Summary		Check forgot‐password code
+//	@Description	Validate a recovery code
+//	@Tags			PasswordRecovery
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.CheckForgotPasswordEmailRequest	true	"code"
+//	@Success		200		{object}	nil									"OK"
+//	@Failure		401		{object}	utils.ErrorsResponse				"invalid code"
+//	@Failure		404		{object}	utils.ErrorsResponse				"code not found"
+//	@Failure		500		{object}	utils.ErrorsResponse				"internal error"
+//	@Router			/auth/recovery/check [post]
 func (h *Handler) checkForgotPasswordEmail(w http.ResponseWriter, r *http.Request) {
 	req := &dto.CheckForgotPasswordEmailRequest{}
 	if ok := utils.ParseAndValidate(w, r, req); !ok {

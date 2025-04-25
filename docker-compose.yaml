@@ -59,7 +59,7 @@ services:
       retries: 5
       start_period: 5s
     volumes:
-      - pg-sso:/var/lib/postgresql/data
+      - pg_sso:/var/lib/postgresql/data
     networks: [ sso ]
 
   postgres-exporter:
@@ -84,7 +84,7 @@ services:
       - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
       - MINIO_PROMETHEUS_AUTH_TYPE=public
     volumes:
-      - minio-sso:/data
+      - minio_sso:/data
     command: server /data --console-address ":9001"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
@@ -155,7 +155,7 @@ services:
       - "9090:9090"
     volumes:
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-sso:/prometheus
+      - prometheus_sso:/prometheus
     networks: [ sso ]
 
   node-exp:
@@ -175,7 +175,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - grafana-sso:/var/lib/grafana
+      - grafana_sso:/var/lib/grafana
       - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
     networks: [ sso ]
 
@@ -187,7 +187,7 @@ services:
       - "3100:3100"
     command: -config.file=/etc/loki/loki-config.yaml
     volumes:
-      - loki-sso:/loki
+      - loki_sso:/loki
       - ./configs/loki:/etc/loki
     networks: [ sso ]
 
@@ -205,11 +205,11 @@ services:
     networks: [ sso ]
 
 volumes:
-  pg-sso:
-  minio-sso:
-  prometheus-sso:
-  grafana-sso:
-  loki-sso:
+  pg_sso:
+  minio_sso:
+  prometheus_sso:
+  grafana_sso:
+  loki_sso:
   caddy_data:
   caddy_config:
 

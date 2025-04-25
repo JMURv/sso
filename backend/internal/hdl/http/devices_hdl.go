@@ -7,6 +7,7 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
+	_ "github.com/JMURv/sso/internal/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -20,6 +21,17 @@ func (h *Handler) RegisterDeviceRoutes() {
 	h.router.With(mid.Auth(h.au), mid.CheckRights(h.ctrl)).Delete("/device/{id}", h.deleteDevice)
 }
 
+// listDevices godoc
+//
+//	@Summary		List all devices for the authenticated user
+//	@Description	Retrieve a list of registered devices for the current user
+//	@Tags			Device
+//	@Produce		json
+//	@Param			Authorization	header		string	true	"Authorization token"
+//	@Success		200				{array}		[]models.Device
+//	@Failure		404				{object}	utils.ErrorsResponse	"no devices found"
+//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/device [get]
 func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if uid == uuid.Nil || !ok {
@@ -44,6 +56,19 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// getDevice godoc
+//
+//	@Summary		Get a specific device by ID
+//	@Description	Retrieve details of a device owned by the current user
+//	@Tags			Device
+//	@Param			id	path	string	true	"Device UUID"
+//	@Produce		json
+//	@Param			Authorization	header		string	true	"Authorization token"
+//	@Success		200				{object}	models.Device
+//	@Failure		400				{object}	utils.ErrorsResponse	"invalid device ID path parameter"
+//	@Failure		404				{object}	utils.ErrorsResponse	"device not found"
+//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/device/{id} [get]
 func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 	dID := chi.URLParam(r, "id")
 	if dID == "" {
@@ -78,6 +103,21 @@ func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// updateDevice godoc
+//
+//	@Summary		Update a device
+//	@Description	Modify properties of a device owned by the current user
+//	@Tags			Device
+//	@Param			id		path	string					true	"Device UUID"
+//	@Param			body	body	dto.UpdateDeviceRequest	true	"Update payload"
+//	@Accept			json
+//	@Produce		json
+//	@Param			Authorization	header		string					true	"Authorization token"
+//	@Success		200				{object}	nil						"OK"
+//	@Failure		400				{object}	utils.ErrorsResponse	"invalid device ID or payload"
+//	@Failure		404				{object}	utils.ErrorsResponse	"device not found"
+//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/device/{id} [put]
 func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	dID := chi.URLParam(r, "id")
 	if dID == "" {
@@ -117,6 +157,19 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	utils.StatusResponse(w, http.StatusOK)
 }
 
+// deleteDevice godoc
+//
+//	@Summary		Delete a device
+//	@Description	Remove a device owned by the current user
+//	@Tags			Device
+//	@Param			id	path	string	true	"Device UUID"
+//	@Produce		json
+//	@Param			Authorization	header		string					true	"Authorization token"
+//	@Success		204				{object}	nil						"No Content"
+//	@Failure		400				{object}	utils.ErrorsResponse	"invalid device ID"
+//	@Failure		404				{object}	utils.ErrorsResponse	"device not found"
+//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/device/{id} [delete]
 func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 	dID := chi.URLParam(r, "id")
 	if dID == "" {

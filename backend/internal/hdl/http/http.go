@@ -3,12 +3,14 @@ package http
 import (
 	"context"
 	"fmt"
+	_ "github.com/JMURv/sso/api/rest/v1"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/ctrl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	chi "github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
@@ -50,6 +52,8 @@ func (h *Handler) Start(port int) {
 	h.RegisterPermRoutes()
 	h.RegisterRoleRoutes()
 	h.RegisterDeviceRoutes()
+
+	h.router.Get("/swagger/*", httpSwagger.WrapHandler)
 	h.router.Get(
 		"/health", func(w http.ResponseWriter, r *http.Request) {
 			utils.SuccessResponse(w, http.StatusOK, "OK")

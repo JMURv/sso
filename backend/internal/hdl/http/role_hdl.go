@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoleRoutes() {
 }
 
 // listRoles godoc
+//
 //	@Summary		List roles
 //	@Description	Retrieve a paginated list of roles with optional filters
 //	@Tags			Role
@@ -46,6 +47,7 @@ func (h *Handler) listRoles(w http.ResponseWriter, r *http.Request) {
 }
 
 // createRole godoc
+//
 //	@Summary		Create a new role
 //	@Description	Add a new role with associated permissions
 //	@Tags			Role
@@ -77,6 +79,7 @@ func (h *Handler) createRole(w http.ResponseWriter, r *http.Request) {
 }
 
 // getRole godoc
+//
 //	@Summary		Get role by ID
 //	@Description	Retrieve details of a specific role
 //	@Tags			Role
@@ -112,6 +115,7 @@ func (h *Handler) getRole(w http.ResponseWriter, r *http.Request) {
 }
 
 // updateRole godoc
+//
 //	@Summary		Update a role
 //	@Description	Modify an existing role's name or permissions
 //	@Tags			Role
@@ -155,10 +159,10 @@ func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 }
 
 // deleteRole godoc
+//
 //	@Summary		Delete a role
 //	@Description	Remove a role by ID
 //	@Tags			Role
-//	@Security		BearerAuth
 //	@Param			id				path		int						true	"Role ID"
 //	@Param			Authorization	header		string					true	"Authorization token"
 //	@Success		204				{object}	nil						"No Content"

@@ -158,18 +158,17 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 }
 
 // deletePerm godoc
-//
-//	@Summary		Delete a permission
-//	@Description	Remove a permission by ID
-//	@Tags			Permission
-//	@Security		BearerAuth
-//	@Param			id				path		int						true	"Permission ID"
-//	@Param			Authorization	header		string					true	"Authorization token"
-//	@Success		204				{object}	nil						"No Content"
-//	@Failure		400				{object}	utils.ErrorsResponse	"invalid ID"
-//	@Failure		404				{object}	utils.ErrorsResponse	"permission not found"
-//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
-//	@Router			/perm/{id} [delete]
+
+// @Summary		Delete a permission
+// @Description	Remove a permission by ID
+// @Tags			Permission
+// @Param			id				path		int						true	"Permission ID"
+// @Param			Authorization	header		string					true	"Authorization token"
+// @Success		204				{object}	nil						"No Content"
+// @Failure		400				{object}	utils.ErrorsResponse	"invalid ID"
+// @Failure		404				{object}	utils.ErrorsResponse	"permission not found"
+// @Failure		500				{object}	utils.ErrorsResponse	"internal error"
+// @Router			/perm/{id} [delete]
 func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
 	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
+	_ "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo/s3"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -26,6 +27,18 @@ func (h *Handler) RegisterUserRoutes() {
 	h.router.With(mid.Auth(h.au)).Delete("/users/{id}", h.deleteUser)
 }
 
+// existsUser godoc
+//
+//	@Summary		Check if a user exists by email
+//	@Description	Returns 200 if user exists, 404 otherwise
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.CheckEmailRequest	true	"Email payload"
+//	@Success		200		{object}	dto.ExistsUserResponse
+//	@Failure		404		{object}	utils.ErrorsResponse	"user not found"
+//	@Failure		500		{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/users/exists [post]
 func (h *Handler) existsUser(w http.ResponseWriter, r *http.Request) {
 	req := &dto.CheckEmailRequest{}
 	if ok := utils.ParseAndValidate(w, r, req); !ok {
@@ -44,6 +57,18 @@ func (h *Handler) existsUser(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// listUsers godoc
+//
+//	@Summary		List all users
+//	@Description	Retrieve a paginated list of users with optional filters
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Param			page	query		int	false	"Page number"	default(1)
+//	@Param			size	query		int	false	"Page size"		default(20)
+//	@Success		200		{array}		dto.PaginatedUserResponse
+//	@Failure		500		{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/users [get]
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	page, size := utils.ParsePaginationValues(r)
 	filters := utils.ParseFiltersByURL(r)
@@ -57,6 +82,18 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// getMe godoc
+//
+//	@Summary		Retrieve current user profile
+//	@Description	Returns the authenticated user's profile
+//	@Tags			User
+//	@Produce		json
+//	@Param			Authorization	header		string	true	"Bearer token, e.g. 'Bearer {jwt}'"
+//	@Success		200				{object}	models.User
+//	@Failure		401				{object}	utils.ErrorsResponse	"unauthorized"
+//	@Failure		404				{object}	utils.ErrorsResponse	"user not found"
+//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/users/me [get]
 func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if uid == uuid.Nil || !ok {
@@ -80,6 +117,19 @@ func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// getUser godoc
+//
+//	@Summary		Get user by ID
+//	@Description	Retrieve a user by their UUID
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		string	true	"User UUID"
+//	@Success		200	{object}	models.User
+//	@Failure		400	{object}	utils.ErrorsResponse	"invalid UUID"
+//	@Failure		404	{object}	utils.ErrorsResponse	"user not found"
+//	@Failure		500	{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/users/{id} [get]
 func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	uid, err := uuid.Parse(chi.URLParam(r, "id"))
 	if uid == uuid.Nil || err != nil {
@@ -104,6 +154,20 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// createUser godoc
+//
+//	@Summary		Create a new user
+//	@Description	Creates a user with optional avatar upload
+//	@Tags			User
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			data	formData	string	true	"JSON payload in 'data' field"
+//	@Param			avatar	formData	file	false	"Avatar image file"
+//	@Success		201		{object}	dto.CreateUserResponse
+//	@Failure		400		{object}	utils.ErrorsResponse	"bad request or file too large"
+//	@Failure		409		{object}	utils.ErrorsResponse	"user already exists"
+//	@Failure		500		{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/users [post]
 func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10MB
 		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrFileTooLarge)
@@ -144,6 +208,23 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusCreated, res)
 }
 
+// updateUser godoc
+//
+//	@Summary		Update an existing user
+//	@Description	Updates user profile and avatar
+//	@Tags			User
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			id				path		string					true	"User UUID"
+//	@Param			data			formData	string					true	"JSON payload in 'data' field"
+//	@Param			avatar			formData	file					false	"Avatar image file"
+//	@Param			Authorization	header		string					true	"Bearer token, e.g. 'Bearer {jwt}'"
+//	@Success		200				{object}	nil						"OK"
+//	@Failure		400				{object}	utils.ErrorsResponse	"bad request"
+//	@Failure		401				{object}	utils.ErrorsResponse	"unauthorized"
+//	@Failure		404				{object}	utils.ErrorsResponse	"user not found"
+//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/users/{id} [put]
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	uid, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil || uid == uuid.Nil {
@@ -195,6 +276,20 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	utils.StatusResponse(w, http.StatusOK)
 }
 
+// deleteUser godoc
+//
+//	@Summary		Delete a user
+//	@Description	Removes a user by UUID
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Param			id				path		string					true	"User UUID"
+//	@Param			Authorization	header		string					true	"Bearer token, e.g. 'Bearer {jwt}'"
+//	@Success		204				{object}	nil						"No Content"
+//	@Failure		401				{object}	utils.ErrorsResponse	"unauthorized"
+//	@Failure		404				{object}	utils.ErrorsResponse	"user not found"
+//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/users/{id} [delete]
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	uid, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {

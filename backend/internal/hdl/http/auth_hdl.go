@@ -87,7 +87,6 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 //	@Summary		Refresh JWT tokens
 //	@Description	Validate device header and refresh tokens, reset cookies
 //	@Tags			Authentication
-//	@Security		device
 //	@Accept			json
 //	@Produce		json
 //	@Param			X-Real-IP	header		string				true	"Client real IP address"
@@ -226,7 +225,6 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 //	@Summary		Send login code via email
 //	@Description	Verify reCAPTCHA, then send a one-time code to the user’s email. May return tokens if password also valid.
 //	@Tags			EmailAuth
-//	@Security		device
 //	@Accept			json
 //	@Produce		json
 //	@Param			X-Real-IP	header		string					true	"Client real IP address"
@@ -282,7 +280,6 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 //	@Summary		Check email login code
 //	@Description	Exchange a valid email code for JWT tokens
 //	@Tags			EmailAuth
-//	@Security		device
 //	@Accept			json
 //	@Produce		json
 //	@Param			X-Real-IP	header		string						true	"Client real IP address"

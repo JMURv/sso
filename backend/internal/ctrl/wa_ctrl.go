@@ -40,7 +40,7 @@ func (c *Controller) StartRegistration(ctx context.Context, uid uuid.UUID) (*pro
 		return nil, err
 	}
 
-	opts, sess, err := c.au.Wa.BeginRegistration(
+	opts, sess, err := c.au.BeginRegistration(
 		user, func(credCreationOpts *protocol.PublicKeyCredentialCreationOptions) {
 			credCreationOpts.CredentialExcludeList = user.ExcludeCredentialDescriptorList()
 		},
@@ -78,7 +78,7 @@ func (c *Controller) FinishRegistration(ctx context.Context, uid uuid.UUID, r *h
 		return err
 	}
 
-	credential, err := c.au.Wa.FinishRegistration(user, *sess, r)
+	credential, err := c.au.FinishRegistration(user, *sess, r)
 	if err != nil {
 		zap.L().Error(
 			"failed to finish registration",
@@ -94,6 +94,9 @@ func (c *Controller) FinishRegistration(ctx context.Context, uid uuid.UUID, r *h
 	if err = c.repo.CreateWACredential(ctx, uid, credential); err != nil {
 		return err
 	}
+
+	c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, uid))
+	go c.cache.InvalidateKeysByPattern(ctx, userPattern)
 	return nil
 }
 
@@ -107,7 +110,7 @@ func (c *Controller) BeginLogin(ctx context.Context, email string) (*protocol.Cr
 		return nil, err
 	}
 
-	opts, sess, err := c.au.Wa.BeginLogin(user)
+	opts, sess, err := c.au.BeginLogin(user)
 	if err != nil {
 		if strings.Contains(err.Error(), "Found no credentials for user") {
 			return nil, ErrNotFound
@@ -144,7 +147,7 @@ func (c *Controller) FinishLogin(ctx context.Context, email string, d dto.Device
 		return res, err
 	}
 
-	cred, err := c.au.Wa.FinishLogin(user, *sess, r)
+	cred, err := c.au.FinishLogin(user, *sess, r)
 	if err != nil {
 		zap.L().Error(
 			"Failed to finish login",

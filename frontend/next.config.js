@@ -7,7 +7,11 @@ module.exports = {
         return [
             {
                 source: '/api/:path*',
-                destination: `${process.env.BACKEND_URL}/api/:path*`,
+                destination: `${process.env.BACKEND_URL}/:path*`,
+            },
+            {
+                source: '/s3/:path*',
+                destination: `${process.env.S3_URL}/:path*`,
             },
         ]
     },

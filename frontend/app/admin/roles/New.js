@@ -3,8 +3,11 @@ import {Add, Check, Delete, KeyboardArrowDown} from "@mui/icons-material"
 import {useState} from "react"
 import {toast} from "sonner"
 import PermModal from "../../../components/modals/PermModal"
+import {useAuth} from "../../../providers/AuthProvider"
 
-export default function New({t, close, successCallback}) {
+export default function New({close, successCallback}) {
+    const {authFetch} = useAuth()
+
     const [addPermModal, setAddPermModal] = useState(false)
     const [role, setRole] = useState({
         name: "",
@@ -32,34 +35,28 @@ export default function New({t, close, successCallback}) {
     }
 
     const createRole = async () => {
-        try {
-            const permIDs = role.permissions.map(p => p.id)
-            const r = await fetch(`/api/roles`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${t}`,
-                },
-                body: JSON.stringify({
-                    name: role.name,
-                    description: role.description,
-                    permissions: permIDs,
-                }),
-            })
+        const permIDs = role.permissions.map(p => p.id)
+        const response = await authFetch("/api/roles", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                name: role.name,
+                description: role.description,
+                permissions: permIDs,
+            }),
+        })
 
-            if (!r.ok) {
-                const data = await r.json()
-                toast.error(data.errors)
-                return null
-            }
-
-            role.id = await r.json()
-            successCallback(role)
-            toast.success("Create successful")
-        } catch (e) {
-            console.error(e)
-            toast.error("Something went wrong")
+        if (!response.ok) {
+            const data = await response.json()
+            toast.error(data.errors)
+            return
         }
+
+        role.id = await response.json()
+        successCallback(role)
+        toast.success("Create successful")
     }
 
     const removePerm = async (id) => {

@@ -19,13 +19,13 @@ func (h *Handler) ListRoles(ctx context.Context, req *gen.SSO_ListReq) (*gen.SSO
 	const op = "sso.ListRoles.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
 	page, size := req.Page, req.Size
 	if page == 0 || size == 0 {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -47,7 +47,7 @@ func (h *Handler) GetRole(ctx context.Context, req *gen.SSO_Uint64Msg) (*gen.SSO
 	const op = "sso.GetRole.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -65,7 +65,7 @@ func (h *Handler) CreateRole(ctx context.Context, req *gen.SSO_Role) (*gen.SSO_U
 	const op = "sso.CreateRole.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to parse uid", zap.String("op", op))
+		zap.L().Error("failed to parse uid", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -93,7 +93,7 @@ func (h *Handler) UpdateRole(ctx context.Context, req *gen.SSO_Role) (*gen.SSO_E
 	const op = "sso.UpdateRole.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -102,7 +102,7 @@ func (h *Handler) UpdateRole(ctx context.Context, req *gen.SSO_Role) (*gen.SSO_E
 		Description: req.Description,
 	}
 	if err := validation.V.Struct(r); err != nil {
-		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to validate obj", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -120,12 +120,12 @@ func (h *Handler) DeleteRole(ctx context.Context, req *gen.SSO_Uint64Msg) (*gen.
 	const op = "sso.DeleteRole.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to parse uid", zap.String("op", op))
+		zap.L().Error("failed to parse uid", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
 	if req == nil || req.Uint64 == 0 {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 

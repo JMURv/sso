@@ -17,14 +17,14 @@ func (c *Controller) GetOIDCAuthURL(ctx context.Context, provider string) (*dto.
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	pr, err := c.au.Provider.Get(ctx, providers.Providers(provider), providers.OIDC)
+	pr, err := c.au.Get(providers.Providers(provider), providers.OIDC)
 	if err != nil {
 		return nil, err
 	}
 
 	return &dto.StartProviderResponse{
-		URL: pr.GetConfig().AuthCodeURL(
-			c.au.Provider.GenerateSignedState(),
+		URL: pr.AuthCodeURL(
+			c.au.GenerateSignedState(),
 		),
 	}, nil
 }
@@ -34,19 +34,19 @@ func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceReques
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	err := c.au.Provider.ValidateSignedState(state, 5*time.Minute)
+	err := c.au.ValidateSignedState(state, 5*time.Minute)
 	if err != nil {
 		return nil, err
 	}
 
-	pr, err := c.au.Provider.Get(ctx, providers.Providers(provider), providers.OIDC)
+	pr, err := c.au.Get(providers.Providers(provider), providers.OIDC)
 	if err != nil {
 		return nil, err
 	}
 
-	oauthUser, err := pr.GetUser(ctx, code)
+	oauthUser, err := pr.Exchange(ctx, code)
 	if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			"Failed to get user",
 			zap.String("op", op),
 			zap.String("code", code),
@@ -96,6 +96,6 @@ func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceReques
 	return &dto.HandleCallbackResponse{
 		Access:     pair.Access,
 		Refresh:    pair.Refresh,
-		SuccessURL: pr.GetSuccessURL(),
+		SuccessURL: c.au.SuccessURL(),
 	}, nil
 }

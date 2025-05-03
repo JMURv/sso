@@ -68,7 +68,7 @@ func (m *Metric) Start(ctx context.Context) {
 	if err := m.srv.Shutdown(ctx); err != nil {
 		zap.L().Error("Prometheus server shutdown failed", zap.Error(err))
 	}
-	zap.L().Debug("Prometheus server has been stopped")
+	zap.L().Info("Prometheus server has been stopped")
 }
 
 var RequestMetrics = promauto.NewSummaryVec(

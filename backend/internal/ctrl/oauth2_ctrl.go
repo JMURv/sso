@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/JMURv/sso/internal/auth/providers"
-	gh "github.com/JMURv/sso/internal/auth/providers/oauth2/github"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
@@ -24,14 +23,14 @@ func (c *Controller) GetOAuth2AuthURL(ctx context.Context, provider string) (*dt
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	pr, err := c.au.Provider.Get(ctx, providers.Providers(provider), providers.OAuth2)
+	pr, err := c.au.Get(providers.Providers(provider), providers.OAuth2)
 	if err != nil {
 		return nil, err
 	}
 
 	return &dto.StartProviderResponse{
-		URL: pr.GetConfig().AuthCodeURL(
-			c.au.Provider.GenerateSignedState(),
+		URL: pr.AuthCodeURL(
+			c.au.GenerateSignedState(),
 		),
 	}, nil
 }
@@ -41,22 +40,19 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	err := c.au.Provider.ValidateSignedState(state, 5*time.Minute)
+	err := c.au.ValidateSignedState(state, 5*time.Minute)
 	if err != nil {
 		return nil, err
 	}
 
-	pr, err := c.au.Provider.Get(ctx, providers.Providers(provider), providers.OAuth2)
+	pr, err := c.au.Get(providers.Providers(provider), providers.OAuth2)
 	if err != nil {
 		return nil, err
 	}
 
-	oauthUser, err := pr.GetUser(ctx, code)
+	oauthUser, err := pr.Exchange(ctx, code)
 	if err != nil {
-		if errors.Is(err, gh.ErrNoEmailFound) {
-			return nil, ErrNotFound
-		}
-		zap.L().Debug(
+		zap.L().Error(
 			"Failed to get user",
 			zap.String("op", op),
 			zap.String("code", code),
@@ -106,6 +102,6 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 	return &dto.HandleCallbackResponse{
 		Access:     pair.Access,
 		Refresh:    pair.Refresh,
-		SuccessURL: pr.GetSuccessURL(),
+		SuccessURL: c.au.SuccessURL(),
 	}, nil
 }

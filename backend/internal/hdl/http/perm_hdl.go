@@ -92,7 +92,7 @@ func (h *Handler) createPerm(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
 	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			ErrRetrievePathVars.Error(),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
@@ -131,7 +131,7 @@ func (h *Handler) getPerm(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			ErrRetrievePathVars.Error(),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
@@ -172,7 +172,7 @@ func (h *Handler) updatePerm(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deletePerm(w http.ResponseWriter, r *http.Request) {
 	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			ErrRetrievePathVars.Error(),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),

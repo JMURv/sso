@@ -10,6 +10,10 @@ import (
 	"net/url"
 )
 
+type Port interface {
+	VerifyRecaptcha(token string, action Actions) (bool, error)
+}
+
 type Actions string
 
 const (
@@ -19,21 +23,21 @@ const (
 	WALogin    Actions = "wa_login"
 )
 
-type Recaptcha struct {
+type Core struct {
 	secret string
 }
 
-func New(conf config.Config) *Recaptcha {
-	return &Recaptcha{
+func New(conf config.Config) *Core {
+	return &Core{
 		secret: conf.Auth.Captcha.Secret,
 	}
 }
 
-func (r *Recaptcha) VerifyRecaptcha(token string, action Actions) (bool, error) {
+func (c *Core) VerifyRecaptcha(token string, action Actions) (bool, error) {
 	resp, err := http.PostForm(
 		"https://www.google.com/recaptcha/api/siteverify",
 		url.Values{
-			"secret":   {r.secret},
+			"secret":   {c.secret},
 			"response": {token},
 		},
 	)

@@ -3,6 +3,7 @@ package ctrl
 import (
 	"context"
 	"github.com/JMURv/sso/internal/auth"
+	"github.com/JMURv/sso/internal/auth/jwt"
 	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
@@ -29,7 +30,7 @@ type AppCtrl interface {
 	GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid.UUID, p []md.Role) (dto.TokenPair, error)
 	Authenticate(ctx context.Context, d *dto.DeviceRequest, req *dto.EmailAndPasswordRequest) (*dto.TokenPair, error)
 	Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto.RefreshRequest) (*dto.TokenPair, error)
-	ParseClaims(ctx context.Context, token string) (auth.Claims, error)
+	ParseClaims(ctx context.Context, token string) (jwt.Claims, error)
 	Logout(ctx context.Context, uid uuid.UUID) error
 
 	CheckForgotPasswordEmail(ctx context.Context, req *dto.CheckForgotPasswordEmailRequest) error
@@ -85,13 +86,13 @@ type EmailService interface {
 
 type Controller struct {
 	repo  AppRepo
-	au    *auth.Auth
+	au    auth.Core
 	cache CacheService
 	s3    S3Service
 	smtp  EmailService
 }
 
-func New(repo AppRepo, au *auth.Auth, cache CacheService, s3 S3Service, smtp EmailService) *Controller {
+func New(repo AppRepo, au auth.Core, cache CacheService, s3 S3Service, smtp EmailService) *Controller {
 	return &Controller{
 		repo:  repo,
 		au:    au,

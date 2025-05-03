@@ -60,7 +60,7 @@ func CheckRights(c ctrl.AppCtrl) func(http.Handler) http.Handler {
 			func(w http.ResponseWriter, r *http.Request) {
 				uid, ok := r.Context().Value("uid").(uuid.UUID)
 				if !ok {
-					zap.L().Debug(
+					zap.L().Error(
 						hdl.ErrFailedToParseUUID.Error(),
 						zap.Any("uid", r.Context().Value("uid")),
 					)
@@ -69,7 +69,7 @@ func CheckRights(c ctrl.AppCtrl) func(http.Handler) http.Handler {
 
 				roles, ok := r.Context().Value("roles").([]md.Role)
 				if !ok {
-					zap.L().Debug(
+					zap.L().Error(
 						hdl.ErrFailedToParseRoles.Error(),
 						zap.Any("uid", r.Context().Value("uid")),
 					)
@@ -85,7 +85,7 @@ func CheckRights(c ctrl.AppCtrl) func(http.Handler) http.Handler {
 
 				dID := chi.URLParam(r, "id")
 				if dID == "" {
-					zap.L().Debug(
+					zap.L().Error(
 						hdl.ErrToRetrievePathArg.Error(),
 						zap.String("path", r.URL.Path),
 					)
@@ -119,16 +119,20 @@ func Device(next http.Handler) http.Handler {
 			ip := r.RemoteAddr
 			if ip == "" {
 				utils.ErrResponse(w, http.StatusForbidden, ErrIPIsIncorrect)
+				return
 			}
 
+			ip = strings.Split(ip, ":")[0]
 			splitIP := strings.Split(ip, ".")
 			if len(splitIP) != 4 {
 				utils.ErrResponse(w, http.StatusForbidden, ErrIPIsIncorrect)
+				return
 			}
 
 			ua := r.UserAgent()
 			if ua == "" {
 				utils.ErrResponse(w, http.StatusForbidden, ErrUAIsIncorrect)
+				return
 			}
 
 			zap.L().Debug("device info", zap.String("ip", ip), zap.String("ua", ua))
@@ -172,11 +176,17 @@ func Logger(logger *zap.Logger) func(http.Handler) http.Handler {
 			func(w http.ResponseWriter, r *http.Request) {
 				start := time.Now()
 				lrw := NewLoggingResponseWriter(w)
+				logger.Debug(
+					"-->",
+					zap.String("method", r.Method),
+					zap.String("path", r.URL.Path),
+					zap.String("remote", r.RemoteAddr),
+				)
 
 				next.ServeHTTP(lrw, r)
 
 				logger.Info(
-					"HTTP request",
+					"<--",
 					zap.String("method", r.Method),
 					zap.String("path", r.URL.Path),
 					zap.Int("status", lrw.statusCode),

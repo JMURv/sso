@@ -43,15 +43,15 @@ func (c *Cache) GetToStruct(ctx context.Context, key string, dest any) error {
 
 	val, err := c.cli.Get(ctx, key).Bytes()
 	if err == redis.Nil {
-		zap.L().Debug(
-			cache.ErrNotFoundInCache.Error(),
+		zap.L().Info(
+			"[CACHE] --> MISS",
 			zap.String("op", op), zap.String("key", key),
 		)
 		return cache.ErrNotFoundInCache
 	} else if err != nil {
 		span.SetTag("error", true)
-		zap.L().Debug(
-			"failed to get from cache",
+		zap.L().Error(
+			"[CACHE] --> ERROR",
 			zap.String("op", op), zap.String("key", key),
 			zap.Error(err),
 		)
@@ -60,7 +60,7 @@ func (c *Cache) GetToStruct(ctx context.Context, key string, dest any) error {
 
 	if err = json.Unmarshal(val, dest); err != nil {
 		span.SetTag("error", true)
-		zap.L().Debug(
+		zap.L().Error(
 			"failed to unmarshal",
 			zap.String("op", op),
 			zap.String("key", key), zap.Any("dest", dest),
@@ -69,7 +69,7 @@ func (c *Cache) GetToStruct(ctx context.Context, key string, dest any) error {
 		return err
 	}
 
-	zap.L().Debug("cache hit", zap.String("key", key))
+	zap.L().Info("[CACHE] --> HIT", zap.String("key", key))
 	return nil
 }
 
@@ -80,21 +80,22 @@ func (c *Cache) GetInt(ctx context.Context, key string) (int, error) {
 
 	val, err := c.cli.Get(ctx, key).Int()
 	if err == redis.Nil {
-		zap.L().Debug(
-			cache.ErrNotFoundInCache.Error(),
+		zap.L().Info(
+			"[CACHE] --> MISS",
 			zap.String("op", op), zap.String("key", key),
 		)
 		return 0, cache.ErrNotFoundInCache
 	} else if err != nil {
 		span.SetTag("error", true)
 		zap.L().Error(
-			"failed to get from cache",
+			"[CACHE] --> ERROR",
 			zap.String("op", op), zap.String("key", key),
 			zap.Error(err),
 		)
 		return 0, err
 	}
 
+	zap.L().Info("[CACHE] --> HIT", zap.String("key", key))
 	return val, nil
 }
 
@@ -113,8 +114,8 @@ func (c *Cache) Set(ctx context.Context, t time.Duration, key string, val any) {
 
 	if err := c.cli.Set(ctx, key, val, t).Err(); err != nil {
 		span.SetTag("error", true)
-		zap.L().Debug(
-			"failed to set to cache",
+		zap.L().Error(
+			"[CACHE] --> ERROR",
 			zap.String("op", op),
 			zap.String("t", t.String()), zap.String("key", key), zap.Any("val", val),
 			zap.Error(err),
@@ -122,11 +123,7 @@ func (c *Cache) Set(ctx context.Context, t time.Duration, key string, val any) {
 		return
 	}
 
-	zap.L().Debug(
-		"successfully set to cache",
-		zap.String("op", op),
-		zap.String("key", key),
-	)
+	zap.L().Info("[CACHE] --> SET", zap.String("key", key))
 	return
 }
 
@@ -137,14 +134,15 @@ func (c *Cache) Delete(ctx context.Context, key string) {
 
 	if err := c.cli.Del(ctx, key).Err(); err != nil {
 		span.SetTag("error", true)
-		zap.L().Debug(
-			"failed to delete from cache",
+		zap.L().Error(
+			"[CACHE] --> ERROR",
 			zap.String("op", op),
 			zap.String("key", key),
 			zap.Error(err),
 		)
 		return
 	}
+	zap.L().Info("[CACHE] --> DELETE", zap.String("key", key))
 	return
 }
 
@@ -157,13 +155,13 @@ func (c *Cache) InvalidateKeysByPattern(ctx context.Context, pattern string) {
 
 		keys, cursor, err = c.cli.Scan(ctx, cursor, pattern, 100).Result() // 100 keys at a time
 		if err != nil {
-			zap.L().Debug("failed to scan redis", zap.Error(err))
+			zap.L().Error("failed to scan redis", zap.Error(err))
 			break
 		}
 
 		if len(keys) > 0 {
 			if err = c.cli.Del(ctx, keys...).Err(); err != nil {
-				zap.L().Debug("failed to delete keys", zap.Error(err))
+				zap.L().Error("failed to delete keys", zap.Error(err))
 				break
 			}
 		}

@@ -19,13 +19,13 @@ func (h *Handler) ListDevices(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO
 	const op = "sso.ListDevices.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
 	page, size := req.Page, req.Size
 	if page == 0 || size == 0 {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -43,7 +43,7 @@ func (h *Handler) GetDevice(ctx context.Context, req *pb.SSO_StringMsg) (*pb.SSO
 	const op = "sso.GetDevice.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -61,18 +61,18 @@ func (h *Handler) UpdateDevice(ctx context.Context, req *pb.SSO_UpdateDeviceRequ
 	const op = "sso.UpdateDevice.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
 	if req == nil || req.Id == "" {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
 	r := &dto.UpdateDeviceRequest{Name: req.Name}
 	if err := validation.V.Struct(r); err != nil {
-		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to validate obj", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -90,12 +90,12 @@ func (h *Handler) DeleteDevice(ctx context.Context, req *pb.SSO_StringMsg) (*pb.
 	const op = "sso.DeleteDevice.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to parse uid", zap.String("op", op))
+		zap.L().Error("failed to parse uid", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
 	if req == nil || req.String_ == "" {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 

@@ -51,7 +51,7 @@ func ProtoToModel(u *gen.SSO_User) *md.User {
 
 	uid, err := uuid.Parse(u.Id)
 	if err != nil {
-		zap.L().Debug("failed to parse user id")
+		zap.L().Warn("failed to parse user id")
 	} else {
 		modelUser.ID = uid
 	}

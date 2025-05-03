@@ -6,18 +6,23 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	gh_oauth2 "github.com/JMURv/sso/internal/auth/providers/oauth2/github"
-	g_oauth2 "github.com/JMURv/sso/internal/auth/providers/oauth2/google"
+	"github.com/JMURv/sso/internal/auth/providers/oauth2/google"
 	g_oidc "github.com/JMURv/sso/internal/auth/providers/oidc/google"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"golang.org/x/oauth2"
 	"strconv"
 	"strings"
 	"time"
 )
+
+type Port interface {
+	Get(provider Providers, flow Flow) (OAuthProvider, error)
+	SuccessURL() string
+	GenerateSignedState() string
+	ValidateSignedState(signedState string, maxAge time.Duration) error
+}
 
 type Flow string
 type Providers string
@@ -29,68 +34,68 @@ const (
 
 const (
 	Google Providers = "google"
-	GitHub Providers = "github"
 )
 
-type OAuth2Provider interface {
-	GetConfig() *oauth2.Config
-	GetUser(ctx context.Context, code string) (*dto.ProviderResponse, error)
-	GetSuccessURL() string
+type OAuthProvider interface {
+	AuthCodeURL(state string) string
+	Exchange(ctx context.Context, code string) (*dto.ProviderResponse, error)
 }
 
-type Provider struct {
+type Core struct {
 	secret          []byte
-	OAuth2Providers struct {
-		Google OAuth2Provider
-		GitHub OAuth2Provider
-	}
-	OIDCProviders struct {
-		Google OAuth2Provider
+	successURL      string
+	OAuth2Providers OAuthProviders
+	OIDCProviders   OIDCProviders
+}
+
+type OAuthProviders struct {
+	Google OAuthProvider
+}
+
+type OIDCProviders struct {
+	Google OAuthProvider
+}
+
+func New(conf config.Config) *Core {
+	return &Core{
+		secret:     []byte(conf.Auth.Providers.Secret),
+		successURL: conf.Auth.Providers.SuccessURL,
+		OAuth2Providers: OAuthProviders{
+			Google: google.New(conf),
+		},
+		OIDCProviders: OIDCProviders{
+			Google: g_oidc.New(conf),
+		},
 	}
 }
 
-func New(conf config.Config) *Provider {
-	return &Provider{
-		secret: []byte(conf.Auth.ProviderSignSecret),
-		OAuth2Providers: struct {
-			Google OAuth2Provider
-			GitHub OAuth2Provider
-		}{
-			Google: g_oauth2.NewGoogleOAuth2(conf),
-			GitHub: gh_oauth2.NewGitHubOAuth2(conf),
-		},
-		OIDCProviders: struct {
-			Google OAuth2Provider
-		}{
-			Google: g_oidc.NewGoogleOIDC(conf),
-		},
-	}
-}
-
-func (p *Provider) Get(_ context.Context, provider Providers, flow Flow) (OAuth2Provider, error) {
+func (c *Core) Get(provider Providers, flow Flow) (OAuthProvider, error) {
 	switch provider {
 	case Google:
 		if flow == OIDC {
-			return p.OIDCProviders.Google, nil
+			return c.OIDCProviders.Google, nil
 		}
-		return p.OAuth2Providers.Google, nil
-	case GitHub:
-		return p.OAuth2Providers.GitHub, nil
+		return c.OAuth2Providers.Google, nil
 	default:
 		zap.L().Error(
 			"Unknown provider",
 			zap.Any("provider", provider),
+			zap.Any("flow", flow),
 		)
 		return nil, ErrUnknownProvider
 	}
 }
 
-func (p *Provider) GenerateSignedState() string {
+func (c *Core) SuccessURL() string {
+	return c.successURL
+}
+
+func (c *Core) GenerateSignedState() string {
 	rawState := uuid.New().String()
 	timestamp := fmt.Sprintf("%d", time.Now().Unix())
 	data := rawState + "|" + timestamp
 
-	h := hmac.New(sha256.New, p.secret)
+	h := hmac.New(sha256.New, c.secret)
 	h.Write([]byte(data))
 	signature := h.Sum(nil)
 
@@ -98,10 +103,10 @@ func (p *Provider) GenerateSignedState() string {
 	return signedState
 }
 
-func (p *Provider) ValidateSignedState(signedState string, maxAge time.Duration) error {
+func (c *Core) ValidateSignedState(signedState string, maxAge time.Duration) error {
 	parts := strings.Split(signedState, ".")
 	if len(parts) != 2 {
-		zap.L().Debug(
+		zap.L().Error(
 			"Invalid state format",
 			zap.String("state", signedState),
 			zap.Duration("maxAge", maxAge),
@@ -127,7 +132,7 @@ func (p *Provider) ValidateSignedState(signedState string, maxAge time.Duration)
 		return err
 	}
 
-	h := hmac.New(sha256.New, p.secret)
+	h := hmac.New(sha256.New, c.secret)
 	h.Write(data)
 	actualSignature := h.Sum(nil)
 
@@ -142,7 +147,7 @@ func (p *Provider) ValidateSignedState(signedState string, maxAge time.Duration)
 
 	dataParts := strings.Split(string(data), "|")
 	if len(dataParts) != 2 {
-		zap.L().Debug(
+		zap.L().Error(
 			"Invalid data format",
 			zap.Any("data", dataParts),
 		)

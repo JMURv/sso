@@ -93,7 +93,7 @@ func (h *Handler) createRole(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getRole(w http.ResponseWriter, r *http.Request) {
 	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			ErrRetrievePathVars.Error(),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
@@ -132,7 +132,7 @@ func (h *Handler) getRole(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			ErrRetrievePathVars.Error(),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
@@ -173,7 +173,7 @@ func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
 	uid, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			ErrRetrievePathVars.Error(),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),

@@ -21,6 +21,7 @@ type userCtrl interface {
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
 	CreateUser(ctx context.Context, u *dto.CreateUserRequest, file *s3.UploadFileRequest) (*dto.CreateUserResponse, error)
 	UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest, file *s3.UploadFileRequest) error
+	UpdateMe(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest, file *s3.UploadFileRequest) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -30,6 +31,7 @@ type userRepo interface {
 	GetUserByEmail(ctx context.Context, email string) (*md.User, error)
 	CreateUser(ctx context.Context, req *dto.CreateUserRequest) (uuid.UUID, error)
 	UpdateUser(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error
+	UpdateMe(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -82,11 +84,11 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	cached := &md.User{}
-	cacheKey := fmt.Sprintf(userCacheKey, userID)
-	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
-		return cached, nil
-	}
+	//cached := &md.User{}
+	//cacheKey := fmt.Sprintf(userCacheKey, userID)
+	//if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
+	//	return cached, nil
+	//}
 
 	res, err := c.repo.GetUserByID(ctx, userID)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
@@ -95,9 +97,9 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		return nil, err
 	}
 
-	if bytes, err := json.Marshal(res); err == nil {
-		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
-	}
+	//if bytes, err := json.Marshal(res); err == nil {
+	//	c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
+	//}
 	return res, nil
 }
 
@@ -203,6 +205,39 @@ func (c *Controller) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	}
 
 	c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, userID))
+	go c.cache.InvalidateKeysByPattern(ctx, userPattern)
+	return nil
+}
+
+func (c *Controller) UpdateMe(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest, file *s3.UploadFileRequest) error {
+	const op = "users.UpdateMe.ctrl"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	if req.Password != "" {
+		hash, err := c.au.Hash(req.Password)
+		if err != nil {
+			return err
+		}
+		req.Password = hash
+	}
+
+	if len(file.File) > 0 {
+		url, err := c.s3.UploadFile(ctx, file)
+		if err != nil {
+			return err
+		}
+		req.Avatar = url
+	}
+
+	err := c.repo.UpdateMe(ctx, id, req)
+	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+
+	c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, id))
 	go c.cache.InvalidateKeysByPattern(ctx, userPattern)
 	return nil
 }

@@ -46,7 +46,7 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, filters map[
 	}
 	defer func(rows *sqlx.Rows) {
 		if err := rows.Close(); err != nil {
-			zap.L().Debug(
+			zap.L().Error(
 				"failed to close rows",
 				zap.String("op", op),
 				zap.Error(err),
@@ -262,7 +262,7 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
-			zap.L().Debug(
+			zap.L().Error(
 				"error while transaction rollback",
 				zap.String("op", op),
 				zap.Error(err),
@@ -337,8 +337,9 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 		return err
 	}
 	defer func() {
-		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
-			zap.L().Debug(
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) || !errors.Is(err, repo.ErrNotFound) {
+			span.SetTag("error", true)
+			zap.L().Error(
 				"error while transaction rollback",
 				zap.String("op", op),
 				zap.Error(err),
@@ -346,17 +347,22 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 		}
 	}()
 
-	res, err := tx.ExecContext(
-		ctx,
-		userUpdateQ,
-		req.Name,
-		req.Password,
-		req.Email,
-		req.Avatar,
-		req.IsActive,
-		req.IsEmail,
-		id,
-	)
+	var res sql.Result
+	if req.Password != "" {
+		res, err = tx.ExecContext(
+			ctx,
+			userUpdateWithPassQ,
+			req.Name,
+			req.Email,
+			req.Password,
+			req.Avatar,
+			req.IsActive,
+			req.IsEmail,
+			id,
+		)
+	} else {
+		res, err = tx.ExecContext(ctx, userUpdateQ, req.Name, req.Email, req.Avatar, req.IsActive, req.IsEmail, id)
+	}
 	if err != nil {
 		zap.L().Error(
 			"failed to update user",
@@ -384,25 +390,23 @@ func (r *Repository) UpdateUser(ctx context.Context, id uuid.UUID, req *dto.Upda
 		return repo.ErrNotFound
 	}
 
-	if len(req.Roles) > 0 {
-		if _, err = tx.ExecContext(ctx, userRemoveRoleQ, id); err != nil {
+	if _, err = tx.ExecContext(ctx, userRemoveRoleQ, id); err != nil {
+		zap.L().Error(
+			"failed to remove user roles",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	for i := 0; i < len(req.Roles); i++ {
+		if _, err = tx.ExecContext(ctx, userAddRoleQ, id, req.Roles[i]); err != nil {
 			zap.L().Error(
-				"failed to remove user roles",
+				"failed to add role to user",
 				zap.String("op", op),
 				zap.Error(err),
 			)
 			return err
-		}
-
-		for i := 0; i < len(req.Roles); i++ {
-			if _, err = tx.ExecContext(ctx, userAddRoleQ, id, req.Roles[i]); err != nil {
-				zap.L().Error(
-					"failed to add role to user",
-					zap.String("op", op),
-					zap.Error(err),
-				)
-				return err
-			}
 		}
 	}
 
@@ -448,6 +452,85 @@ func (r *Repository) DeleteUser(ctx context.Context, id uuid.UUID) error {
 			zap.String("op", op),
 		)
 		return repo.ErrNotFound
+	}
+	return nil
+}
+
+func (r *Repository) UpdateMe(ctx context.Context, id uuid.UUID, req *dto.UpdateUserRequest) error {
+	const op = "users.UpdateMe.repo"
+	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+	defer span.Finish()
+
+	tx, err := r.conn.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		zap.L().Error(
+			"failed to begin transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return err
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			span.SetTag("error", true)
+			zap.L().Error(
+				"error while transaction rollback",
+				zap.String("op", op),
+				zap.Error(err),
+			)
+		}
+	}()
+
+	var res sql.Result
+	if req.Password != "" {
+		res, err = tx.ExecContext(
+			ctx,
+			userUpdateWithPassQ,
+			req.Name,
+			req.Email,
+			req.Password,
+			req.Avatar,
+			req.IsActive,
+			req.IsEmail,
+			id,
+		)
+	} else {
+		res, err = tx.ExecContext(ctx, userUpdateQ, req.Name, req.Email, req.Avatar, req.IsActive, req.IsEmail, id)
+	}
+	if err != nil {
+		zap.L().Error(
+			"failed to update user",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	aff, err := res.RowsAffected()
+	if err != nil {
+		zap.L().Error(
+			"failed to get affected rows",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	if aff == 0 {
+		zap.L().Debug(
+			"failed to find user",
+			zap.String("op", op),
+		)
+		return repo.ErrNotFound
+	}
+
+	if err = tx.Commit(); err != nil {
+		zap.L().Error(
+			"failed to commit transaction",
+			zap.String("op", op),
+			zap.Error(err),
+		)
+		return err
 	}
 	return nil
 }

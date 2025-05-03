@@ -19,17 +19,12 @@ tasks:
   dc-dev-down:
     desc: Shutdown dev compose
     cmds:
-      - "docker compose -f compose/dc.dev.yaml down"
+      - "docker compose --env-file {{.DEV_ENV_FILE}} -f compose/dc.dev.yaml down"
 
-  dc-prod:
-    desc: Run prod compose
+  dc-dev-down-vol:
+    desc: Shutdown dev compose
     cmds:
-      - "docker compose --env-file {{.PROD_ENV_FILE}} -f compose/dc.dev.yaml up"
-
-  dc-prod-down:
-    desc: Shutdown prod compose
-    cmds:
-      - "docker compose -f compose/dc.dev.yaml down"
+      - "docker compose --env-file {{.DEV_ENV_FILE}} -f compose/dc.dev.yaml down -v"
 
   dc-observe:
     desc: Run metrics compose

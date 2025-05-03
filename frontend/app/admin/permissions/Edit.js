@@ -5,8 +5,10 @@ import {
 } from "@mui/icons-material"
 import {useState} from "react"
 import {toast} from "sonner"
+import {useAuth} from "../../../providers/AuthProvider"
 
-export default function Edit({t, srvOBJ, close, successCallback}) {
+export default function Edit({srvOBJ, close, successCallback}) {
+    const {authFetch} = useAuth()
     const [obj, setOBJ] = useState(srvOBJ)
 
     const handleChange = async (e) => {
@@ -29,31 +31,25 @@ export default function Edit({t, srvOBJ, close, successCallback}) {
     }
 
     const updateOBJ = async () => {
-        try {
-            const r = await fetch(`/api/perm/${srvOBJ.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${t}`,
-                },
-                body: JSON.stringify({
-                    name: obj.name,
-                    description: obj.description,
-                }),
-            })
+        const response = await authFetch(`/api/perm/${srvOBJ.id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                name: obj.name,
+                description: obj.description,
+            }),
+        })
 
-            if (!r.ok) {
-                const data = await r.json()
-                toast.error(data.errors)
-                return
-            }
-
-            successCallback(obj)
-            toast.success("Update successful")
-        } catch (e) {
-            console.error(e)
-            toast.error("Something went wrong")
+        if (!response.ok) {
+            const data = await response.json()
+            toast.error(data.errors)
+            return
         }
+
+        successCallback(obj)
+        toast.success("Update successful")
     }
 
     return (

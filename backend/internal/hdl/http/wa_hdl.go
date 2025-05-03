@@ -22,6 +22,7 @@ func (h *Handler) RegisterWebAuthnRoutes() {
 }
 
 // registrationStart godoc
+//
 //	@Summary		Start WebAuthn registration
 //	@Description	Generates a registration challenge for the client
 //	@Tags			WebAuthn
@@ -33,7 +34,7 @@ func (h *Handler) RegisterWebAuthnRoutes() {
 func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.Any("uid", r.Context().Value("uid")),
 			zap.Error(hdl.ErrFailedToParseUUID),
@@ -52,6 +53,7 @@ func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {
 }
 
 // registrationFinish godoc
+//
 //	@Summary		Complete WebAuthn registration
 //	@Description	Verifies the client response to finalize registration
 //	@Tags			WebAuthn
@@ -66,7 +68,7 @@ func (h *Handler) registrationStart(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) registrationFinish(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.Any("uid", r.Context().Value("uid")),
 			zap.Error(hdl.ErrFailedToParseUUID),
@@ -85,6 +87,7 @@ func (h *Handler) registrationFinish(w http.ResponseWriter, r *http.Request) {
 }
 
 // loginStart godoc
+//
 //	@Summary		Start WebAuthn login
 //	@Description	Generates an authentication challenge for the client
 //	@Tags			WebAuthn
@@ -127,6 +130,7 @@ func (h *Handler) loginStart(w http.ResponseWriter, r *http.Request) {
 }
 
 // loginFinish godoc
+//
 //	@Summary		Complete WebAuthn login
 //	@Description	Verifies client assertion, sets auth cookies, and returns tokens
 //	@Tags			WebAuthn

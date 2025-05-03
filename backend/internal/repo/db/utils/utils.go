@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"strings"
 )
 
@@ -73,7 +72,6 @@ func GetSort(sort any) string {
 		order = "DESC"
 		sortStr = sortStr[1:]
 	}
-	zap.L().Debug("sort", zap.Any("sort", sort), zap.String("order", order), zap.String("sortStr", sortStr))
 
 	if field, ok := sortMap[sortStr]; ok {
 		return fmt.Sprintf("%s %s", field, order)

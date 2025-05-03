@@ -72,13 +72,13 @@ func Device() grpc.UnaryServerInterceptor {
 
 		ua := md["User-Agent"]
 		if len(ua) == 0 {
-			zap.L().Debug("missing user agent header")
+			zap.L().Error("missing user agent header")
 			return handler(ctx, req)
 		}
 
 		ip := md["IP"]
 		if len(ua) == 0 {
-			zap.L().Debug("missing ip header")
+			zap.L().Error("missing ip header")
 			return handler(ctx, req)
 		}
 

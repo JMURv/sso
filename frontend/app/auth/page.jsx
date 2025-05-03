@@ -11,19 +11,33 @@ import {
     KeyboardArrowRight,
     Lock,
 } from "@mui/icons-material"
-import {useRouter} from "next/navigation";
+import {useRouter, useSearchParams} from "next/navigation"
 import Image from "next/image"
 import CodeInput from "../../components/input/CodeInput"
 import {base64UrlToArrayBuffer} from "../../lib/auth/wa"
 import {useReCaptcha} from "next-recaptcha-v3"
+import {useAuth} from "../../providers/AuthProvider"
 
 export default function Page() {
     const router = useRouter()
+    const params = useSearchParams()
+    const {login} = useAuth()
+
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [isCode, setIsCode] = useState(false)
     const [digits, setDigits] = useState(['', '', '', ''])
     const { executeRecaptcha } = useReCaptcha()
+
+    const successAuth = async (access, refresh) => {
+        await login(access, refresh)
+        if (params.has("redirect") && params.get("redirect") !== "") {
+            await router.push(params.get("redirect"))
+            return
+        }
+        await router.push("/")
+        await router.refresh()
+    }
 
     const handleEmailChange = async (event) => {
         setEmail(event.target.value)
@@ -56,8 +70,8 @@ export default function Page() {
         }
         const cLength = r.headers.get("content-length");
         if (cLength > 300) {
-            await router.push("/")
-            await router.refresh()
+            const data = await r.json()
+            return await successAuth(data.access, data.refresh)
         } else {
             setIsCode(true)
         }
@@ -84,8 +98,8 @@ export default function Page() {
             return toast.error(data.errors)
         }
 
-        await router.push("/")
-        await router.refresh()
+        const data = await r.json()
+        return await successAuth(data.access, data.refresh)
     }
 
     const handleProvider = async (provider) => {
@@ -110,7 +124,7 @@ export default function Page() {
             const data = await r.json()
             return toast.error(data.errors)
         }
-        return toast.success("email sent")
+        return toast.success("Email sent")
     }
 
     const handleWebAuthn = async () => {
@@ -170,8 +184,8 @@ export default function Page() {
         }
 
         toast.success("Login successful!")
-        await router.push("/")
-        await router.refresh()
+        const data = await finR.json()
+        return await successAuth(data.access, data.refresh)
     }
 
     useEffect(() => {
@@ -179,7 +193,7 @@ export default function Page() {
         if (code.length === 4) {
             const CheckLoginCode = async () => {
                 try {
-                    if (await fetch("/api/auth/email/check", {
+                    const r = await fetch("/api/auth/email/check", {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -189,10 +203,12 @@ export default function Page() {
                             email: email,
                             code: parseInt(code)
                         }),
-                    }).then((r) => r.ok)) {
+                    })
+
+                    if (r.ok) {
                         setIsCode(false)
-                        await router.push("/")
-                        await router.refresh()
+                        const data = await r.json()
+                        return await successAuth(data.access, data.refresh)
                     } else {
                         toast.error("Invalid code")
                     }
@@ -275,23 +291,27 @@ export default function Page() {
                         </div>
 
 
-                        <div className={`grid grid-cols-5 gap-3 mb-3`}>
+                        <div className={`grid grid-cols-2 gap-3 mb-3`}>
                             <button onClick={handlePasswordAuth} className={`primary-b`}>
                                 <Lock />
                             </button>
                             <button onClick={() => handleProvider("google")} className={`primary-b`}>
                                 <Google />
                             </button>
-                            <button onClick={() => handleProvider("github")} className={`primary-b`}>
-                                <GitHub />
-                            </button>
-                            <button onClick={() => handleProvider("vk")} className={`primary-b flex justify-center items-center`}>
-                                <Image src={`/vk.svg`} width={23} height={23} alt={``} />
-                            </button>
-                            <button onClick={() => handleProvider("gosuslugi")} className={`primary-b flex justify-center items-center`}>
-                                <Image src={`/gosuslugi.svg`} width={23} height={23} alt={``} />
-                            </button>
-                            <button onClick={handleWebAuthn} className={`primary-b w-full col-span-5`}>
+                            {/* START TODO: Implement additional providers */}
+
+                            {/*<button onClick={() => handleProvider("github")} className={`primary-b`}>*/}
+                            {/*    <GitHub />*/}
+                            {/*</button>*/}
+                            {/*<button onClick={() => handleProvider("vk")} className={`primary-b flex justify-center items-center`}>*/}
+                            {/*    <Image src={`/vk.svg`} width={23} height={23} alt={``} />*/}
+                            {/*</button>*/}
+                            {/*<button onClick={() => handleProvider("gosuslugi")} className={`primary-b flex justify-center items-center`}>*/}
+                            {/*    <Image src={`/gosuslugi.svg`} width={23} height={23} alt={``} />*/}
+                            {/*</button>*/}
+
+                            {/* END */}
+                            <button onClick={handleWebAuthn} className={`primary-b w-full col-span-2`}>
                                 <Fingerprint />
                             </button>
                         </div>

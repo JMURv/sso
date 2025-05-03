@@ -29,7 +29,7 @@ func (r *Repository) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]
 	}
 	defer func(rows *sql.Rows) {
 		if err := rows.Close(); err != nil {
-			zap.L().Debug(
+			zap.L().Error(
 				"failed to close rows",
 				zap.String("op", op),
 				zap.Error(err),

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/JMURv/sso/internal/auth"
+	"github.com/JMURv/sso/internal/auth/jwt"
 	"github.com/JMURv/sso/internal/cache"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
@@ -119,7 +120,7 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 	}, nil
 }
 
-func (c *Controller) ParseClaims(ctx context.Context, token string) (res auth.Claims, err error) {
+func (c *Controller) ParseClaims(ctx context.Context, token string) (res jwt.Claims, err error) {
 	const op = "auth.ParseClaims.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -174,7 +175,7 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, req *dto.Chec
 		return err
 	}
 
-	if err = c.repo.UpdateUser(
+	if err = c.repo.UpdateMe(
 		ctx, req.ID, &dto.UpdateUserRequest{
 			Name:     u.Name,
 			Email:    u.Email,

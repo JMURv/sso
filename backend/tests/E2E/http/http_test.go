@@ -61,7 +61,7 @@ func setupTestServer() (*httptest.Server, func()) {
 		}
 		defer func(rows *sql.Rows) {
 			if err := rows.Close(); err != nil {
-				zap.L().Debug(
+				zap.L().Error(
 					"error while closing rows",
 					zap.Error(err),
 				)

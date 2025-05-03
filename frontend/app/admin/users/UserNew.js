@@ -68,13 +68,13 @@ export default function UserNew({close, successCallback}) {
             roles: user.roles.map(r => r.id),
         }))
 
-        const response = await authFetch("/api/users/", {
+        const response = await authFetch("/api/users", {
             method: "POST",
             body: fd,
         })
 
         if (!response.ok) {
-            const data = await r.json()
+            const data = await response.json()
             toast.error(data.errors)
             return
         }

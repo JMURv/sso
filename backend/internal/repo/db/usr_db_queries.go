@@ -94,8 +94,17 @@ RETURNING id
 const userUpdateQ = `
 UPDATE users 
 SET name = $1, 
-    password = $2,
-    email = $3,
+    email = $2,
+    avatar = $3,
+	is_active = $4,
+	is_email_verified = $5
+WHERE id = $6`
+
+const userUpdateWithPassQ = `
+UPDATE users 
+SET name = $1, 
+    email = $2,
+	password = $3,
     avatar = $4,
 	is_active = $5,
 	is_email_verified = $6

@@ -5,7 +5,7 @@ import {base64UrlToArrayBuffer} from "../../lib/auth/wa"
 import {useRouter} from "next/navigation"
 import {useAuth} from "../../providers/AuthProvider"
 
-export default function WAModal({isWA, setIsWA}) {
+export default function WAModal({isWA, setIsWA, callback}) {
     const router = useRouter()
     const {authFetch} = useAuth()
 
@@ -50,6 +50,7 @@ export default function WAModal({isWA, setIsWA}) {
             return
         }
 
+        await callback()
         setIsWA(false)
         toast.success("success")
         await router.refresh()

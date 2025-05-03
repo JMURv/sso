@@ -14,8 +14,10 @@ export const AuthProvider = ({accessSrv, refreshSrv, children}) => {
     const router = useRouter()
     const [access, setAccess] = useState(accessSrv)
     const [refresh, setRefresh] = useState(refreshSrv)
+    const [me, setMe] = useState(null)
     const [roles, setRoles] = useState([])
     const [isAdmin, setIsAdmin] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
 
     async function authFetch(url, options = {}) {
         const opts = { ...options }
@@ -39,8 +41,18 @@ export const AuthProvider = ({accessSrv, refreshSrv, children}) => {
                 headers: {"User-Agent": navigator.userAgent},
             }
             response = await fetch(url, retryOpts)
+            if (response.status === 401) {
+                return router.push("/auth")
+            }
             return response
         }
+    }
+
+    async function adminFetch(url, options = {}) {
+        if (!isAdmin) {
+            return toast.error("You are not an admin")
+        }
+        return authFetch(url, options)
     }
 
     async function refreshSession(refresh) {
@@ -67,6 +79,11 @@ export const AuthProvider = ({accessSrv, refreshSrv, children}) => {
             console.error("Error refreshing:", e)
             await logout()
         }
+    }
+
+    async function login(access, refresh) {
+        setAccess(access)
+        setRefresh(refresh)
     }
 
     async function logout() {
@@ -98,23 +115,29 @@ export const AuthProvider = ({accessSrv, refreshSrv, children}) => {
 
     useEffect(() => {
         const loadUserData = async () => {
+            setIsLoading(true)
             try {
                 if (access) {
                     const me = await GetMeCli(access)
-                    console.log(me)
+                    setMe(me)
                     setRoles(me?.roles)
                     setIsAdmin(me?.roles.some(role => role.name === "admin"))
                 }
             } catch (error) {
                 console.error("Failed to load user data:", error)
                 await logout()
+            } finally {
+                setIsLoading(false)
             }
         }
         loadUserData()
     }, [access])
 
+    if (isLoading) {
+        return <div suppressHydrationWarning className="flex justify-center items-center h-screen"/>
+    }
     return (
-        <AuthContext.Provider value={{ access, roles, isAdmin, authFetch, logout }}>
+        <AuthContext.Provider value={{ access, me, setMe, roles, isAdmin, authFetch, adminFetch, login, logout }}>
             {children}
         </AuthContext.Provider>
     )

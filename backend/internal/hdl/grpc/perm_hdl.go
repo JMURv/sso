@@ -43,7 +43,7 @@ func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_ListReq) (*pb
 func (h *Handler) GetPermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb.SSO_Permission, error) {
 	const op = "sso.GetPermission.hdl"
 	if req == nil || req.Uint64 == 0 {
-		zap.L().Debug(
+		zap.L().Error(
 			"failed to parse uid",
 			zap.String("op", op),
 			zap.Uint64("uid", req.Uint64),
@@ -69,7 +69,7 @@ func (h *Handler) CreatePermission(ctx context.Context, req *pb.SSO_Permission) 
 	}
 
 	if err := validation.V.Struct(mdPerm); err != nil {
-		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to validate obj", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -89,12 +89,12 @@ func (h *Handler) UpdatePermission(ctx context.Context, req *pb.SSO_Permission) 
 	const op = "sso.UpdatePermission.hdl"
 
 	if _, ok := ctx.Value("uid").(uuid.UUID); !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.Unauthenticated, hdl.ErrFailedToParseUUID.Error())
 	}
 
 	if req == nil || req.Id == 0 {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -103,7 +103,7 @@ func (h *Handler) UpdatePermission(ctx context.Context, req *pb.SSO_Permission) 
 		Description: req.Description,
 	}
 	if err := validation.V.Struct(mdPerm); err != nil {
-		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to validate obj", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -120,12 +120,12 @@ func (h *Handler) UpdatePermission(ctx context.Context, req *pb.SSO_Permission) 
 func (h *Handler) DeletePermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb.SSO_Empty, error) {
 	const op = "sso.DeletePermission.hdl"
 	if _, ok := ctx.Value("uid").(uuid.UUID); !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.Unauthenticated, hdl.ErrFailedToParseUUID.Error())
 	}
 
 	if req == nil || req.Uint64 == 0 {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 

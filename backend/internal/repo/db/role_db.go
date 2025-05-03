@@ -137,7 +137,7 @@ func (r *Repository) CreateRole(ctx context.Context, req *dto.CreateRoleRequest)
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
-			zap.L().Debug(
+			zap.L().Error(
 				"error while transaction rollback",
 				zap.String("op", op),
 				zap.Error(err),
@@ -204,7 +204,7 @@ func (r *Repository) UpdateRole(ctx context.Context, id uint64, req *dto.UpdateR
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
-			zap.L().Debug(
+			zap.L().Error(
 				"error while transaction rollback",
 				zap.String("op", op),
 				zap.Error(err),

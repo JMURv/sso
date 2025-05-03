@@ -11,51 +11,14 @@ import (
 type Config struct {
 	Mode        string           `yaml:"mode" env:"MODE" envDefault:"dev"`
 	ServiceName string           `yaml:"service_name" env:"SERVICE_NAME" envDefault:"sso"`
-	Auth        AuthConfig       `yaml:"auth"`
 	Server      ServerConfig     `yaml:"server"`
-	Email       EmailConfig      `yaml:"email"`
-	DB          DBConfig         `yaml:"db"`
-	Minio       MinioConfig      `yaml:"minio"`
-	Redis       RedisConfig      `yaml:"redis"`
-	Prometheus  PrometheusConfig `yaml:"prometheus"`
-	Jaeger      JaegerConfig     `yaml:"jaeger"`
-}
-
-type AuthConfig struct {
-	Secret             string   `yaml:"secret" env:"SECRET,required"`
-	ProviderSignSecret string   `yaml:"provider_sign_secret" env:"PROVIDER_SIGN_SECRET"`
-	Admins             []string `yaml:"admins" env:"ADMIN_USERS" envSeparator:","`
-
-	Captcha struct {
-		SiteKey string `yaml:"site_key" env:"CAPTCHA_SITE_KEY"`
-		Secret  string `yaml:"secret" env:"CAPTCHA_SECRET"`
-	} `yaml:"captcha"`
-
-	Oauth struct {
-		SuccessURL string `yaml:"success_url" env:"OAUTH2_SUCCESS_URL"`
-		Google     struct {
-			ClientID     string   `yaml:"client_id" env:"OAUTH2_GOOGLE_CLIENT_ID" envDefault:""`
-			ClientSecret string   `yaml:"client_secret" env:"OAUTH2_GOOGLE_CLIENT_SECRET" envDefault:""`
-			RedirectURL  string   `yaml:"redirect_url" env:"OAUTH2_GOOGLE_REDIRECT_URL" envDefault:""`
-			Scopes       []string `yaml:"scopes" env:"OAUTH2_GOOGLE_SCOPES" envDefault:"" envSeparator:","`
-		} `yaml:"google"`
-		GitHub struct {
-			ClientID     string   `yaml:"client_id" env:"OAUTH2_GITHUB_CLIENT_ID" envDefault:""`
-			ClientSecret string   `yaml:"clientSecret" env:"OAUTH2_GITHUB_CLIENT_SECRET" envDefault:""`
-			RedirectURL  string   `yaml:"redirect_url" env:"OAUTH2_GITHUB_REDIRECT_URL" envDefault:""`
-			Scopes       []string `yaml:"scopes" env:"OAUTH2_GITHUB_SCOPES" envDefault:"" envSeparator:","`
-		} `yaml:"github"`
-	} `yaml:"oauth"`
-
-	OIDC struct {
-		SuccessURL string `yaml:"success_url" env:"OIDC_SUCCESS_URL"`
-		Google     struct {
-			ClientID     string   `yaml:"client_id" env:"OIDC_GOOGLE_CLIENT_ID" envDefault:""`
-			ClientSecret string   `yaml:"client_secret" env:"OIDC_GOOGLE_CLIENT_SECRET" envDefault:""`
-			RedirectURL  string   `yaml:"redirect_url" env:"OIDC_GOOGLE_REDIRECT_URL" envDefault:""`
-			Scopes       []string `yaml:"scopes" env:"OIDC_GOOGLE_SCOPES" envDefault:"" envSeparator:","`
-		} `yaml:"google"`
-	} `yaml:"oidc"`
+	Auth        authConfig       `yaml:"auth"`
+	Email       smtpConfig       `yaml:"email"`
+	DB          dbConfig         `yaml:"db"`
+	Minio       s3Config         `yaml:"minio"`
+	Redis       redisConfig      `yaml:"redis"`
+	Prometheus  prometheusConfig `yaml:"prometheus"`
+	Jaeger      jaegerConfig     `yaml:"jaeger"`
 }
 
 type ServerConfig struct {
@@ -65,7 +28,48 @@ type ServerConfig struct {
 	Domain   string `yaml:"domain" env:"SERVER_DOMAIN" envDefault:"localhost"`
 }
 
-type EmailConfig struct {
+type authConfig struct {
+	Admins []string `yaml:"admins" env:"ADMIN_USERS" envSeparator:","`
+
+	JWT struct {
+		Secret string `yaml:"secret" env:"JWT_SECRET,required"`
+		Issuer string `yaml:"issuer" env:"JWT_ISSUER,required"`
+	} `yaml:"jwt"`
+
+	Captcha struct {
+		SiteKey string `yaml:"site_key" env:"CAPTCHA_SITE_KEY"`
+		Secret  string `yaml:"secret" env:"CAPTCHA_SECRET"`
+	} `yaml:"captcha"`
+
+	WebAuthn struct {
+		Origins []string `yaml:"origins" env:"WEBAUTHN_ORIGINS" envSeparator:","`
+	} `yaml:"webauthn"`
+
+	Providers struct {
+		Secret     string `yaml:"secret" env:"PROVIDER_SECRET"`
+		SuccessURL string `yaml:"success_url" env:"PROVIDER_SUCCESS_URL"`
+
+		Oauth struct {
+			Google struct {
+				ClientID     string   `yaml:"client_id" env:"OAUTH2_GOOGLE_CLIENT_ID" envDefault:""`
+				ClientSecret string   `yaml:"client_secret" env:"OAUTH2_GOOGLE_CLIENT_SECRET" envDefault:""`
+				RedirectURL  string   `yaml:"redirect_url" env:"OAUTH2_GOOGLE_REDIRECT_URL" envDefault:""`
+				Scopes       []string `yaml:"scopes" env:"OAUTH2_GOOGLE_SCOPES" envDefault:"" envSeparator:","`
+			} `yaml:"google"`
+		} `yaml:"oauth"`
+
+		OIDC struct {
+			Google struct {
+				ClientID     string   `yaml:"client_id" env:"OIDC_GOOGLE_CLIENT_ID" envDefault:""`
+				ClientSecret string   `yaml:"client_secret" env:"OIDC_GOOGLE_CLIENT_SECRET" envDefault:""`
+				RedirectURL  string   `yaml:"redirect_url" env:"OIDC_GOOGLE_REDIRECT_URL" envDefault:""`
+				Scopes       []string `yaml:"scopes" env:"OIDC_GOOGLE_SCOPES" envDefault:"" envSeparator:","`
+			} `yaml:"google"`
+		} `yaml:"oidc"`
+	} `yaml:"providers"`
+}
+
+type smtpConfig struct {
 	Server string `yaml:"server" env:"EMAIL_SERVER" envDefault:"smtp.gmail.com"`
 	Port   int    `yaml:"port" env:"EMAIL_PORT" envDefault:"587"`
 	User   string `yaml:"user" env:"EMAIL_USER" envDefault:""`
@@ -73,7 +77,7 @@ type EmailConfig struct {
 	Admin  string `yaml:"admin" env:"EMAIL_ADMIN" envDefault:""`
 }
 
-type DBConfig struct {
+type dbConfig struct {
 	Host     string `yaml:"host" env:"DB_HOST" envDefault:"localhost"`
 	Port     int    `yaml:"port" env:"DB_PORT" envDefault:"5432"`
 	User     string `yaml:"user" env:"DB_USER" envDefault:"postgres"`
@@ -81,7 +85,7 @@ type DBConfig struct {
 	Database string `yaml:"database" env:"DB_DATABASE" envDefault:"db"`
 }
 
-type MinioConfig struct {
+type s3Config struct {
 	Addr      string `yaml:"addr" env:"MINIO_ADDR" envDefault:"localhost:9000"`
 	AccessKey string `yaml:"access_key" env:"MINIO_ACCESS_KEY" envDefault:""`
 	SecretKey string `yaml:"secret_key" env:"MINIO_SECRET_KEY" envDefault:""`
@@ -89,16 +93,16 @@ type MinioConfig struct {
 	UseSSL    bool   `yaml:"use_ssl" env:"MINIO_SSL" envDefault:"false"`
 }
 
-type RedisConfig struct {
+type redisConfig struct {
 	Addr string `yaml:"addr" env:"REDIS_ADDR" envDefault:"localhost:6379"`
 	Pass string `yaml:"pass" env:"REDIS_PASS" envDefault:""`
 }
 
-type PrometheusConfig struct {
+type prometheusConfig struct {
 	Port int `yaml:"port" env:"BACKEND_METRICS_PORT" envDefault:"8085"`
 }
 
-type JaegerConfig struct {
+type jaegerConfig struct {
 	Sampler struct {
 		Type  string  `yaml:"type" env:"JAEGER_SAMPLER_TYPE" envDefault:"const"`
 		Param float64 `yaml:"param" env:"JAEGER_SAMPLER_PARAM" envDefault:"1"`

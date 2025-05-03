@@ -35,7 +35,7 @@ func (h *Handler) GetMe(ctx context.Context, req *pb.SSO_Empty) (*pb.SSO_User, e
 	const op = "sso.GetMe.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -54,7 +54,7 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_P
 
 	page, size := req.Page, req.Size
 	if page == 0 || size == 0 {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -76,7 +76,7 @@ func (h *Handler) CreateUser(ctx context.Context, req *pb.SSO_CreateUserReq) (*p
 	const op = "sso.CreateUser.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to parse uid", zap.String("op", op))
+		zap.L().Error("failed to parse uid", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -110,7 +110,7 @@ func (h *Handler) GetUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_Use
 	const op = "sso.GetUser.hdl"
 	uid, err := uuid.Parse(req.Uuid)
 	if uid == uuid.Nil || err != nil {
-		zap.L().Debug("failed to parse uid", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to parse uid", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -128,7 +128,7 @@ func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UpdateUserReq) (*p
 	const op = "sso.UpdateUser.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -142,7 +142,7 @@ func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UpdateUserReq) (*p
 		Roles:    req.Roles,
 	}
 	if err := validation.V.Struct(r); err != nil {
-		zap.L().Debug("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to validate obj", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -160,7 +160,7 @@ func (h *Handler) DeleteUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_
 	const op = "sso.DeleteUser.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to parse uid", zap.String("op", op))
+		zap.L().Error("failed to parse uid", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 

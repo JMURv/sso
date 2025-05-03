@@ -3,56 +3,43 @@ package auth
 import (
 	"context"
 	"github.com/JMURv/sso/internal/auth/captcha"
+	"github.com/JMURv/sso/internal/auth/jwt"
 	"github.com/JMURv/sso/internal/auth/providers"
 	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/config"
 	md "github.com/JMURv/sso/internal/models"
-	jwt "github.com/golang-jwt/jwt/v5"
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
-	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"net/http"
 	"time"
 )
-
-const issuer = "SSO"
-const AccessTokenDuration = time.Minute * 30
-const RefreshTokenDuration = time.Hour * 24 * 7
 
 type Core interface {
 	Hash(val string) (string, error)
 	ComparePasswords(hashed, pswd []byte) error
-	GetRefreshTime() time.Time
-	NewToken(ctx context.Context, uid uuid.UUID, perms []md.Role, d time.Duration) (string, error)
-	ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
-	GenPair(ctx context.Context, uid uuid.UUID, perms []md.Role) (string, string, error)
-	VerifyRecaptcha(token string, action captcha.Actions) (bool, error)
-}
-
-type Claims struct {
-	UID   uuid.UUID `json:"uid"`
-	Roles []md.Role `json:"roles"`
-	jwt.RegisteredClaims
+	jwt.Port
+	captcha.Port
+	providers.Port
+	wa.Port
 }
 
 type Auth struct {
-	secret   []byte
-	Captcha  *captcha.Recaptcha
-	Provider *providers.Provider
-	Wa       *wa.WAuthn
+	jwt       jwt.Port
+	captcha   captcha.Port
+	providers providers.Port
+	wa        wa.Port
 }
 
 func New(conf config.Config) *Auth {
 	return &Auth{
-		secret:   []byte(conf.Auth.Secret),
-		Captcha:  captcha.New(conf),
-		Provider: providers.New(conf),
-		Wa:       wa.New(conf),
+		jwt:       jwt.New(conf),
+		captcha:   captcha.New(conf),
+		providers: providers.New(conf),
+		wa:        wa.New(conf),
 	}
-}
-
-func (a *Auth) VerifyRecaptcha(token string, action captcha.Actions) (bool, error) {
-	return a.Captcha.VerifyRecaptcha(token, action)
 }
 
 func (a *Auth) Hash(val string) (string, error) {
@@ -68,10 +55,6 @@ func (a *Auth) Hash(val string) (string, error) {
 	return string(bytes), nil
 }
 
-func (a *Auth) GetRefreshTime() time.Time {
-	return time.Now().Add(RefreshTokenDuration)
-}
-
 func (a *Auth) ComparePasswords(hashed, pswd []byte) error {
 	if err := bcrypt.CompareHashAndPassword(hashed, pswd); err != nil {
 		return ErrInvalidCredentials
@@ -79,97 +62,58 @@ func (a *Auth) ComparePasswords(hashed, pswd []byte) error {
 	return nil
 }
 
-func (a *Auth) NewToken(ctx context.Context, uid uuid.UUID, roles []md.Role, d time.Duration) (string, error) {
-	const op = "auth.NewToken.jwt"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
-
-	signed, err := jwt.NewWithClaims(
-		jwt.SigningMethodHS256, &Claims{
-			UID:   uid,
-			Roles: roles,
-			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(d)),
-				IssuedAt:  jwt.NewNumericDate(time.Now()),
-				Issuer:    issuer,
-			},
-		},
-	).SignedString(a.secret)
-
-	if err != nil {
-		zap.L().Error(
-			ErrWhileCreatingToken.Error(),
-			zap.Error(err),
-		)
-		return "", ErrWhileCreatingToken
-	}
-
-	return signed, nil
+func (a *Auth) GetAccessTime() time.Time {
+	return a.jwt.GetAccessTime()
 }
 
-func (a *Auth) ParseClaims(ctx context.Context, tokenStr string) (Claims, error) {
-	const op = "auth.ParseClaims.jwt"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
-
-	claims := Claims{}
-	token, err := jwt.ParseWithClaims(
-		tokenStr, &claims, func(token *jwt.Token) (any, error) {
-			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-				return nil, ErrUnexpectedSignMethod
-			}
-			return a.secret, nil
-		},
-	)
-
-	if err != nil {
-		zap.L().Error(
-			"Failed to parse claims",
-			zap.String("op", op),
-			zap.Any("token", tokenStr),
-			zap.Error(err),
-		)
-		return claims, err
-	}
-
-	if !token.Valid {
-		zap.L().Debug(
-			"Token is invalid",
-			zap.String("op", op),
-			zap.String("token", tokenStr),
-		)
-		return claims, ErrInvalidToken
-	}
-
-	return claims, nil
+func (a *Auth) GetRefreshTime() time.Time {
+	return a.jwt.GetRefreshTime()
 }
 
 func (a *Auth) GenPair(ctx context.Context, uid uuid.UUID, roles []md.Role) (string, string, error) {
-	const op = "auth.GenPair.jwt"
-	span, ctx := opentracing.StartSpanFromContext(ctx, op)
-	defer span.Finish()
+	return a.jwt.GenPair(ctx, uid, roles)
+}
 
-	access, err := a.NewToken(ctx, uid, roles, AccessTokenDuration)
-	if err != nil {
-		zap.L().Error(
-			"Failed to generate token pair",
-			zap.String("uid", uid.String()),
-			zap.Any("roles", roles),
-			zap.Error(err),
-		)
-		return "", "", err
-	}
+func (a *Auth) NewToken(ctx context.Context, uid uuid.UUID, roles []md.Role, d time.Duration) (string, error) {
+	return a.jwt.NewToken(ctx, uid, roles, d)
+}
 
-	refresh, err := a.NewToken(ctx, uid, roles, RefreshTokenDuration)
-	if err != nil {
-		zap.L().Error(
-			"Failed to generate token pair",
-			zap.String("uid", uid.String()),
-			zap.Any("roles", roles),
-			zap.Error(err),
-		)
-		return "", "", err
-	}
+func (a *Auth) ParseClaims(ctx context.Context, tokenStr string) (jwt.Claims, error) {
+	return a.jwt.ParseClaims(ctx, tokenStr)
+}
 
-	return access, refresh, nil
+func (a *Auth) VerifyRecaptcha(token string, action captcha.Actions) (bool, error) {
+	return a.captcha.VerifyRecaptcha(token, action)
+}
+
+func (a *Auth) Get(provider providers.Providers, flow providers.Flow) (providers.OAuthProvider, error) {
+	return a.providers.Get(provider, flow)
+}
+
+func (a *Auth) SuccessURL() string {
+	return a.providers.SuccessURL()
+}
+
+func (a *Auth) GenerateSignedState() string {
+	return a.providers.GenerateSignedState()
+}
+
+func (a *Auth) ValidateSignedState(signedState string, maxAge time.Duration) error {
+	return a.providers.ValidateSignedState(signedState, maxAge)
+}
+
+func (a *Auth) BeginLogin(user webauthn.User, opts ...webauthn.LoginOption) (*protocol.CredentialAssertion, *webauthn.SessionData, error) {
+	return a.wa.BeginLogin(user, opts...)
+}
+
+func (a *Auth) FinishLogin(user webauthn.User, session webauthn.SessionData, response *http.Request) (*webauthn.Credential, error) {
+	return a.wa.FinishLogin(user, session, response)
+}
+
+func (a *Auth) BeginRegistration(user webauthn.User, opts ...webauthn.RegistrationOption) (creation *protocol.CredentialCreation, session *webauthn.SessionData, err error) {
+	return a.wa.BeginRegistration(user, opts...)
+}
+
+func (a *Auth) FinishRegistration(user webauthn.User, session webauthn.SessionData, response *http.Request) (*webauthn.Credential, error) {
+	return a.wa.FinishRegistration(user, session, response)
 }

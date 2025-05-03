@@ -20,6 +20,7 @@ import (
 func (h *Handler) RegisterUserRoutes() {
 	h.router.Post("/users/exists", h.existsUser)
 	h.router.With(mid.Auth(h.au)).Get("/users/me", h.getMe)
+	h.router.With(mid.Auth(h.au)).Put("/users/me", h.updateMe)
 	h.router.Get("/users", h.listUsers)
 	h.router.Post("/users", h.createUser)
 	h.router.Get("/users/{id}", h.getUser)
@@ -97,7 +98,7 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if uid == uuid.Nil || !ok {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.Any("uid", r.Context().Value("uid")),
 		)
@@ -117,6 +118,74 @@ func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, res)
 }
 
+// updateMe godoc
+//
+//	@Summary		Update current user
+//	@Description	Updates user profile and avatar
+//	@Tags			User
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			id				path		string					true	"User UUID"
+//	@Param			data			formData	string					true	"JSON payload in 'data' field"
+//	@Param			avatar			formData	file					false	"Avatar image file"
+//	@Param			Authorization	header		string					true	"Bearer token, e.g. 'Bearer {jwt}'"
+//	@Success		200				{object}	nil						"OK"
+//	@Failure		400				{object}	utils.ErrorsResponse	"bad request"
+//	@Failure		401				{object}	utils.ErrorsResponse	"unauthorized"
+//	@Failure		404				{object}	utils.ErrorsResponse	"user not found"
+//	@Failure		500				{object}	utils.ErrorsResponse	"internal error"
+//	@Router			/users/me [put]
+func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
+	var err error
+	uid, ok := r.Context().Value("uid").(uuid.UUID)
+	if uid == uuid.Nil || !ok {
+		zap.L().Error(
+			hdl.ErrFailedToParseUUID.Error(),
+			zap.Any("uid", r.Context().Value("uid")),
+		)
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrFailedToParseUUID)
+		return
+	}
+
+	if err = r.ParseMultipartForm(10 << 20); err != nil { // 10MB
+		zap.L().Info("failed to parse multipart form", zap.Error(err))
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
+		return
+	}
+
+	req := &dto.UpdateUserRequest{}
+	if err = json.Unmarshal([]byte(r.FormValue("data")), req); err != nil {
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
+		return
+	}
+
+	if err = validator.New().Struct(req); err != nil {
+		utils.ErrResponse(w, http.StatusBadRequest, err)
+		return
+	}
+
+	fileReq := &s3.UploadFileRequest{}
+	if err = utils.ParseFileField(r, "avatar", fileReq); err != nil {
+		if errors.Is(err, hdl.ErrInternal) {
+			utils.ErrResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+		utils.ErrResponse(w, http.StatusBadRequest, err)
+		return
+	}
+
+	err = h.ctrl.UpdateMe(r.Context(), uid, req, fileReq)
+	if err != nil && errors.Is(err, ctrl.ErrNotFound) {
+		utils.ErrResponse(w, http.StatusNotFound, err)
+		return
+	} else if err != nil {
+		utils.ErrResponse(w, http.StatusInternalServerError, hdl.ErrInternal)
+		return
+	}
+
+	utils.StatusResponse(w, http.StatusOK)
+}
+
 // getUser godoc
 //
 //	@Summary		Get user by ID
@@ -133,7 +202,7 @@ func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	uid, err := uuid.Parse(chi.URLParam(r, "id"))
 	if uid == uuid.Nil || err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
@@ -228,7 +297,7 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	uid, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil || uid == uuid.Nil {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),
@@ -238,7 +307,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = r.ParseMultipartForm(10 << 20); err != nil { // 10MB
-		zap.L().Debug("failed to parse multipart form", zap.Error(err))
+		zap.L().Info("failed to parse multipart form", zap.Error(err))
 		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
@@ -293,7 +362,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	uid, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.String("path", r.URL.Path),
 			zap.Error(err),

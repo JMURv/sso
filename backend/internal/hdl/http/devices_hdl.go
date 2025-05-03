@@ -35,7 +35,7 @@ func (h *Handler) RegisterDeviceRoutes() {
 func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if uid == uuid.Nil || !ok {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.Any("uid", r.Context().Value("uid")),
 		)
@@ -72,7 +72,7 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 	dID := chi.URLParam(r, "id")
 	if dID == "" {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrToRetrievePathArg.Error(),
 			zap.String("path", r.URL.Path),
 		)
@@ -82,7 +82,7 @@ func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if uid == uuid.Nil || !ok {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.Any("uid", r.Context().Value("uid")),
 		)
@@ -131,7 +131,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if uid == uuid.Nil || !ok {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.Any("uid", r.Context().Value("uid")),
 		)
@@ -173,7 +173,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 	dID := chi.URLParam(r, "id")
 	if dID == "" {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrToRetrievePathArg.Error(),
 			zap.String("path", r.URL.Path),
 		)
@@ -183,7 +183,7 @@ func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 
 	uid, ok := r.Context().Value("uid").(uuid.UUID)
 	if uid == uuid.Nil || !ok {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrFailedToParseUUID.Error(),
 			zap.Any("uid", r.Context().Value("uid")),
 		)

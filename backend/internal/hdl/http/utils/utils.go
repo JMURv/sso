@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/JMURv/sso/internal/auth"
+	"github.com/JMURv/sso/internal/auth/jwt"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
@@ -73,7 +73,7 @@ func ParsePaginationValues(r *http.Request) (int, int) {
 func ParseAndValidate(w http.ResponseWriter, r *http.Request, dst any) bool {
 	var err error
 	if err = json.NewDecoder(r.Body).Decode(dst); err != nil {
-		zap.L().Debug(
+		zap.L().Error(
 			hdl.ErrDecodeRequest.Error(),
 			zap.Error(err),
 		)
@@ -134,7 +134,7 @@ func SetAuthCookies(w http.ResponseWriter, access, refresh string) {
 		w, &http.Cookie{
 			Name:     "access",
 			Value:    access,
-			Expires:  time.Now().Add(auth.AccessTokenDuration),
+			Expires:  time.Now().Add(jwt.AccessTokenDuration),
 			HttpOnly: true,
 			Secure:   true,
 			Path:     "/",
@@ -146,7 +146,7 @@ func SetAuthCookies(w http.ResponseWriter, access, refresh string) {
 		w, &http.Cookie{
 			Name:     "refresh",
 			Value:    refresh,
-			Expires:  time.Now().Add(auth.RefreshTokenDuration),
+			Expires:  time.Now().Add(jwt.RefreshTokenDuration),
 			HttpOnly: true,
 			Secure:   true,
 			Path:     "/",

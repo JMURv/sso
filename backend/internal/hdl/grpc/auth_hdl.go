@@ -21,7 +21,7 @@ import (
 func (h *Handler) Authenticate(ctx context.Context, req *pb.SSO_EmailAndPasswordRequest) (*pb.SSO_TokenPair, error) {
 	const op = "sso.Authenticate.hdl"
 	if req == nil {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -52,13 +52,13 @@ func (h *Handler) ParseClaims(ctx context.Context, req *pb.SSO_StringMsg) (*pb.S
 	const op = "sso.ParseClaims.hdl"
 	token := req.GetString_()
 	if req == nil || token == "" {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
 	res, err := h.ctrl.ParseClaims(ctx, token)
 	if err != nil {
-		zap.L().Debug("failed to parse claims", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to parse claims", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
 
@@ -74,7 +74,7 @@ func (h *Handler) ParseClaims(ctx context.Context, req *pb.SSO_StringMsg) (*pb.S
 func (h *Handler) Refresh(ctx context.Context, req *pb.SSO_RefreshRequest) (*pb.SSO_TokenPair, error) {
 	const op = "sso.Authenticate.hdl"
 	if req == nil {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -128,7 +128,7 @@ func (h *Handler) CheckLoginCode(ctx context.Context, req *pb.SSO_CheckLoginCode
 
 	email, code := req.Email, req.Code
 	if email == "" || code == 0 {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -155,7 +155,7 @@ func (h *Handler) CheckLoginCode(ctx context.Context, req *pb.SSO_CheckLoginCode
 func (h *Handler) SendForgotPasswordEmail(ctx context.Context, req *pb.SSO_EmailMsg) (*pb.SSO_Empty, error) {
 	const op = "sso.SendForgotPasswordEmail.handler"
 	if req == nil || req.Email == "" {
-		zap.L().Debug("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request", zap.String("op", op))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -201,7 +201,7 @@ func (h *Handler) CheckForgotPasswordEmail(ctx context.Context, req *pb.SSO_Chec
 		if errors.Is(err, ctrl.ErrNotFound) {
 			return nil, status.Errorf(codes.NotFound, ctrl.ErrNotFound.Error())
 		}
-		zap.L().Debug("failed to check forgot password email", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to check forgot password email", zap.String("op", op), zap.Error(err))
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
 
@@ -212,7 +212,7 @@ func (h *Handler) Logout(ctx context.Context, _ *pb.SSO_Empty) (*pb.SSO_Empty, e
 	const op = "sso.Logout.handler"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Debug("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context", zap.String("op", op))
 		return nil, status.Errorf(codes.Unauthenticated, hdl.ErrFailedToParseUUID.Error())
 	}
 

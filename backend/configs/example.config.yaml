@@ -23,14 +23,6 @@ auth:
         "https://www.googleapis.com/auth/userinfo.email"
       ]
 
-    github:
-      client_id: ""
-      client_secret: ""
-      redirect_url: "http://localhost:8080/api/auth/oauth2/github/callback"
-      scopes: [
-        "user:email",
-      ]
-
   oidc:
     success_url: "http://localhost:3000/"
     google:

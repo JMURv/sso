@@ -31,7 +31,7 @@ func Start(ctx context.Context, serviceName string, conf config.Config) {
 	<-ctx.Done()
 
 	if err = closer.Close(); err != nil {
-		zap.L().Debug("Error shutting down Jaeger", zap.Error(err))
+		zap.L().Warn("Error shutting down Jaeger", zap.Error(err))
 	}
 	zap.L().Info("Jaeger has been stopped")
 }

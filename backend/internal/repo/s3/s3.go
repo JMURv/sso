@@ -82,7 +82,7 @@ func (s *S3) UploadFile(ctx context.Context, req *UploadFileRequest) (string, er
 		},
 	)
 	if err != nil {
-		zap.L().Error("failed to upload file", zap.Error(err))
+		zap.L().Error("[S3] failed to upload file", zap.Error(err))
 		return "", ErrFailedToUploadFile
 	}
 

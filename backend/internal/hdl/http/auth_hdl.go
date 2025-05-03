@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/auth/captcha"
+	_ "github.com/JMURv/sso/internal/auth/jwt"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
@@ -136,7 +137,7 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			body	body		dto.TokenRequest	true	"jwt token"
-//	@Success		200		{object}	auth.Claims
+//	@Success		200		{object}	jwt.Claims
 //	@Failure		404		{object}	utils.ErrorsResponse	"token not found"
 //	@Failure		500		{object}	utils.ErrorsResponse	"internal error"
 //	@Router			/auth/jwt/parse [post]

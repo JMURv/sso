@@ -1,7 +1,7 @@
 definitions:
   big.Int:
     type: object
-  github_com_JMURv_sso_internal_auth.Claims:
+  github_com_JMURv_sso_internal_auth_jwt.Claims:
     properties:
       aud:
         description: the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
@@ -1754,7 +1754,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_JMURv_sso_internal_auth.Claims'
+            $ref: '#/definitions/github_com_JMURv_sso_internal_auth_jwt.Claims'
         "404":
           description: token not found
           schema:
@@ -2902,6 +2902,54 @@ paths:
           schema:
             $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
       summary: Retrieve current user profile
+      tags:
+      - User
+    put:
+      consumes:
+      - multipart/form-data
+      description: Updates user profile and avatar
+      parameters:
+      - description: User UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: JSON payload in 'data' field
+        in: formData
+        name: data
+        required: true
+        type: string
+      - description: Avatar image file
+        in: formData
+        name: avatar
+        type: file
+      - description: Bearer token, e.g. 'Bearer {jwt}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse'
+      summary: Update current user
       tags:
       - User
 swagger: "2.0"

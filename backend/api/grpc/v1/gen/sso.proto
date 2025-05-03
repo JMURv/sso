@@ -16,17 +16,6 @@ message SSO_Uint64Msg {
   uint64 uint64 = 1;
 }
 
-message SSO_ListReq {
-  uint64 page = 1;
-  uint64 size = 2;
-}
-
-message SSO_SearchReq {
-  string query = 1;
-  uint64 page = 2;
-  uint64 size = 3;
-}
-
 // ------ Auth ------
 
 service Auth {
@@ -88,12 +77,12 @@ message SSO_CheckForgotPasswordEmailReq {
 // ------ Users ------
 
 service Users {
-  rpc SearchUser (SSO_SearchReq) returns (SSO_PaginatedUsersRes);
   rpc ExistUser (SSO_ExistUserRequest) returns (SSO_ExistUserResponse);
-  rpc ListUsers (SSO_ListReq) returns (SSO_PaginatedUsersRes);
-  rpc GetUser (SSO_UuidMsg) returns (SSO_User);
   rpc GetMe (SSO_Empty) returns (SSO_User);
+  rpc UpdateMe (SSO_UpdateUserReq) returns (SSO_User);
+  rpc ListUsers (SSO_UserListRequest) returns (SSO_UserListResponse);
   rpc CreateUser (SSO_CreateUserReq) returns (SSO_CreateUserRes);
+  rpc GetUser (SSO_UuidMsg) returns (SSO_User);
   rpc UpdateUser (SSO_UpdateUserReq) returns (SSO_UuidMsg);
   rpc DeleteUser (SSO_UuidMsg) returns (SSO_Empty);
 }
@@ -112,7 +101,18 @@ message SSO_User {
   google.protobuf.Timestamp updated_at = 11;
 }
 
-message SSO_PaginatedUsersRes {
+message SSO_UserListRequest {
+  uint64 page = 1;
+  uint64 size = 2;
+  bool is_active = 3;
+  bool is_email_verified = 4;
+  bool is_wa = 5;
+  string search = 6;
+  repeated string roles = 7;
+  string sort = 8;
+}
+
+message SSO_UserListResponse {
   repeated SSO_User data = 1;
   int64 count = 2;
   int64 total_pages = 3;
@@ -156,9 +156,9 @@ message SSO_CreateUserRes {
 // ------ Permissions ------
 
 service Permission {
-  rpc ListPermissions (SSO_ListReq) returns (SSO_PermissionList);
-  rpc GetPermission (SSO_Uint64Msg) returns (SSO_Permission);
+  rpc ListPermissions (SSO_PermissionListRequest) returns (SSO_PermissionListResponse);
   rpc CreatePermission (SSO_Permission) returns (SSO_Uint64Msg);
+  rpc GetPermission (SSO_Uint64Msg) returns (SSO_Permission);
   rpc UpdatePermission (SSO_Permission) returns (SSO_Empty);
   rpc DeletePermission (SSO_Uint64Msg) returns (SSO_Empty);
 }
@@ -169,7 +169,13 @@ message SSO_Permission {
   string description = 3;
 }
 
-message SSO_PermissionList {
+message SSO_PermissionListRequest {
+  uint64 page = 1;
+  uint64 size = 2;
+  string search = 3;
+}
+
+message SSO_PermissionListResponse {
   repeated SSO_Permission data = 1;
   int64 count = 2;
   int64 total_pages = 3;
@@ -180,9 +186,9 @@ message SSO_PermissionList {
 // ------ Roles ------
 
 service Role {
-  rpc ListRoles (SSO_ListReq) returns (SSO_RoleList);
-  rpc GetRole (SSO_Uint64Msg) returns (SSO_Role);
+  rpc ListRoles (SSO_RoleListRequest) returns (SSO_RoleListResponse);
   rpc CreateRole (SSO_Role) returns (SSO_Uint64Msg);
+  rpc GetRole (SSO_Uint64Msg) returns (SSO_Role);
   rpc UpdateRole (SSO_Role) returns (SSO_Empty);
   rpc DeleteRole (SSO_Uint64Msg) returns (SSO_Empty);
 }
@@ -193,7 +199,13 @@ message SSO_Role {
   string description = 3;
 }
 
-message SSO_RoleList {
+message SSO_RoleListRequest {
+  uint64 page = 1;
+  uint64 size = 2;
+  string search = 3;
+}
+
+message SSO_RoleListResponse {
   repeated SSO_Role data = 1;
   int64 count = 2;
   int64 total_pages = 3;
@@ -204,7 +216,7 @@ message SSO_RoleList {
 // ------ Devices ------
 
 service Devices {
-  rpc ListDevices (SSO_ListReq) returns (SSO_ListDevicesRes);
+  rpc ListDevices (SSO_ListDevicesRequest) returns (SSO_ListDevicesResponse);
   rpc GetDevice (SSO_StringMsg) returns (SSO_Device);
   rpc UpdateDevice (SSO_UpdateDeviceRequest) returns (SSO_Empty);
   rpc DeleteDevice (SSO_StringMsg) returns (SSO_Empty);
@@ -223,7 +235,12 @@ message SSO_Device {
   google.protobuf.Timestamp created_at = 10;
 }
 
-message SSO_ListDevicesRes {
+message SSO_ListDevicesRequest {
+  uint64 page = 1;
+  uint64 size = 2;
+}
+
+message SSO_ListDevicesResponse {
   repeated SSO_Device data = 1;
 }
 

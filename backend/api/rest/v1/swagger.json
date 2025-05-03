@@ -236,7 +236,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_JMURv_sso_internal_auth.Claims"
+                            "$ref": "#/definitions/github_com_JMURv_sso_internal_auth_jwt.Claims"
                         }
                     },
                     "404": {
@@ -1785,6 +1785,77 @@
                         }
                     }
                 }
+            },
+            "put": {
+                "description": "Updates user profile and avatar",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update current user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON payload in 'data' field",
+                        "name": "data",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Avatar image file",
+                        "name": "avatar",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer token, e.g. 'Bearer {jwt}'",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_JMURv_sso_internal_hdl_http_utils.ErrorsResponse"
+                        }
+                    }
+                }
             }
         },
         "/users/{id}": {
@@ -1965,7 +2036,7 @@
         "big.Int": {
             "type": "object"
         },
-        "github_com_JMURv_sso_internal_auth.Claims": {
+        "github_com_JMURv_sso_internal_auth_jwt.Claims": {
             "type": "object",
             "properties": {
                 "aud": {

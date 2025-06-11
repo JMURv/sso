@@ -1,81 +1,29 @@
+name: sso
 services:
   redis:
-    container_name: redis
-    restart: always
-    image: redis:alpine
-    ports:
-      - "6379:6379"
-    networks: [sso]
+    extends:
+      file: dc.base.yaml
+      service: redis
 
   db:
-    container_name: db
-    image: postgres:17.4-alpine
-    restart: always
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-    ports:
-      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
-    healthcheck:
-      test: 'psql -w -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost -c "SELECT 1"'
-      interval: 5s
-      timeout: 2s
-      retries: 5
-      start_period: 5s
-    volumes:
-      - pg_sso:/var/lib/postgresql/data
-    networks: [sso]
+    extends:
+      file: dc.base.yaml
+      service: db
 
   minio:
-    image: minio/minio:latest
-    container_name: minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
-      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
-    volumes:
-      - minio_sso:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    networks: [sso]
+    extends:
+      file: dc.base.yaml
+      service: minio
 
-  app:
-    container_name: app
-    restart: unless-stopped
-    build:
-      context: ../../
-      dockerfile: build/docker/Dockerfile
-    env_file:
-      - ./env/.env.dev
-    ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
-      - "${BACKEND_GRPC_PORT}:${BACKEND_GRPC_PORT}"
-      - "${BACKEND_METRICS_PORT}:${BACKEND_METRICS_PORT}"
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:${BACKEND_PORT}/health" ]
-      interval: 5s
-      timeout: 5s
-      retries: 3
-    depends_on:
-      db:
-        condition: service_healthy
-        restart: true
-      redis:
-        condition: service_started
-    networks: [sso]
+  backend:
+    extends:
+      file: dc.base.yaml
+      service: backend
 
 volumes:
-  pg_sso:
-  minio_sso:
+  pg_data:
+  redis_data:
+  minio_data:
 
 networks:
   sso:

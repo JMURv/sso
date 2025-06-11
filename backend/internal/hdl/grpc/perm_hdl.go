@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_PermissionList, error) {
+func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_PermissionListRequest) (*pb.SSO_PermissionListResponse, error) {
 	page := req.Page
 	if page < 1 {
 		page = config.DefaultPage
@@ -31,7 +31,7 @@ func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_ListReq) (*pb
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
-	return &pb.SSO_PermissionList{
+	return &pb.SSO_PermissionListResponse{
 		Data:        utils.ListPermissionsToProto(res.Data),
 		Count:       res.Count,
 		TotalPages:  int64(res.TotalPages),
@@ -41,13 +41,8 @@ func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_ListReq) (*pb
 }
 
 func (h *Handler) GetPermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb.SSO_Permission, error) {
-	const op = "sso.GetPermission.hdl"
 	if req == nil || req.Uint64 == 0 {
-		zap.L().Error(
-			"failed to parse uid",
-			zap.String("op", op),
-			zap.Uint64("uid", req.Uint64),
-		)
+		zap.L().Error("failed to parse uid", zap.Uint64("uid", req.Uint64))
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -62,14 +57,13 @@ func (h *Handler) GetPermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb
 }
 
 func (h *Handler) CreatePermission(ctx context.Context, req *pb.SSO_Permission) (*pb.SSO_Uint64Msg, error) {
-	const op = "sso.CreatePermission.hdl"
 	mdPerm := &dto.CreatePermissionRequest{
 		Name:        req.Name,
 		Description: req.Description,
 	}
 
 	if err := validation.V.Struct(mdPerm); err != nil {
-		zap.L().Error("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to validate obj", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -86,15 +80,13 @@ func (h *Handler) CreatePermission(ctx context.Context, req *pb.SSO_Permission) 
 }
 
 func (h *Handler) UpdatePermission(ctx context.Context, req *pb.SSO_Permission) (*pb.SSO_Empty, error) {
-	const op = "sso.UpdatePermission.hdl"
-
 	if _, ok := ctx.Value("uid").(uuid.UUID); !ok {
-		zap.L().Error("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context")
 		return nil, status.Errorf(codes.Unauthenticated, hdl.ErrFailedToParseUUID.Error())
 	}
 
 	if req == nil || req.Id == 0 {
-		zap.L().Error("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request")
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -103,7 +95,7 @@ func (h *Handler) UpdatePermission(ctx context.Context, req *pb.SSO_Permission) 
 		Description: req.Description,
 	}
 	if err := validation.V.Struct(mdPerm); err != nil {
-		zap.L().Error("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to validate obj", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -118,14 +110,13 @@ func (h *Handler) UpdatePermission(ctx context.Context, req *pb.SSO_Permission) 
 }
 
 func (h *Handler) DeletePermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb.SSO_Empty, error) {
-	const op = "sso.DeletePermission.hdl"
 	if _, ok := ctx.Value("uid").(uuid.UUID); !ok {
-		zap.L().Error("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context")
 		return nil, status.Errorf(codes.Unauthenticated, hdl.ErrFailedToParseUUID.Error())
 	}
 
 	if req == nil || req.Uint64 == 0 {
-		zap.L().Error("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request")
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 

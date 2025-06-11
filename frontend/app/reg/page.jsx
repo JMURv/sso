@@ -19,16 +19,13 @@ export default function Page() {
     }
 
     const handleReg = async () => {
+        const formData = new FormData()
+        formData.append("name", fd.name)
+        formData.append("email", fd.email)
+        formData.append("password", fd.password)
         const r = await fetch("/api/users", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            cache: "no-store",
-            body: JSON.stringify({
-                name: fd.name,
-                email: fd.email,
-                password: fd.password,
-            })
-
+            body: formData
         })
 
         if (!r.ok) {
@@ -56,7 +53,7 @@ export default function Page() {
                             <input
                                 type="text"
                                 name={"name"}
-                                value={name}
+                                value={fd.name}
                                 placeholder={"johndoe"}
                                 onChange={handleFDChange}
                                 className={`icon-input`}
@@ -70,7 +67,7 @@ export default function Page() {
                             <input
                                 type="text"
                                 name={"email"}
-                                value={email}
+                                value={fd.email}
                                 placeholder={"johndoe@gmail.com"}
                                 onChange={handleFDChange}
                                 className={`icon-input`}
@@ -84,7 +81,7 @@ export default function Page() {
                             <input
                                 type="password"
                                 name={"password"}
-                                value={password}
+                                value={fd.password}
                                 placeholder={"*********"}
                                 onChange={handleFDChange}
                                 className={`icon-input`}

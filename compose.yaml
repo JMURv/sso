@@ -1,0 +1,41 @@
+services:
+  caddy:
+    extends:
+      file: compose-base.yaml
+      service: caddy
+
+  redis:
+    extends:
+      file: compose-base.yaml
+      service: redis
+
+  db:
+    extends:
+      file: compose-base.yaml
+      service: db
+
+  minio:
+    extends:
+      file: compose-base.yaml
+      service: minio
+
+  backend:
+    extends:
+      file: compose-base.yaml
+      service: backend
+
+  frontend:
+    extends:
+      file: compose-base.yaml
+      service: frontend
+
+volumes:
+  pg_data:
+  minio_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  sso:
+    name: sso

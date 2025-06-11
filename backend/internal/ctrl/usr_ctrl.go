@@ -61,21 +61,21 @@ func (c *Controller) ListUsers(ctx context.Context, page, size int, filters map[
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	//cached := &dto.PaginatedUserResponse{}
-	//cacheKey := fmt.Sprintf(usersListKey, page, size, filters)
-	//if err := c.cache.GetToStruct(ctx, cacheKey, &cached); err == nil {
-	//	return cached, nil
-	//}
+	cached := &dto.PaginatedUserResponse{}
+	cacheKey := fmt.Sprintf(usersListKey, page, size, filters)
+	if err := c.cache.GetToStruct(ctx, cacheKey, &cached); err == nil {
+		return cached, nil
+	}
 
 	res, err := c.repo.ListUsers(ctx, page, size, filters)
 	if err != nil {
 		return nil, err
 	}
 
-	//var bytes []byte
-	//if bytes, err = json.Marshal(res); err == nil {
-	//	c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
-	//}
+	var bytes []byte
+	if bytes, err = json.Marshal(res); err == nil {
+		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
+	}
 	return res, nil
 }
 
@@ -84,11 +84,11 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	//cached := &md.User{}
-	//cacheKey := fmt.Sprintf(userCacheKey, userID)
-	//if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
-	//	return cached, nil
-	//}
+	cached := &md.User{}
+	cacheKey := fmt.Sprintf(userCacheKey, userID)
+	if err := c.cache.GetToStruct(ctx, cacheKey, cached); err == nil {
+		return cached, nil
+	}
 
 	res, err := c.repo.GetUserByID(ctx, userID)
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
@@ -97,9 +97,9 @@ func (c *Controller) GetUserByID(ctx context.Context, userID uuid.UUID) (*md.Use
 		return nil, err
 	}
 
-	//if bytes, err := json.Marshal(res); err == nil {
-	//	c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
-	//}
+	if bytes, err := json.Marshal(res); err == nil {
+		c.cache.Set(ctx, config.DefaultCacheTime, cacheKey, bytes)
+	}
 	return res, nil
 }
 

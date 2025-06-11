@@ -16,12 +16,12 @@ import (
 	time "time"
 
 	jwt "github.com/JMURv/sso/internal/auth/jwt"
-	webauthn "github.com/JMURv/sso/internal/auth/webauthn"
+	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	dto "github.com/JMURv/sso/internal/dto"
 	models "github.com/JMURv/sso/internal/models"
 	s3 "github.com/JMURv/sso/internal/repo/s3"
 	protocol "github.com/go-webauthn/webauthn/protocol"
-	webauthn0 "github.com/go-webauthn/webauthn/webauthn"
+	webauthn "github.com/go-webauthn/webauthn/webauthn"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -124,7 +124,7 @@ func (mr *MockAppRepoMockRecorder) CreateUser(ctx, req any) *gomock.Call {
 }
 
 // CreateWACredential mocks base method.
-func (m *MockAppRepo) CreateWACredential(ctx context.Context, userID uuid.UUID, cred *webauthn0.Credential) error {
+func (m *MockAppRepo) CreateWACredential(ctx context.Context, userID uuid.UUID, cred *webauthn.Credential) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateWACredential", ctx, userID, cred)
 	ret0, _ := ret[0].(error)
@@ -314,10 +314,10 @@ func (mr *MockAppRepoMockRecorder) GetUserByOAuth2(ctx, provider, providerID any
 }
 
 // GetWACredentials mocks base method.
-func (m *MockAppRepo) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]webauthn0.Credential, error) {
+func (m *MockAppRepo) GetWACredentials(ctx context.Context, userID uuid.UUID) ([]webauthn.Credential, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetWACredentials", ctx, userID)
-	ret0, _ := ret[0].([]webauthn0.Credential)
+	ret0, _ := ret[0].([]webauthn.Credential)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -502,7 +502,7 @@ func (mr *MockAppRepoMockRecorder) UpdateUser(ctx, id, req any) *gomock.Call {
 }
 
 // UpdateWACredential mocks base method.
-func (m *MockAppRepo) UpdateWACredential(ctx context.Context, cred *webauthn0.Credential) error {
+func (m *MockAppRepo) UpdateWACredential(ctx context.Context, cred *webauthn.Credential) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateWACredential", ctx, cred)
 	ret0, _ := ret[0].(error)
@@ -879,10 +879,10 @@ func (mr *MockAppCtrlMockRecorder) GetUserForWA(ctx, uid, email any) *gomock.Cal
 }
 
 // GetWASession mocks base method.
-func (m *MockAppCtrl) GetWASession(ctx context.Context, sessionType webauthn.SessionType, userID uuid.UUID) (*webauthn0.SessionData, error) {
+func (m *MockAppCtrl) GetWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID) (*webauthn.SessionData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetWASession", ctx, sessionType, userID)
-	ret0, _ := ret[0].(*webauthn0.SessionData)
+	ret0, _ := ret[0].(*webauthn.SessionData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1087,7 +1087,7 @@ func (mr *MockAppCtrlMockRecorder) StartRegistration(ctx, uid any) *gomock.Call 
 }
 
 // StoreWASession mocks base method.
-func (m *MockAppCtrl) StoreWASession(ctx context.Context, sessionType webauthn.SessionType, userID uuid.UUID, req *webauthn0.SessionData) error {
+func (m *MockAppCtrl) StoreWASession(ctx context.Context, sessionType wa.SessionType, userID uuid.UUID, req *webauthn.SessionData) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StoreWASession", ctx, sessionType, userID, req)
 	ret0, _ := ret[0].(error)

@@ -31,6 +31,7 @@ tasks:
     desc: Generate mocks
     cmds:
       - mockgen -source="./internal/ctrl/ctrl.go" -destination="tests/mocks/mock_ctrl.go" -package=mocks
+      - mockgen -source="./internal/auth/auth.go" -destination="tests/mocks/auth_ctrl.go" -package=mocks
 
   t:
     desc: Run tests

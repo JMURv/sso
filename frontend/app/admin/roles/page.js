@@ -42,6 +42,7 @@ export default function Page() {
 
             setRoles(await response.json())
         } catch (error) {
+            console.error(error)
             toast.error("Failed to search users")
         }
     }

@@ -17,7 +17,6 @@ import (
 )
 
 func (h *Handler) ExistUser(ctx context.Context, req *pb.SSO_ExistUserRequest) (*pb.SSO_ExistUserResponse, error) {
-	const op = "sso.ExistUser.hdl"
 	res, err := h.ctrl.IsUserExist(ctx, req.Email)
 	if err != nil {
 		if errors.Is(err, ctrl.ErrNotFound) {
@@ -32,10 +31,9 @@ func (h *Handler) ExistUser(ctx context.Context, req *pb.SSO_ExistUserRequest) (
 }
 
 func (h *Handler) GetMe(ctx context.Context, req *pb.SSO_Empty) (*pb.SSO_User, error) {
-	const op = "sso.GetMe.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Error("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context")
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -49,12 +47,10 @@ func (h *Handler) GetMe(ctx context.Context, req *pb.SSO_Empty) (*pb.SSO_User, e
 	return utils.ModelToProto(res), nil
 }
 
-func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_PaginatedUsersRes, error) {
-	const op = "sso.ListUsers.hdl"
-
+func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_UserListRequest) (*pb.SSO_UserListResponse, error) {
 	page, size := req.Page, req.Size
 	if page == 0 || size == 0 {
-		zap.L().Error("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request")
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -63,7 +59,7 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_P
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
 
-	return &pb.SSO_PaginatedUsersRes{
+	return &pb.SSO_UserListResponse{
 		Data:        utils.ListModelToProto(u.Data),
 		Count:       u.Count,
 		TotalPages:  int64(u.TotalPages),
@@ -73,10 +69,8 @@ func (h *Handler) ListUsers(ctx context.Context, req *pb.SSO_ListReq) (*pb.SSO_P
 }
 
 func (h *Handler) CreateUser(ctx context.Context, req *pb.SSO_CreateUserReq) (*pb.SSO_CreateUserRes, error) {
-	const op = "sso.CreateUser.hdl"
-	_, ok := ctx.Value("uid").(uuid.UUID)
-	if !ok {
-		zap.L().Error("failed to parse uid", zap.String("op", op))
+	if _, ok := ctx.Value("uid").(uuid.UUID); !ok {
+		zap.L().Error("failed to parse uid")
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -107,10 +101,9 @@ func (h *Handler) CreateUser(ctx context.Context, req *pb.SSO_CreateUserReq) (*p
 }
 
 func (h *Handler) GetUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_User, error) {
-	const op = "sso.GetUser.hdl"
 	uid, err := uuid.Parse(req.Uuid)
 	if uid == uuid.Nil || err != nil {
-		zap.L().Error("failed to parse uid", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to parse uid", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -125,10 +118,9 @@ func (h *Handler) GetUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_Use
 }
 
 func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UpdateUserReq) (*pb.SSO_UuidMsg, error) {
-	const op = "sso.UpdateUser.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Error("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context")
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -142,7 +134,7 @@ func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UpdateUserReq) (*p
 		Roles:    req.Roles,
 	}
 	if err := validation.V.Struct(r); err != nil {
-		zap.L().Error("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to validate obj", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -157,10 +149,9 @@ func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UpdateUserReq) (*p
 }
 
 func (h *Handler) DeleteUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_Empty, error) {
-	const op = "sso.DeleteUser.hdl"
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Error("failed to parse uid", zap.String("op", op))
+		zap.L().Error("failed to parse uid")
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 

@@ -30,7 +30,7 @@ func mustRegisterLogger(mode string) {
 	}
 }
 
-// TODO: fix caching
+// TODO: tests
 func main() {
 	defer func() {
 		if err := recover(); err != nil {

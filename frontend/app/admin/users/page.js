@@ -51,6 +51,7 @@ export default function Page() {
 
             setUsers(await response.json())
         } catch (error) {
+            console.error(error)
             toast.error("Failed to search users")
         }
     }

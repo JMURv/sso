@@ -41,6 +41,7 @@ export default function Page() {
 
             setPerms(await response.json())
         } catch (error) {
+            console.error(error)
             toast.error("Failed to search users")
         }
     }

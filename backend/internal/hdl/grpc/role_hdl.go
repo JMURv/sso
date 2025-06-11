@@ -15,17 +15,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (h *Handler) ListRoles(ctx context.Context, req *gen.SSO_ListReq) (*gen.SSO_RoleList, error) {
-	const op = "sso.ListRoles.hdl"
+func (h *Handler) ListRoles(ctx context.Context, req *gen.SSO_RoleListRequest) (*gen.SSO_RoleListResponse, error) {
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Error("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context")
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
 	page, size := req.Page, req.Size
 	if page == 0 || size == 0 {
-		zap.L().Error("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request")
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -34,7 +33,7 @@ func (h *Handler) ListRoles(ctx context.Context, req *gen.SSO_ListReq) (*gen.SSO
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
 
-	return &gen.SSO_RoleList{
+	return &gen.SSO_RoleListResponse{
 		Data:        utils.ListRolesToProtoFromPointer(res.Data),
 		Count:       res.Count,
 		TotalPages:  int64(res.TotalPages),
@@ -44,10 +43,9 @@ func (h *Handler) ListRoles(ctx context.Context, req *gen.SSO_ListReq) (*gen.SSO
 }
 
 func (h *Handler) GetRole(ctx context.Context, req *gen.SSO_Uint64Msg) (*gen.SSO_Role, error) {
-	const op = "sso.GetRole.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Error("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context")
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -62,10 +60,9 @@ func (h *Handler) GetRole(ctx context.Context, req *gen.SSO_Uint64Msg) (*gen.SSO
 }
 
 func (h *Handler) CreateRole(ctx context.Context, req *gen.SSO_Role) (*gen.SSO_Uint64Msg, error) {
-	const op = "sso.CreateRole.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Error("failed to parse uid", zap.String("op", op))
+		zap.L().Error("failed to parse uid")
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -90,10 +87,9 @@ func (h *Handler) CreateRole(ctx context.Context, req *gen.SSO_Role) (*gen.SSO_U
 }
 
 func (h *Handler) UpdateRole(ctx context.Context, req *gen.SSO_Role) (*gen.SSO_Empty, error) {
-	const op = "sso.UpdateRole.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Error("failed to get uid from context", zap.String("op", op))
+		zap.L().Error("failed to get uid from context")
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
@@ -102,7 +98,7 @@ func (h *Handler) UpdateRole(ctx context.Context, req *gen.SSO_Role) (*gen.SSO_E
 		Description: req.Description,
 	}
 	if err := validation.V.Struct(r); err != nil {
-		zap.L().Error("failed to validate obj", zap.String("op", op), zap.Error(err))
+		zap.L().Error("failed to validate obj", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -117,15 +113,14 @@ func (h *Handler) UpdateRole(ctx context.Context, req *gen.SSO_Role) (*gen.SSO_E
 }
 
 func (h *Handler) DeleteRole(ctx context.Context, req *gen.SSO_Uint64Msg) (*gen.SSO_Empty, error) {
-	const op = "sso.DeleteRole.hdl"
 	_, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
-		zap.L().Error("failed to parse uid", zap.String("op", op))
+		zap.L().Error("failed to parse uid")
 		return nil, status.Errorf(codes.InvalidArgument, ctrl.ErrParseUUID.Error())
 	}
 
 	if req == nil || req.Uint64 == 0 {
-		zap.L().Error("failed to decode request", zap.String("op", op))
+		zap.L().Error("failed to decode request")
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 

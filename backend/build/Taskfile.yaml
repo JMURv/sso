@@ -26,16 +26,6 @@ tasks:
     cmds:
       - "docker compose --env-file {{.DEV_ENV_FILE}} -f compose/dc.dev.yaml down -v"
 
-  dc-observe:
-    desc: Run metrics compose
-    cmds:
-      - "docker compose -f compose/dc.observe.yaml up"
-
-  dc-observe-down:
-    desc: Shutdown metrics compose
-    cmds:
-      - "docker compose -f compose/dc.observe.yaml down"
-
   dc-test:
     desc: Run integration tests helper containers
     cmds:

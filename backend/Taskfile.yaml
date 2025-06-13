@@ -1,16 +1,6 @@
 version: 3
 
 tasks:
-  run:
-    desc: Run app
-    cmds:
-      - go run cmd/main.go
-
-  build:
-    desc: Build app
-    cmds:
-      - go build -o bin/main ./cmd/main.go
-
   lint:
     desc: Lint app
     cmds:

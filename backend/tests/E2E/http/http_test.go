@@ -15,7 +15,6 @@ import (
 	"strings"
 )
 
-const configPath = "../../../configs/test.config.yaml"
 const getTables = `
 SELECT tablename 
 FROM pg_tables 
@@ -25,7 +24,7 @@ WHERE schemaname = 'public';
 func setupTestServer() (*httptest.Server, func()) {
 	zap.ReplaceGlobals(zap.Must(zap.NewDevelopment()))
 
-	conf := config.MustLoad(configPath)
+	conf := config.MustLoad()
 	auth.New(conf.Secret)
 
 	repo := db.New(conf.DB)

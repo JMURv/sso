@@ -19,8 +19,6 @@ import (
 	"syscall"
 )
 
-const configPath = "configs/config.yaml"
-
 func mustRegisterLogger(mode string) {
 	switch mode {
 	case "prod":
@@ -41,7 +39,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := config.MustLoad(configPath)
+	conf := config.MustLoad()
 	mustRegisterLogger(conf.Mode)
 
 	go prometheus.New(conf.Prometheus.Port).Start(ctx)

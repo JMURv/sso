@@ -1,0 +1,71 @@
+name: sso
+services:
+  caddy:
+    extends:
+      file: compose-base.yaml
+      service: caddy
+
+  redis:
+    extends:
+      file: compose-base.yaml
+      service: redis
+
+  db:
+    extends:
+      file: compose-base.yaml
+      service: db
+
+  minio:
+    extends:
+      file: compose-base.yaml
+      service: minio
+
+  backend:
+    image: jmurv/dev-sso-backend:latest
+    build:
+      context: ./backend
+      dockerfile: ./build/docker/Dockerfile.dev
+    env_file: !override
+      - ./configs/envs/.env
+    extends:
+      file: compose-base.yaml
+      service: backend
+    develop:
+      watch: !override
+        - action: sync
+          path: backend
+          target: /app
+          ignore:
+            - .git
+            - vendor
+
+  frontend:
+    image: jmurv/dev-sso-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile.dev
+    extends:
+      file: compose-base.yaml
+      service: frontend
+    ports:
+      - "4000:4000"
+      - "24678:24678"
+    develop:
+      watch: !override
+        - action: sync
+          path: frontend
+          target: /app
+          ignore:
+            - .next
+            - node_modules
+
+volumes:
+  pg_data:
+  minio_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  sso:
+    name: sso

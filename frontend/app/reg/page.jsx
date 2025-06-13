@@ -20,9 +20,11 @@ export default function Page() {
 
     const handleReg = async () => {
         const formData = new FormData()
-        formData.append("name", fd.name)
-        formData.append("email", fd.email)
-        formData.append("password", fd.password)
+        formData.append("data", JSON.stringify({
+            name: fd.name,
+            email: fd.email,
+            password: fd.password,
+        }))
         const r = await fetch("/api/users", {
             method: "POST",
             body: formData
@@ -33,7 +35,8 @@ export default function Page() {
             return toast.error(data.error)
         }
 
-        await router.push("/")
+        await router.push("/auth")
+        await router.refresh()
     }
 
     return (

@@ -2,11 +2,17 @@ name: sso
 services:
   redis:
     extends:
-      file: dc.base.yaml
+      file: compose-base.yaml
       service: redis
     volumes: !reset []
+
   db:
     extends:
-      file: dc.base.yaml
+      file: compose-base.yaml
       service: db
     volumes: !reset []
+
+  backend:
+    extends:
+      file: compose-base.yaml
+      service: backend

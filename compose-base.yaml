@@ -26,39 +26,101 @@ services:
     networks: [ sso ]
 
   redis:
-    extends:
-      file: backend/build/compose/dc.base.yaml
-      service: redis
+    container_name: redis
+    restart: always
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks: [sso]
 
   db:
-    extends:
-      file: backend/build/compose/dc.base.yaml
-      service: db
+    container_name: db
+    image: postgres:17.4-alpine
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    healthcheck:
+      test: 'psql -w -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost -c "SELECT 1"'
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks: [sso]
 
   minio:
-    extends:
-      file: backend/build/compose/dc.base.yaml
-      service: minio
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks: [sso]
 
   backend:
-    image: sso-backend:latest
+    container_name: backend
+    restart: unless-stopped
+    image: jmurv/sso-backend:latest
     build:
       context: ./backend
       dockerfile: ./build/docker/Dockerfile
-    env_file: ./configs/envs/.env
-    extends:
-      file: backend/build/compose/dc.base.yaml
-      service: backend
+    env_file:
+      - ./configs/envs/.env.prod
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+      - "${BACKEND_GRPC_PORT}:${BACKEND_GRPC_PORT}"
+      - "${BACKEND_METRICS_PORT}:${BACKEND_METRICS_PORT}"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:${BACKEND_PORT}/health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_started
+    networks: [sso]
+    develop:
+      watch:
+        - action: rebuild
+          target: /
+          path: backend
+          ignore:
+            - .git
+            - vendor
 
   frontend:
     container_name: frontend
     restart: unless-stopped
-    image: sso-frontend:latest
+    image: jmurv/sso-frontend:latest
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
     environment:
       BACKEND_URL: "http://caddy"
+      NEXT_TELEMETRY_DISABLED: 1
       NEXT_PUBLIC_RECAPTCHA_SITE_KEY: "${CAPTCHA_SITE_KEY}"
       NEXT_PUBLIC_RECAPTCHA_SECRET_KEY: "${CAPTCHA_SECRET}"
     ports:
@@ -68,6 +130,14 @@ services:
         condition: service_healthy
         restart: true
     networks: [ sso ]
+    develop:
+      watch: !override
+        - action: rebuild
+          target: /app
+          path: frontend
+          ignore:
+            - .next
+            - node_modules
 
   jaeger:
     container_name: jaeger

@@ -8,11 +8,11 @@ module.exports = {
         return [
             {
                 source: '/api/:path*',
-                destination: `${process.env.BACKEND_URL}/:path*`,
+                destination: `${process.env.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:8080'}/:path*`,
             },
             {
                 source: '/s3/:path*',
-                destination: `${process.env.S3_URL}/:path*`,
+                destination: `${process.env.S3_URL ? process.env.S3_URL : 'http://localhost:9000'}/:path*`,
             },
         ]
     },

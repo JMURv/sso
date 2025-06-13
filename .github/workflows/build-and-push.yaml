@@ -24,8 +24,8 @@ jobs:
           BACKEND_IMAGE_NAME: ${{ secrets.BACKEND_IMAGE_NAME }}
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: backend/build/docker/Dockerfile
+          context: backend
+          file: build/docker/Dockerfile
           push: true
           tags: |
             ${{ secrets.USERNAME }}/${{ secrets.BACKEND_IMAGE_NAME }}:latest
@@ -37,8 +37,8 @@ jobs:
           FRONTEND_IMAGE_NAME: ${{ secrets.FRONTEND_IMAGE_NAME }}
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: frontend/Dockerfile
+          context: frontend
+          file: Dockerfile
           push: true
           tags: |
             ${{ secrets.USERNAME }}/${{ secrets.FRONTEND_IMAGE_NAME }}:latest

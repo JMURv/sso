@@ -1,34 +1,67 @@
 apiVersion: v1
 kind: ConfigMap
+
 metadata:
-  name: app-cfg
+  name: sso-backend-cfg
+
 data:
-  config.yaml: |
-    mode: "dev"
-    serviceName: "svc-name"
-    secret: "DYHlaJpPiZ"
-    
-    server:
-      port: 8080
-      scheme: "http"
-      domain: "localhost"
-    
-    db:
-      host: "localhost"
-      port: 5432
-      user: "app_owner"
-      password: "app_password"
-      database: "app_db"
-    
-    redis:
-      addr: "localhost:6379"
-      pass: ""
-    
-    jaeger:
-      sampler:
-        type: "const"
-        param: 1
-      reporter:
-        LogSpans: true
-        LocalAgentHostPort: "localhost:6831"
-        CollectorEndpoint: "http://localhost:14268/api/traces"
+  MODE: "prod"
+  SERVICE_NAME: "sso"
+  SERVER_SCHEME: "http"
+  SERVER_DOMAIN: "localhost"
+  SERVER_HTTP_PORT: "8080"
+  SERVER_GRPC_PORT: "50050"
+  SERVER_PROM_PORT: "8085"
+
+  FRONTEND_PORT: "4000"
+  BACKEND_PORT: "8080"
+  BACKEND_GRPC_PORT: "50050"
+  BACKEND_METRICS_PORT: "8085"
+
+  POSTGRES_DB: "sso_db"
+  POSTGRES_USER: "sso_owner"
+  POSTGRES_PASSWORD: "password"
+  POSTGRES_HOST: "localhost"
+  POSTGRES_PORT: "5432"
+
+  JWT_SECRET: "supersecret"
+  JWT_ISSUER: "SSO"
+  ADMIN_USERS: "architect.lock@outlook.com"
+
+  CAPTCHA_SITE_KEY: ""
+  CAPTCHA_SECRET: ""
+
+  OAUTH2_SUCCESS_URL: "http://localhost:3000/"
+  OAUTH2_GOOGLE_CLIENT_ID: ""
+  OAUTH2_GOOGLE_CLIENT_SECRET: ""
+  OAUTH2_GOOGLE_REDIRECT_URL: "http://localhost:8080/api/auth/oauth2/google/callback"
+  OAUTH2_GOOGLE_SCOPES: "https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email"
+
+  OIDC_SUCCESS_URL: "http://localhost:3000/"
+  OIDC_GOOGLE_CLIENT_ID: ""
+  OIDC_GOOGLE_CLIENT_SECRET: ""
+  OIDC_GOOGLE_REDIRECT_URL: "http://localhost:8080/api/auth/oidc/google/callback"
+  OIDC_GOOGLE_SCOPES: "openid,email,profile"
+
+  WEBAUTHN_ORIGINS: "http://localhost,http://127.0.0.1,http://localhost:8080,http://localhost:3000"
+
+  EMAIL_SERVER: "smtp.gmail.com"
+  EMAIL_PORT: "587"
+  EMAIL_USER: ""
+  EMAIL_PASS: ""
+  EMAIL_ADMIN: ""
+
+  MINIO_ADDR: "localhost:9000"
+  MINIO_ACCESS_KEY: "admin"
+  MINIO_SECRET_KEY: "superstrongpassword"
+  MINIO_BUCKET: "sso"
+  MINIO_SSL: "false"
+
+  REDIS_ADDR: "localhost:6379"
+  REDIS_PASS: ""
+
+  JAEGER_SAMPLER_TYPE: "const"
+  JAEGER_SAMPLER_PARAM: "1"
+  JAEGER_REPORTER_LOGSPANS: "true"
+  JAEGER_REPORTER_LOCALAGENT: "localhost:6831"
+  JAEGER_REPORTER_COLLECTOR: "http://localhost:14268/api/traces"

@@ -1,7 +1,8 @@
 module.exports = {
     output: 'standalone',
     images: {
-        domains: ['localhost', '127.0.0.1'],
+        dangerouslyAllowSVG: true,
+        domains: ['localhost', '127.0.0.1', 'caddy'],
     },
     async rewrites() {
         return [

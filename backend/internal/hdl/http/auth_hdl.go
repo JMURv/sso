@@ -108,6 +108,7 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 
 	req := &dto.RefreshRequest{}
 	if ok = utils.ParseAndValidate(w, r, req); !ok {
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 

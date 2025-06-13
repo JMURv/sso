@@ -1,4 +1,5 @@
 .idea
 *~
-configs/envs/.env
-tmp
+.env*
+!.env.example
+!.env.test

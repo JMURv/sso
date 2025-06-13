@@ -11,7 +11,7 @@
       metrics
   }
 
-  handle_path /api/* {
+  handle /api/* {
     uri strip_prefix /api
     reverse_proxy backend:{env.BACKEND_PORT} {
         header_up Host {http.request.remote.host}
@@ -21,8 +21,12 @@
     }
   }
 
-  handle_path /s3/* {
+  handle /s3/* {
     uri strip_prefix /s3
+    reverse_proxy minio:9000
+  }
+
+  handle /sso/* {
     reverse_proxy minio:9000
   }
 

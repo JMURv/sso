@@ -20,32 +20,35 @@ export const AuthProvider = ({accessSrv, refreshSrv, children}) => {
     const [isLoading, setIsLoading] = useState(true)
 
     async function authFetch(url, options = {}) {
-        const opts = { ...options }
-        opts.headers = {
-            ...opts.headers,
-            Authorization: `Bearer ${access}`,
-            headers: {"User-Agent": navigator.userAgent},
-        }
-
-        let response = await fetch(url, opts)
-        if (response.status !== 403) {
-            return response
-        }
-
-        const token = await refreshSession(refresh)
-        if (token) {
-            const retryOpts = { ...options }
-            retryOpts.headers = {
-                ...retryOpts.headers,
-                Authorization: `Bearer ${token}`,
+        if (access) {
+            const opts = { ...options }
+            opts.headers = {
+                ...opts.headers,
+                Authorization: `Bearer ${access}`,
                 headers: {"User-Agent": navigator.userAgent},
             }
-            response = await fetch(url, retryOpts)
-            if (response.status === 401) {
-                return router.push("/auth")
+
+            let response = await fetch(url, opts)
+            if (response.status !== 403) {
+                return response
             }
-            return response
+
+            const token = await refreshSession(refresh)
+            if (token) {
+                const retryOpts = { ...options }
+                retryOpts.headers = {
+                    ...retryOpts.headers,
+                    Authorization: `Bearer ${token}`,
+                    headers: {"User-Agent": navigator.userAgent},
+                }
+                response = await fetch(url, retryOpts)
+                if (response.status === 401 || response.status === 400) {
+                    return router.push("/auth")
+                }
+                return response
+            }
         }
+        return router.push("/auth")
     }
 
     async function adminFetch(url, options = {}) {

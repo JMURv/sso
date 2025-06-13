@@ -36,10 +36,11 @@ func main() {
 		}
 	}()
 
+	const path = "config/.env"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := config.MustLoad()
+	conf := config.MustLoad(path)
 	mustRegisterLogger(conf.Mode)
 
 	go prometheus.New(conf.Prometheus.Port).Start(ctx)

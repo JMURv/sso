@@ -16,7 +16,7 @@ export default function WAModal({isWA, setIsWA, callback}) {
 
         if (!r.ok) {
             const data = await r.json()
-            return toast.error(data.error)
+            return toast.error(data.errors)
         }
         const options = await r.json()
 
@@ -46,7 +46,7 @@ export default function WAModal({isWA, setIsWA, callback}) {
 
         if (!fin.ok) {
             const data = await fin.json()
-            toast.error(data.error)
+            toast.error(data.errors)
             return
         }
 

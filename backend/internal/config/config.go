@@ -2,7 +2,9 @@ package config
 
 import (
 	"github.com/caarlos0/env/v9"
-	"go.uber.org/zap"
+	"github.com/joho/godotenv"
+	"log"
+	"os"
 )
 
 type Config struct {
@@ -75,11 +77,11 @@ type smtpConfig struct {
 }
 
 type dbConfig struct {
-	Host     string `env:"DB_HOST" envDefault:"localhost"`
-	Port     int    `env:"DB_PORT" envDefault:"5432"`
-	User     string `env:"DB_USER" envDefault:"postgres"`
-	Password string `env:"DB_PASSWORD" envDefault:"postgres"`
-	Database string `env:"DB_DATABASE" envDefault:"db"`
+	Host     string `env:"POSTGRES_HOST" envDefault:"localhost"`
+	Port     int    `env:"POSTGRES_PORT" envDefault:"5432"`
+	User     string `env:"POSTGRES_USER" envDefault:"postgres"`
+	Password string `env:"POSTGRES_PASSWORD" envDefault:"postgres"`
+	Database string `env:"POSTGRES_DB" envDefault:"db"`
 }
 
 type s3Config struct {
@@ -111,12 +113,20 @@ type jaegerConfig struct {
 	} `yaml:"reporter"`
 }
 
-func MustLoad() Config {
+func MustLoad(path string) Config {
+	if err := godotenv.Load(path); err != nil {
+		if !os.IsNotExist(err) {
+			panic("failed to load .env file: " + err.Error())
+		}
+		log.Println("No .env file found, using system environment variables")
+	} else {
+		log.Println("Loaded environment variables from: " + path)
+	}
+
 	conf := Config{}
 	if err := env.Parse(&conf); err != nil {
 		panic("failed to parse environment variables: " + err.Error())
 	}
-
-	zap.L().Info("Load configuration from environment")
+	log.Println("Load configuration from environment")
 	return conf
 }

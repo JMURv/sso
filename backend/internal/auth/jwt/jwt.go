@@ -141,6 +141,5 @@ func (c *Core) ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
 		)
 		return claims, ErrInvalidToken
 	}
-
 	return claims, nil
 }

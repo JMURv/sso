@@ -32,7 +32,7 @@ export default function Page() {
 
         if (!r.ok) {
             const data = await r.json()
-            return toast.error(data.error)
+            return toast.error(data.errors)
         }
 
         await router.push("/auth")

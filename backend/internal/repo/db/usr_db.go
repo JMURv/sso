@@ -10,6 +10,7 @@ import (
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/JMURv/sso/internal/repo/db/utils"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/opentracing/opentracing-go"
@@ -283,7 +284,7 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 	).Scan(&id)
 
 	if err != nil {
-		if err, ok := err.(*pq.Error); ok && err.Code == "23505" {
+		if err, ok := err.(*pgconn.PgError); ok && err.Code == "23505" {
 			zap.L().Debug(
 				"user already exists",
 				zap.String("op", op),

@@ -90,8 +90,10 @@ export default function Page() {
                 }),
             ])
 
-            const deviceData = await device.json()
-            setDevices(deviceData)
+            if (device) {
+                const deviceData = await device.json()
+                setDevices(deviceData)
+            }
         }
         fetch()
     }, [])

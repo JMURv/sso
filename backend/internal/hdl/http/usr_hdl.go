@@ -239,8 +239,8 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 //	@Router			/users [post]
 func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10MB
-		zap.L().Error("failed to parse multipart form", zap.Error(err))
-		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrFileTooLarge)
+		zap.L().Info("failed to parse multipart form", zap.Error(err))
+		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 

@@ -2,9 +2,9 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./tmp/main ./cmd/main.go"
-bin = "tmp/main"
-exclude_dir = ["vendor", "tmp", ".git"]
+cmd = "go build -o ./bin/main ./cmd/main.go"
+bin = "bin/main"
+exclude_dir = ["vendor", "tmp", ".git", "tests"]
 include_ext = ["go"]
 log = "build.log"
 

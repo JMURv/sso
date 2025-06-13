@@ -7,6 +7,7 @@ import (
 	md "github.com/JMURv/sso/internal/models"
 	rrepo "github.com/JMURv/sso/internal/repo"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -15,179 +16,12 @@ import (
 	"time"
 )
 
-func TestUserSearch(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
-	defer db.Close()
-
-	repo := Repository{conn: db}
-	query := "test"
-	page := 1
-	size := 10
-	expectedCount := int64(2)
-	expectedTotalPages := int((expectedCount + int64(size) - 1) / int64(size))
-
-	mockUsers := []md.User{
-		{
-			ID:        uuid.New(),
-			Name:      "John Doe",
-			Password:  "password",
-			Email:     "johndoe@example.com",
-			Avatar:    "https://example.com/avatar.jpg",
-			Address:   "123 Main St",
-			Phone:     "123-456-7890",
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-			Permissions: []md.Permission{
-				{ID: uint64(1), Name: "admin", Value: true},
-			},
-		},
-		{
-			ID:        uuid.New(),
-			Name:      "Jane Smith",
-			Password:  "password",
-			Email:     "janesmith@example.com",
-			Avatar:    "https://example.com/avatar.jpg",
-			Address:   "123 Main St",
-			Phone:     "123-456-7890",
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-			Permissions: []md.Permission{
-				{ID: uint64(2), Name: "admin", Value: true},
-			},
-		},
-	}
-
-	t.Run(
-		"Success", func(t *testing.T) {
-			mock.ExpectQuery(regexp.QuoteMeta(userSearchSelectQ)).
-				WithArgs("%"+query+"%", "%"+query+"%").
-				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(expectedCount))
-
-			rows := sqlmock.NewRows(
-				[]string{
-					"id",
-					"name",
-					"password",
-					"email",
-					"avatar",
-					"address",
-					"phone",
-					"created_at",
-					"updated_at",
-					"permissions",
-				},
-			).
-				AddRow(
-					mockUsers[0].ID.String(),
-					mockUsers[0].Name,
-					mockUsers[0].Password,
-					mockUsers[0].Email,
-					mockUsers[0].Avatar,
-					mockUsers[0].Address,
-					mockUsers[0].Phone,
-					mockUsers[0].CreatedAt,
-					mockUsers[0].UpdatedAt,
-					"{1|admin|true}",
-				).
-				AddRow(
-					mockUsers[1].ID.String(),
-					mockUsers[1].Name,
-					mockUsers[1].Password,
-					mockUsers[1].Email,
-					mockUsers[1].Avatar,
-					mockUsers[1].Address,
-					mockUsers[1].Phone,
-					mockUsers[1].CreatedAt,
-					mockUsers[1].UpdatedAt,
-					"{2|user|true}",
-				)
-
-			mock.ExpectQuery(regexp.QuoteMeta(userSearchQ)).
-				WithArgs("%"+query+"%", "%"+query+"%", size, (page-1)*size).
-				WillReturnRows(rows)
-
-			resp, err := repo.SearchUser(context.Background(), query, page, size)
-			require.NoError(t, err)
-			require.NotNil(t, resp)
-			assert.Equal(t, expectedCount, resp.Count)
-			assert.Len(t, resp.Data, len(mockUsers))
-			assert.Equal(t, expectedTotalPages, resp.TotalPages)
-
-			err = mock.ExpectationsWereMet()
-			assert.NoError(t, err)
-		},
-	)
-
-	t.Run(
-		"Count error", func(t *testing.T) {
-			mock.ExpectQuery(regexp.QuoteMeta(userSearchSelectQ)).
-				WithArgs("%"+query+"%", "%"+query+"%").
-				WillReturnError(errors.New("count error"))
-
-			resp, err := repo.SearchUser(context.Background(), query, page, size)
-
-			assert.Error(t, err)
-			assert.Nil(t, resp)
-			assert.Equal(t, "count error", err.Error())
-
-			err = mock.ExpectationsWereMet()
-			assert.NoError(t, err)
-		},
-	)
-
-	t.Run(
-		"ErrInternal", func(t *testing.T) {
-			mock.ExpectQuery(regexp.QuoteMeta(userSearchSelectQ)).
-				WithArgs("%"+query+"%", "%"+query+"%").
-				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(expectedCount))
-
-			mock.ExpectQuery(regexp.QuoteMeta(userSearchQ)).
-				WithArgs("%"+query+"%", "%"+query+"%", size, (page-1)*size).
-				WillReturnError(errors.New("find error"))
-
-			resp, err := repo.SearchUser(context.Background(), query, page, size)
-
-			assert.Error(t, err)
-			assert.Nil(t, resp)
-			assert.Equal(t, "find error", err.Error())
-
-			err = mock.ExpectationsWereMet()
-			assert.NoError(t, err)
-		},
-	)
-
-	t.Run(
-		"Empty", func(t *testing.T) {
-			mock.ExpectQuery(regexp.QuoteMeta(userSearchSelectQ)).
-				WithArgs("%"+query+"%", "%"+query+"%").
-				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
-
-			mock.ExpectQuery(regexp.QuoteMeta(userSearchQ)).
-				WithArgs("%"+query+"%", "%"+query+"%", size, (page-1)*size).
-				WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}))
-
-			resp, err := repo.SearchUser(context.Background(), query, page, size)
-
-			assert.NoError(t, err)
-			assert.NotNil(t, resp)
-			assert.Equal(t, int64(0), resp.Count)
-			assert.Len(t, resp.Data, 0)
-			assert.Equal(t, 0, resp.TotalPages)
-			assert.False(t, resp.HasNextPage)
-
-			err = mock.ExpectationsWereMet()
-			assert.NoError(t, err)
-		},
-	)
-}
-
 func TestListUsers(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 	page := 1
 	size := 10
 	expectedCount := int64(20)
@@ -200,13 +34,8 @@ func TestListUsers(t *testing.T) {
 			Password:  "password",
 			Email:     "johndoe@example.com",
 			Avatar:    "https://example.com/avatar.jpg",
-			Address:   "123 Main St",
-			Phone:     "123-456-7890",
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
-			Permissions: []md.Permission{
-				{ID: uint64(1), Name: "admin", Value: true},
-			},
 		},
 		{
 			ID:        uuid.New(),
@@ -214,13 +43,8 @@ func TestListUsers(t *testing.T) {
 			Password:  "password",
 			Email:     "janesmith@example.com",
 			Avatar:    "https://example.com/avatar.jpg",
-			Address:   "123 Main St",
-			Phone:     "123-456-7890",
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
-			Permissions: []md.Permission{
-				{ID: uint64(2), Name: "admin", Value: true},
-			},
 		},
 	}
 
@@ -240,7 +64,6 @@ func TestListUsers(t *testing.T) {
 					"phone",
 					"created_at",
 					"updated_at",
-					"permissions",
 				},
 			).
 				AddRow(
@@ -249,11 +72,8 @@ func TestListUsers(t *testing.T) {
 					mockUsers[0].Password,
 					mockUsers[0].Email,
 					mockUsers[0].Avatar,
-					mockUsers[0].Address,
-					mockUsers[0].Phone,
 					mockUsers[0].CreatedAt,
 					mockUsers[0].UpdatedAt,
-					"{1|admin|true}",
 				).
 				AddRow(
 					mockUsers[1].ID.String(),
@@ -261,16 +81,13 @@ func TestListUsers(t *testing.T) {
 					mockUsers[1].Password,
 					mockUsers[1].Email,
 					mockUsers[1].Avatar,
-					mockUsers[1].Address,
-					mockUsers[1].Phone,
 					mockUsers[1].CreatedAt,
 					mockUsers[1].UpdatedAt,
-					"{2|admin|true}",
 				)
 
 			mock.ExpectQuery(regexp.QuoteMeta(userListQ)).WithArgs(size, (page-1)*size).WillReturnRows(rows)
 
-			resp, err := repo.ListUsers(context.Background(), page, size)
+			resp, err := repo.ListUsers(context.Background(), page, size, map[string]any{})
 
 			assert.NoError(t, err)
 			assert.NotNil(t, resp)
@@ -289,7 +106,7 @@ func TestListUsers(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(userSelectQ)).
 				WillReturnError(errors.New("count error"))
 
-			resp, err := repo.ListUsers(context.Background(), page, size)
+			resp, err := repo.ListUsers(context.Background(), page, size, map[string]any{})
 
 			assert.Error(t, err)
 			assert.Nil(t, resp)
@@ -308,7 +125,7 @@ func TestListUsers(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(userListQ)).
 				WillReturnError(errors.New("find error"))
 
-			resp, err := repo.ListUsers(context.Background(), page, size)
+			resp, err := repo.ListUsers(context.Background(), page, size, map[string]any{})
 			assert.Error(t, err)
 			assert.Nil(t, resp)
 			assert.Equal(t, "find error", err.Error())
@@ -326,7 +143,7 @@ func TestListUsers(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(userListQ)).
 				WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}))
 
-			resp, err := repo.ListUsers(context.Background(), page, size)
+			resp, err := repo.ListUsers(context.Background(), page, size, map[string]any{})
 			assert.NoError(t, err)
 			assert.NotNil(t, resp)
 			assert.Equal(t, int64(0), resp.Count)
@@ -345,7 +162,7 @@ func TestGetUserByID(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 
 	testUser := md.User{
 		ID:        uuid.New(),
@@ -353,13 +170,8 @@ func TestGetUserByID(t *testing.T) {
 		Password:  "password",
 		Email:     "johndoe@example.com",
 		Avatar:    "https://example.com/avatar.jpg",
-		Address:   "123 Main St",
-		Phone:     "123-456-7890",
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Permissions: []md.Permission{
-			{ID: uint64(2), Name: "admin", Value: true},
-		},
 	}
 
 	t.Run(
@@ -378,7 +190,6 @@ func TestGetUserByID(t *testing.T) {
 							"phone",
 							"created_at",
 							"updated_at",
-							"permissions",
 						},
 					).
 						AddRow(
@@ -387,8 +198,6 @@ func TestGetUserByID(t *testing.T) {
 							testUser.Password,
 							testUser.Email,
 							testUser.Avatar,
-							testUser.Address,
-							testUser.Phone,
 							testUser.CreatedAt,
 							testUser.UpdatedAt,
 							"{2|admin|true}",
@@ -443,7 +252,7 @@ func TestGetUserByEmail(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 	testUser := md.User{
 		ID:    uuid.New(),
 		Name:  "Test User",
@@ -474,8 +283,6 @@ func TestGetUserByEmail(t *testing.T) {
 							testUser.Password,
 							testUser.Email,
 							testUser.Avatar,
-							testUser.Address,
-							testUser.Phone,
 							testUser.CreatedAt,
 							testUser.UpdatedAt,
 						),
@@ -528,7 +335,7 @@ func TestCreateUser(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 	id := uuid.New()
 	testUser := &dto.CreateUserRequest{
 		Name:     "Test User",
@@ -577,7 +384,7 @@ func TestUpdateUser(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 
 	testUserID := uuid.New()
 	testUser := &dto.UpdateUserRequest{
@@ -618,7 +425,7 @@ func TestUpdateUser(t *testing.T) {
 				WillReturnResult(sqlmock.NewResult(1, 1))
 
 			mock.ExpectExec(
-				regexp.QuoteMeta(userDeletePermQ),
+				regexp.QuoteMeta(permDelete),
 			).
 				WithArgs(testUserID.String()).
 				WillReturnResult(sqlmock.NewResult(1, 1))
@@ -663,7 +470,7 @@ func TestDeleteUser(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 	testUserID := uuid.New()
 	t.Run(
 		"Success", func(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	rrepo "github.com/JMURv/sso/internal/repo"
+	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -21,7 +22,7 @@ func TestRepository_ListPermissions(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 	page, size := 1, 10
 
 	mockData := []md.Permission{
@@ -44,7 +45,7 @@ func TestRepository_ListPermissions(t *testing.T) {
 						AddRow(mockData[1].ID, mockData[1].Name),
 				)
 
-			res, err := repo.ListPermissions(context.Background(), page, size)
+			res, err := repo.ListPermissions(context.Background(), page, size, map[string]any{})
 			require.NoError(t, err)
 			require.NotNil(t, res)
 			assert.Equal(t, int64(len(mockData)), res.Count)
@@ -56,7 +57,7 @@ func TestRepository_ListPermissions(t *testing.T) {
 		"SelectErr", func(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(permSelect)).WillReturnError(internalErr)
 
-			res, err := repo.ListPermissions(context.Background(), page, size)
+			res, err := repo.ListPermissions(context.Background(), page, size, map[string]any{})
 			require.Nil(t, res)
 			require.Equal(t, internalErr, err)
 		},
@@ -73,7 +74,7 @@ func TestRepository_ListPermissions(t *testing.T) {
 				WithArgs(size, (page-1)*size).
 				WillReturnError(internalErr)
 
-			res, err := repo.ListPermissions(context.Background(), page, size)
+			res, err := repo.ListPermissions(context.Background(), page, size, map[string]any{})
 			require.Nil(t, res)
 			require.Equal(t, internalErr, err)
 		},
@@ -94,7 +95,7 @@ func TestRepository_ListPermissions(t *testing.T) {
 						RowError(0, internalErr),
 				)
 
-			res, err := repo.ListPermissions(context.Background(), page, size)
+			res, err := repo.ListPermissions(context.Background(), page, size, map[string]any{})
 			require.Nil(t, res)
 			require.Equal(t, internalErr, err)
 		},
@@ -106,7 +107,7 @@ func TestRepository_GetPermission(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 	mockData := md.Permission{ID: 1, Name: "admin"}
 
 	t.Run(
@@ -155,7 +156,7 @@ func TestRepository_CreatePerm(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 	id := uint64(1)
 	mockData := dto.CreatePermissionRequest{Name: "admin"}
 
@@ -247,7 +248,7 @@ func TestRepository_UpdatePerm(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 	id := uint64(1)
 	mockData := dto.UpdatePermissionRequest{Name: "new-admin"}
 
@@ -327,7 +328,7 @@ func TestRepository_DeletePerm(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo := Repository{conn: db}
+	repo := Repository{conn: &sqlx.DB{DB: db}}
 	id := uint64(1)
 
 	t.Run(

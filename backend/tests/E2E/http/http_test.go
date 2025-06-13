@@ -9,6 +9,8 @@ import (
 	"github.com/JMURv/sso/internal/ctrl"
 	hdl "github.com/JMURv/sso/internal/hdl/http"
 	"github.com/JMURv/sso/internal/repo/db"
+	"github.com/JMURv/sso/internal/repo/s3"
+	"github.com/JMURv/sso/internal/smtp"
 	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
@@ -24,16 +26,23 @@ WHERE schemaname = 'public';
 func setupTestServer() (*httptest.Server, func()) {
 	zap.ReplaceGlobals(zap.Must(zap.NewDevelopment()))
 
-	conf := config.MustLoad()
-	auth.New(conf.Secret)
+	conf := config.MustLoad("config/.env")
+	au := auth.New(conf)
 
-	repo := db.New(conf.DB)
-	cache := redis.New(conf.Redis)
-	svc := ctrl.New(repo, cache)
-	h := hdl.New(svc)
+	repo := db.New(conf)
+	cache := redis.New(conf)
+	svc := ctrl.New(repo, au, cache, s3.New(conf), smtp.New(conf))
+	handler := hdl.New(svc, au)
 
 	mux := http.NewServeMux()
-	hdl.RegisterRoutes(mux, h)
+	handler.RegisterAuthRoutes()
+	handler.RegisterOAuth2Routes()
+	handler.RegisterOIDCRoutes()
+	handler.RegisterWebAuthnRoutes()
+	handler.RegisterUserRoutes()
+	handler.RegisterPermRoutes()
+	handler.RegisterRoleRoutes()
+	handler.RegisterDeviceRoutes()
 
 	cleanupFunc := func() {
 		conn, err := sql.Open(

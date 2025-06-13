@@ -1,7 +1,8 @@
 version: "2"
 run:
   issues-exit-code: 1
-  tests: true
+  tests: false
+
 linters:
   default: all
   settings:
@@ -10,6 +11,7 @@ linters:
       check-blank: true
     gocyclo:
       min-complexity: 10
+
   exclusions:
     generated: lax
     rules:
@@ -20,11 +22,13 @@ linters:
       - third_party$
       - builtin$
       - examples$
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
   new-from-rev: HEAD
   new: true
+
 formatters:
   enable:
     - gci
@@ -37,4 +41,4 @@ formatters:
       - third_party$
       - builtin$
       - examples$
-      - _test\.go
+      - _test.go

@@ -86,8 +86,8 @@ type dbConfig struct {
 
 type s3Config struct {
 	Addr      string `env:"MINIO_ADDR" envDefault:"localhost:9000"`
-	AccessKey string `env:"MINIO_ACCESS_KEY" envDefault:""`
-	SecretKey string `env:"MINIO_SECRET_KEY" envDefault:""`
+	AccessKey string `env:"MINIO_ROOT_USER" envDefault:""`
+	SecretKey string `env:"MINIO_ROOT_PASSWORD" envDefault:""`
 	Bucket    string `env:"MINIO_BUCKET" envDefault:"sso"`
 	UseSSL    bool   `env:"MINIO_SSL" envDefault:"false"`
 }

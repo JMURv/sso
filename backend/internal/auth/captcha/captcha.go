@@ -24,6 +24,8 @@ const (
 	WALogin    Actions = "wa_login"
 )
 
+const captchaScore = 0.1
+
 type Core struct {
 	secret string
 }
@@ -64,5 +66,5 @@ func (c *Core) VerifyRecaptcha(token string, action Actions) (bool, error) {
 		return false, err
 	}
 
-	return result.Success && result.Score > 0.5 && result.Action == string(action), nil
+	return result.Success && result.Score >= captchaScore && result.Action == string(action), nil
 }

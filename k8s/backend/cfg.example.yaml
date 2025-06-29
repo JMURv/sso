@@ -18,7 +18,7 @@ data:
   POSTGRES_DB: "sso_db"
   POSTGRES_USER: "sso_owner"
   POSTGRES_PASSWORD: "794613825Zx!"
-  POSTGRES_HOST: "host.docker.internal"
+  POSTGRES_HOST: "postgres.default.svc.cluster.local"
   POSTGRES_PORT: "5432"
 
   JWT_SECRET: "supersecret"
@@ -48,13 +48,13 @@ data:
   EMAIL_PASS: ""
   EMAIL_ADMIN: ""
 
-  MINIO_ADDR: "host.docker.internal:9000"
-  MINIO_ACCESS_KEY: "admin"
-  MINIO_SECRET_KEY: "superstrongpassword"
+  MINIO_ADDR: "minio.default.svc.cluster.local:9000"
+  MINIO_ROOT_USER: "admin"
+  MINIO_ROOT_PASSWORD: "superstrongpassword"
   MINIO_BUCKET: "sso"
   MINIO_SSL: "false"
 
-  REDIS_ADDR: "host.docker.internal:6379"
+  REDIS_ADDR: "redis.default.svc.cluster.local:6379"
   REDIS_PASS: ""
 
   JAEGER_SAMPLER_TYPE: "const"

@@ -1,5 +1,8 @@
 .git
 .gitignore
 .dockerignore
+.env.local
+.next
+node_modules
 Dockerfile
 Dockerfile.dev

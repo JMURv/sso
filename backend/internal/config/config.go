@@ -21,8 +21,8 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port     int    `env:"BACKEND_PORT,required"`
-	GRPCPort int    `env:"BACKEND_GRPC_PORT" envDefault:"50050"`
+	Port     int    `env:"SERVER_HTTP_PORT,required"`
+	GRPCPort int    `env:"SERVER_GRPC_PORT" envDefault:"50050"`
 	Scheme   string `env:"SERVER_SCHEME" envDefault:"http"`
 	Domain   string `env:"SERVER_DOMAIN" envDefault:"localhost"`
 }
@@ -88,7 +88,7 @@ type s3Config struct {
 	Addr      string `env:"MINIO_ADDR" envDefault:"localhost:9000"`
 	AccessKey string `env:"MINIO_ACCESS_KEY" envDefault:""`
 	SecretKey string `env:"MINIO_SECRET_KEY" envDefault:""`
-	Bucket    string `env:"MINIO_BUCKET" envDefault:""`
+	Bucket    string `env:"MINIO_BUCKET" envDefault:"sso"`
 	UseSSL    bool   `env:"MINIO_SSL" envDefault:"false"`
 }
 
@@ -98,7 +98,7 @@ type redisConfig struct {
 }
 
 type prometheusConfig struct {
-	Port int `env:"BACKEND_METRICS_PORT" envDefault:"8085"`
+	Port int `env:"SERVER_PROM_PORT" envDefault:"8085"`
 }
 
 type jaegerConfig struct {

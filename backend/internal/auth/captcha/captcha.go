@@ -1,13 +1,14 @@
 package captcha
 
 import (
-	"github.com/JMURv/sso/internal/config"
-	"github.com/JMURv/sso/internal/dto"
 	"github.com/goccy/go-json"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/JMURv/sso/internal/config"
+	"github.com/JMURv/sso/internal/dto"
 )
 
 type Port interface {

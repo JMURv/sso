@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: sso-frontend
+  labels:
+    app: sso-frontend
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sso-frontend
+  template:
+    metadata:
+      labels:
+        app: sso-frontend
+    spec:
+      containers:
+        - name: app
+          image: jmurv/sso-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000

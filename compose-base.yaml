@@ -5,7 +5,7 @@ services:
     container_name: caddy
     restart: unless-stopped
     environment:
-      BACKEND_PORT: "${BACKEND_PORT}"
+      SERVER_HTTP_PORT: "${SERVER_HTTP_PORT}"
       FRONTEND_PORT: "${FRONTEND_PORT}"
     ports:
       - "80:80"
@@ -58,8 +58,9 @@ services:
     networks: [sso]
 
   minio:
-    image: minio/minio:latest
     container_name: minio
+    image: minio/minio:latest
+    restart: always
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -87,11 +88,11 @@ services:
     env_file:
       - ./configs/envs/.env.prod
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
-      - "${BACKEND_GRPC_PORT}:${BACKEND_GRPC_PORT}"
-      - "${BACKEND_METRICS_PORT}:${BACKEND_METRICS_PORT}"
+      - "${SERVER_HTTP_PORT}:${SERVER_HTTP_PORT}"
+      - "${SERVER_GRPC_PORT}:${SERVER_GRPC_PORT}"
+      - "${SERVER_PROM_PORT}:${SERVER_PROM_PORT}"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:${BACKEND_PORT}/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:${SERVER_HTTP_PORT}/health" ]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -118,12 +119,18 @@ services:
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
+      args:
+        - BACKEND_URL=${BACKEND_URL}
+        - S3_URL=${S3_URL}
+        - NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${CAPTCHA_SITE_KEY}
+        - NEXT_PUBLIC_RECAPTCHA_SECRET_KEY=${CAPTCHA_SECRET}
+        - NEXT_TELEMETRY_DISABLED=1
     environment:
-      BACKEND_URL: "http://caddy"
-      S3_URL: "http://caddy"
-      NEXT_TELEMETRY_DISABLED: 1
-      NEXT_PUBLIC_RECAPTCHA_SITE_KEY: "${CAPTCHA_SITE_KEY}"
-      NEXT_PUBLIC_RECAPTCHA_SECRET_KEY: "${CAPTCHA_SECRET}"
+      - BACKEND_URL=${BACKEND_URL}
+      - S3_URL=${S3_URL}
+      - NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${CAPTCHA_SITE_KEY}
+      - NEXT_PUBLIC_RECAPTCHA_SECRET_KEY=${CAPTCHA_SECRET}
+      - NEXT_TELEMETRY_DISABLED=1
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     depends_on:
@@ -132,7 +139,7 @@ services:
         restart: true
     networks: [ sso ]
     develop:
-      watch: !override
+      watch:
         - action: rebuild
           target: /app
           path: frontend

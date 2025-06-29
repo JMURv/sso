@@ -19,6 +19,7 @@ spec:
       containers:
         - name: app
           image: jmurv/sso-backend:latest
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: sso-backend-cfg

@@ -13,7 +13,7 @@
 
   handle /api/* {
     uri strip_prefix /api
-    reverse_proxy backend:{env.BACKEND_PORT} {
+    reverse_proxy backend:{env.SERVER_HTTP_PORT} {
         header_up Host {http.request.remote.host}
         header_up X-Real-IP {http.request.remote.host}
         header_up X-Forwarded-For "{http.request.header.X-Forwarded-For}, {http.request.remote.host}"

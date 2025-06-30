@@ -28,20 +28,6 @@ Services are available at:
 
 ___
 
-### K8s
-
-Apply manifests
-
-```shell
-task k-up
-```
-
-Shutdown manifests
-
-```shell
-task k-down
-```
-
 ## Tests
 ### E2E
 Spin up all containers for `E2E` tests:
@@ -49,15 +35,3 @@ Spin up all containers for `E2E` tests:
 task dc-test
 ```
 Wait until all containers are ready and then run: `task t-integ`
-
-### Load
-Spin up all containers for `Load` tests:
-```shell
-task dc-test
-```
-
-Spin up main app from docker compose you would like to test.
-Run to start load testing:
-```shell
-task t-load
-```

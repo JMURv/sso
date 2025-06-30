@@ -21,7 +21,6 @@ import {useAuth} from "../../providers/AuthProvider"
 export default function Page() {
     const router = useRouter()
     const params = useSearchParams()
-    const {login} = useAuth()
 
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -29,14 +28,14 @@ export default function Page() {
     const [digits, setDigits] = useState(['', '', '', ''])
     const { executeRecaptcha } = useReCaptcha()
 
-    const successAuth = async (access, refresh) => {
-        await login(access, refresh)
+    const successAuth = async () => {
         if (params.has("redirect") && params.get("redirect") !== "") {
             await router.push(params.get("redirect"))
             return
         }
-        await router.push("/")
         await router.refresh()
+        await router.push("/")
+        window.location.href = "/"
     }
 
     const handleEmailChange = async (event) => {
@@ -70,8 +69,7 @@ export default function Page() {
         }
         const cLength = r.headers.get("content-length");
         if (cLength > 300) {
-            const data = await r.json()
-            return await successAuth(data.access, data.refresh)
+            return await successAuth()
         } else {
             setIsCode(true)
         }
@@ -97,9 +95,7 @@ export default function Page() {
             const data = await r.json()
             return toast.error(data.errors)
         }
-
-        const data = await r.json()
-        return await successAuth(data.access, data.refresh)
+        return await successAuth()
     }
 
     const handleProvider = async (provider) => {
@@ -184,8 +180,7 @@ export default function Page() {
         }
 
         toast.success("Login successful!")
-        const data = await finR.json()
-        return await successAuth(data.access, data.refresh)
+        return await successAuth()
     }
 
     useEffect(() => {
@@ -207,8 +202,7 @@ export default function Page() {
 
                     if (r.ok) {
                         setIsCode(false)
-                        const data = await r.json()
-                        return await successAuth(data.access, data.refresh)
+                        return await successAuth()
                     } else {
                         toast.error("Invalid code")
                     }

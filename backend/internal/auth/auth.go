@@ -2,12 +2,6 @@ package auth
 
 import (
 	"context"
-	"github.com/JMURv/sso/internal/auth/captcha"
-	"github.com/JMURv/sso/internal/auth/jwt"
-	"github.com/JMURv/sso/internal/auth/providers"
-	wa "github.com/JMURv/sso/internal/auth/webauthn"
-	"github.com/JMURv/sso/internal/config"
-	md "github.com/JMURv/sso/internal/models"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
@@ -15,6 +9,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
+
+	"github.com/JMURv/sso/internal/auth/captcha"
+	"github.com/JMURv/sso/internal/auth/jwt"
+	"github.com/JMURv/sso/internal/auth/providers"
+	wa "github.com/JMURv/sso/internal/auth/webauthn"
+	"github.com/JMURv/sso/internal/config"
+	md "github.com/JMURv/sso/internal/models"
 )
 
 type Core interface {

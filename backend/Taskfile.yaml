@@ -65,8 +65,3 @@ tasks:
     desc: Run integration tests
     cmds:
       - go test -v ./tests/E2E/...
-
-  t-load:
-    desc: Start load testing
-    cmds:
-      - ./tests/load/start.sh

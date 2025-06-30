@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/JMURv/sso/internal/auth"
-	"github.com/JMURv/sso/internal/auth/jwt"
-	"github.com/JMURv/sso/internal/cache"
-	"github.com/JMURv/sso/internal/dto"
-	md "github.com/JMURv/sso/internal/models"
-	"github.com/JMURv/sso/internal/repo"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"math/rand"
 	"strconv"
 	"time"
+
+	"github.com/JMURv/sso/internal/auth"
+	"github.com/JMURv/sso/internal/auth/jwt"
+	"github.com/JMURv/sso/internal/cache"
+	"github.com/JMURv/sso/internal/dto"
+	md "github.com/JMURv/sso/internal/models"
+	"github.com/JMURv/sso/internal/repo"
 )
 
 const codeCacheKey = "code:%v"
@@ -92,7 +93,7 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 	}
 
 	if !isValid {
-		zap.L().Debug(
+		zap.L().Info(
 			"token is invalid",
 			zap.String("op", op),
 			zap.String("userID", claims.UID.String()),

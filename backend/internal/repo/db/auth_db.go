@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	md "github.com/JMURv/sso/internal/models"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"time"
+
+	md "github.com/JMURv/sso/internal/models"
 )
 
 func (r *Repository) CreateToken(ctx context.Context, userID uuid.UUID, hashedT string, expiresAt time.Time, device *md.Device) error {

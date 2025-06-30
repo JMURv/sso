@@ -17,14 +17,11 @@ export const metadata = {
 };
 
 export default async function RootLayout({children}) {
-    const access = await getSessionToken()
-    const refresh = await getRefreshToken()
-
     return (
         <html lang="en">
             <body className={`${Mont.variable} ${Mont.className} antialiased overflow-x-hidden`}>
                 <Toaster theme={"dark"}/>
-                <AuthProvider accessSrv={access} refreshSrv={refresh}>
+                <AuthProvider>
                     <ReCaptchaProvider>
                         <Header/>
                         <div className={`-z-50 fixed`}>

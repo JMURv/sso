@@ -2,17 +2,19 @@ package http
 
 import (
 	"errors"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
+	"net/http"
+
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/auth/captcha"
 	_ "github.com/JMURv/sso/internal/auth/jwt"
+	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
-	"net/http"
 )
 
 func (h *Handler) RegisterAuthRoutes() {
@@ -106,13 +108,17 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := &dto.RefreshRequest{}
-	if ok = utils.ParseAndValidate(w, r, req); !ok {
+	cookie, err := r.Cookie(config.RefreshCookieName)
+	if err != nil {
 		utils.ErrResponse(w, http.StatusBadRequest, hdl.ErrDecodeRequest)
 		return
 	}
 
-	res, err := h.ctrl.Refresh(r.Context(), &d, req)
+	res, err := h.ctrl.Refresh(
+		r.Context(), &d, &dto.RefreshRequest{
+			Refresh: cookie.Value,
+		},
+	)
 	if err != nil {
 		if errors.Is(err, ctrl.ErrNotFound) {
 			utils.ErrResponse(w, http.StatusNotFound, err)

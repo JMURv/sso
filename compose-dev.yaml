@@ -48,8 +48,14 @@ services:
       file: compose-base.yaml
       service: frontend
     ports:
-      - "4000:4000"
-      - "24678:24678"
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+    environment:
+      PORT: ${FRONTEND_PORT}
+      BACKEND_URL: ${BACKEND_URL}
+      S3_URL: ${S3_URL}
+      NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${CAPTCHA_SITE_KEY}
+      NEXT_PUBLIC_RECAPTCHA_SECRET_KEY: ${CAPTCHA_SECRET}
+      NEXT_TELEMETRY_DISABLED: 1
     develop:
       watch: !override
         - action: sync

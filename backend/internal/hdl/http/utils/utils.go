@@ -4,12 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/JMURv/sso/internal/auth/jwt"
-	"github.com/JMURv/sso/internal/config"
-	"github.com/JMURv/sso/internal/dto"
-	"github.com/JMURv/sso/internal/hdl"
-	"github.com/JMURv/sso/internal/hdl/validation"
-	"github.com/JMURv/sso/internal/repo/s3"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 	"io"
@@ -18,6 +12,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/JMURv/sso/internal/config"
+	"github.com/JMURv/sso/internal/dto"
+	"github.com/JMURv/sso/internal/hdl"
+	"github.com/JMURv/sso/internal/hdl/validation"
+	"github.com/JMURv/sso/internal/repo/s3"
 )
 
 type ErrorsResponse struct {
@@ -129,30 +129,34 @@ func ParseFileField(r *http.Request, fieldName string, fileReq *s3.UploadFileReq
 	return nil
 }
 
-func SetAuthCookies(w http.ResponseWriter, access, refresh string) {
-	http.SetCookie(
-		w, &http.Cookie{
-			Name:     "access",
-			Value:    access,
-			Expires:  time.Now().Add(jwt.AccessTokenDuration),
-			HttpOnly: true,
-			Secure:   true,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-		},
-	)
+func GetAuthCookies(accessStr string, refreshStr string) (*http.Cookie, *http.Cookie) {
+	access := &http.Cookie{
+		Name:     config.AccessCookieName,
+		Value:    accessStr,
+		Expires:  time.Now().Add(config.AccessTokenDuration),
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,
+	}
 
-	http.SetCookie(
-		w, &http.Cookie{
-			Name:     "refresh",
-			Value:    refresh,
-			Expires:  time.Now().Add(jwt.RefreshTokenDuration),
-			HttpOnly: true,
-			Secure:   true,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-		},
-	)
+	refresh := &http.Cookie{
+		Name:     config.RefreshCookieName,
+		Value:    refreshStr,
+		Expires:  time.Now().Add(config.RefreshTokenDuration),
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,
+	}
+
+	return access, refresh
+}
+
+func SetAuthCookies(w http.ResponseWriter, access, refresh string) {
+	accessCookie, refreshCookie := GetAuthCookies(access, refresh)
+	http.SetCookie(w, accessCookie)
+	http.SetCookie(w, refreshCookie)
 }
 
 func ParseDeviceByRequest(r *http.Request) (dto.DeviceRequest, bool) {

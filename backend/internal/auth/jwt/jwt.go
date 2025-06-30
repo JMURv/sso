@@ -3,13 +3,14 @@ package jwt
 import (
 	"context"
 	"errors"
-	"github.com/JMURv/sso/internal/config"
-	md "github.com/JMURv/sso/internal/models"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"time"
+
+	"github.com/JMURv/sso/internal/config"
+	md "github.com/JMURv/sso/internal/models"
 )
 
 type Port interface {
@@ -19,9 +20,6 @@ type Port interface {
 	NewToken(ctx context.Context, uid uuid.UUID, roles []md.Role, d time.Duration) (string, error)
 	ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
 }
-
-const AccessTokenDuration = time.Minute * 30
-const RefreshTokenDuration = time.Hour * 24 * 7
 
 var ErrWhileCreatingToken = errors.New("error while creating token")
 var ErrUnexpectedSignMethod = errors.New("unexpected signing method")
@@ -43,11 +41,11 @@ func New(conf config.Config) *Core {
 }
 
 func (c *Core) GetAccessTime() time.Time {
-	return time.Now().Add(AccessTokenDuration)
+	return time.Now().Add(config.AccessTokenDuration)
 }
 
 func (c *Core) GetRefreshTime() time.Time {
-	return time.Now().Add(RefreshTokenDuration)
+	return time.Now().Add(config.RefreshTokenDuration)
 }
 
 func (c *Core) GenPair(ctx context.Context, uid uuid.UUID, roles []md.Role) (string, string, error) {
@@ -55,7 +53,7 @@ func (c *Core) GenPair(ctx context.Context, uid uuid.UUID, roles []md.Role) (str
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
 
-	access, err := c.NewToken(ctx, uid, roles, AccessTokenDuration)
+	access, err := c.NewToken(ctx, uid, roles, config.AccessTokenDuration)
 	if err != nil {
 		zap.L().Error(
 			"Failed to generate token pair",
@@ -66,7 +64,7 @@ func (c *Core) GenPair(ctx context.Context, uid uuid.UUID, roles []md.Role) (str
 		return "", "", err
 	}
 
-	refresh, err := c.NewToken(ctx, uid, roles, RefreshTokenDuration)
+	refresh, err := c.NewToken(ctx, uid, roles, config.RefreshTokenDuration)
 	if err != nil {
 		zap.L().Error(
 			"Failed to generate token pair",

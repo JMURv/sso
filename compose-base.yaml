@@ -1,7 +1,7 @@
 name: sso
 services:
   caddy:
-    image: caddy:2.9.1-alpine
+    image: caddy:2.10.0-alpine
     container_name: caddy
     restart: unless-stopped
     environment:
@@ -12,6 +12,8 @@ services:
       - "443:443"
       - "443:443/udp"
       - "2019:2019"
+    cap_add:
+      - NET_ADMIN
     depends_on:
       backend:
         condition: service_healthy

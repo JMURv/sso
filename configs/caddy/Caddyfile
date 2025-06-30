@@ -3,8 +3,8 @@
   metrics
 }
 
-
-:80 {
+localhost {
+  tls internal
   encode gzip
 
   handle /metrics {

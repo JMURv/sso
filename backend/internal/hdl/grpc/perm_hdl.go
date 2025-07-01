@@ -5,7 +5,7 @@ import (
 	"errors"
 	pb "github.com/JMURv/sso/api/grpc/v1/gen"
 	"github.com/JMURv/sso/internal/config"
-	ctrl "github.com/JMURv/sso/internal/ctrl"
+	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
 	"github.com/JMURv/sso/internal/hdl/validation"
@@ -43,6 +43,7 @@ func (h *Handler) ListPermissions(ctx context.Context, req *pb.SSO_PermissionLis
 func (h *Handler) GetPermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb.SSO_Permission, error) {
 	if req == nil || req.Uint64 == 0 {
 		zap.L().Error("failed to parse uid", zap.Uint64("uid", req.Uint64))
+
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 
@@ -51,8 +52,10 @@ func (h *Handler) GetPermission(ctx context.Context, req *pb.SSO_Uint64Msg) (*pb
 		if errors.Is(err, ctrl.ErrNotFound) {
 			return nil, status.Errorf(codes.NotFound, err.Error())
 		}
+
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
+
 	return utils.PermissionToProto(res), nil
 }
 
@@ -64,6 +67,7 @@ func (h *Handler) CreatePermission(ctx context.Context, req *pb.SSO_Permission) 
 
 	if err := validation.V.Struct(mdPerm); err != nil {
 		zap.L().Error("failed to validate obj", zap.Error(err))
+
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -72,8 +76,10 @@ func (h *Handler) CreatePermission(ctx context.Context, req *pb.SSO_Permission) 
 		if errors.Is(err, ctrl.ErrAlreadyExists) {
 			return nil, status.Errorf(codes.AlreadyExists, err.Error())
 		}
+
 		return nil, status.Errorf(codes.Internal, hdl.ErrInternal.Error())
 	}
+
 	return &pb.SSO_Uint64Msg{
 		Uint64: uid,
 	}, nil
@@ -82,11 +88,13 @@ func (h *Handler) CreatePermission(ctx context.Context, req *pb.SSO_Permission) 
 func (h *Handler) UpdatePermission(ctx context.Context, req *pb.SSO_Permission) (*pb.SSO_Empty, error) {
 	if _, ok := ctx.Value("uid").(uuid.UUID); !ok {
 		zap.L().Error("failed to get uid from context")
+
 		return nil, status.Errorf(codes.Unauthenticated, hdl.ErrFailedToParseUUID.Error())
 	}
 
 	if req == nil || req.Id == 0 {
 		zap.L().Error("failed to decode request")
+
 		return nil, status.Errorf(codes.InvalidArgument, hdl.ErrDecodeRequest.Error())
 	}
 

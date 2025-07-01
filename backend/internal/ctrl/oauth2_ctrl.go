@@ -21,6 +21,7 @@ type oauth2Repo interface {
 func (c *Controller) GetOAuth2AuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error) {
 	const op = "auth.GetOAuth2AuthURL.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+
 	defer span.Finish()
 
 	pr, err := c.au.Get(providers.Providers(provider), providers.OAuth2)
@@ -35,9 +36,14 @@ func (c *Controller) GetOAuth2AuthURL(ctx context.Context, provider string) (*dt
 	}, nil
 }
 
-func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.HandleCallbackResponse, error) {
+func (c *Controller) HandleOAuth2Callback(
+	ctx context.Context,
+	d *dto.DeviceRequest,
+	provider, code, state string,
+) (*dto.HandleCallbackResponse, error) {
 	const op = "auth.HandleOAuth2Callback.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
+
 	defer span.Finish()
 
 	err := c.au.ValidateSignedState(state, 5*time.Minute)
@@ -58,6 +64,7 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 			zap.String("code", code),
 			zap.Error(err),
 		)
+
 		return nil, err
 	}
 
@@ -83,22 +90,20 @@ func (c *Controller) HandleOAuth2Callback(ctx context.Context, d *dto.DeviceRequ
 			}
 
 			user.ID = id
-			if err = c.repo.CreateOAuth2Connection(ctx, user.ID, provider, oauthUser); err != nil {
-				return nil, err
-			}
 		} else if err != nil {
 			return nil, err
-		} else if err == nil {
-			if err = c.repo.CreateOAuth2Connection(ctx, user.ID, provider, oauthUser); err != nil {
-				return nil, err
-			}
 		}
+	}
+
+	if err = c.repo.CreateOAuth2Connection(ctx, user.ID, provider, oauthUser); err != nil {
+		return nil, err
 	}
 
 	pair, err := c.GenPair(ctx, d, user.ID, user.Roles)
 	if err != nil {
 		return nil, err
 	}
+
 	return &dto.HandleCallbackResponse{
 		Access:     pair.Access,
 		Refresh:    pair.Refresh,

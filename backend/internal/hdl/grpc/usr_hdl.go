@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	pb "github.com/JMURv/sso/api/grpc/v1/gen"
-	ctrl "github.com/JMURv/sso/internal/ctrl"
+	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
 	"github.com/JMURv/sso/internal/hdl/validation"
@@ -30,7 +30,7 @@ func (h *Handler) ExistUser(ctx context.Context, req *pb.SSO_ExistUserRequest) (
 	}, nil
 }
 
-func (h *Handler) GetMe(ctx context.Context, req *pb.SSO_Empty) (*pb.SSO_User, error) {
+func (h *Handler) GetMe(ctx context.Context, _ *pb.SSO_Empty) (*pb.SSO_User, error) {
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
 		zap.L().Error("failed to get uid from context")
@@ -148,7 +148,7 @@ func (h *Handler) UpdateUser(ctx context.Context, req *pb.SSO_UpdateUserReq) (*p
 	return &pb.SSO_UuidMsg{Uuid: uid.String()}, nil
 }
 
-func (h *Handler) DeleteUser(ctx context.Context, req *pb.SSO_UuidMsg) (*pb.SSO_Empty, error) {
+func (h *Handler) DeleteUser(ctx context.Context, _ *pb.SSO_UuidMsg) (*pb.SSO_Empty, error) {
 	uid, ok := ctx.Value("uid").(uuid.UUID)
 	if !ok {
 		zap.L().Error("failed to parse uid")

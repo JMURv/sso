@@ -6,7 +6,7 @@ import (
 	"errors"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/golang-migrate/migrate/v4"
-	pgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
 	"go.uber.org/zap"

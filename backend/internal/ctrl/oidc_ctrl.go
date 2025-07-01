@@ -29,7 +29,11 @@ func (c *Controller) GetOIDCAuthURL(ctx context.Context, provider string) (*dto.
 	}, nil
 }
 
-func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceRequest, provider, code, state string) (*dto.HandleCallbackResponse, error) {
+func (c *Controller) HandleOIDCCallback(
+	ctx context.Context,
+	d *dto.DeviceRequest,
+	provider, code, state string,
+) (*dto.HandleCallbackResponse, error) {
 	const op = "auth.HandleOIDCCallback.ctrl"
 	span, ctx := opentracing.StartSpanFromContext(ctx, op)
 	defer span.Finish()
@@ -77,22 +81,20 @@ func (c *Controller) HandleOIDCCallback(ctx context.Context, d *dto.DeviceReques
 			}
 
 			user.ID = id
-			if err = c.repo.CreateOAuth2Connection(ctx, user.ID, provider, oauthUser); err != nil {
-				return nil, err
-			}
 		} else if err != nil {
 			return nil, err
-		} else if err == nil {
-			if err = c.repo.CreateOAuth2Connection(ctx, user.ID, provider, oauthUser); err != nil {
-				return nil, err
-			}
 		}
+	}
+
+	if err = c.repo.CreateOAuth2Connection(ctx, user.ID, provider, oauthUser); err != nil {
+		return nil, err
 	}
 
 	pair, err := c.GenPair(ctx, d, user.ID, user.Roles)
 	if err != nil {
 		return nil, err
 	}
+
 	return &dto.HandleCallbackResponse{
 		Access:     pair.Access,
 		Refresh:    pair.Refresh,

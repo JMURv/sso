@@ -51,8 +51,10 @@ func (a *Auth) Hash(val string) (string, error) {
 			zap.String("val", val),
 			zap.Error(err),
 		)
+
 		return "", err
 	}
+
 	return string(bytes), nil
 }
 
@@ -60,6 +62,7 @@ func (a *Auth) ComparePasswords(hashed, pswd []byte) error {
 	if err := bcrypt.CompareHashAndPassword(hashed, pswd); err != nil {
 		return ErrInvalidCredentials
 	}
+
 	return nil
 }
 
@@ -103,18 +106,32 @@ func (a *Auth) ValidateSignedState(signedState string, maxAge time.Duration) err
 	return a.providers.ValidateSignedState(signedState, maxAge)
 }
 
-func (a *Auth) BeginLogin(user webauthn.User, opts ...webauthn.LoginOption) (*protocol.CredentialAssertion, *webauthn.SessionData, error) {
+func (a *Auth) BeginLogin(
+	user webauthn.User,
+	opts ...webauthn.LoginOption,
+) (*protocol.CredentialAssertion, *webauthn.SessionData, error) {
 	return a.wa.BeginLogin(user, opts...)
 }
 
-func (a *Auth) FinishLogin(user webauthn.User, session webauthn.SessionData, response *http.Request) (*webauthn.Credential, error) {
+func (a *Auth) FinishLogin(
+	user webauthn.User,
+	session webauthn.SessionData,
+	response *http.Request,
+) (*webauthn.Credential, error) {
 	return a.wa.FinishLogin(user, session, response)
 }
 
-func (a *Auth) BeginRegistration(user webauthn.User, opts ...webauthn.RegistrationOption) (creation *protocol.CredentialCreation, session *webauthn.SessionData, err error) {
+func (a *Auth) BeginRegistration(
+	user webauthn.User,
+	opts ...webauthn.RegistrationOption,
+) (creation *protocol.CredentialCreation, session *webauthn.SessionData, err error) {
 	return a.wa.BeginRegistration(user, opts...)
 }
 
-func (a *Auth) FinishRegistration(user webauthn.User, session webauthn.SessionData, response *http.Request) (*webauthn.Credential, error) {
+func (a *Auth) FinishRegistration(
+	user webauthn.User,
+	session webauthn.SessionData,
+	response *http.Request,
+) (*webauthn.Credential, error) {
 	return a.wa.FinishRegistration(user, session, response)
 }

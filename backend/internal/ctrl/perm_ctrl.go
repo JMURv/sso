@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
@@ -12,9 +13,11 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
-const permKey = "perm:%v"
-const permListKey = "perms-list:%v:%v:%v"
-const permPattern = "perms-*"
+const (
+	permKey     = "perm:%v"
+	permListKey = "perms-list:%v:%v:%v"
+	permPattern = "perms-*"
+)
 
 type permCtrl interface {
 	ListPermissions(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedPermissionResponse, error)

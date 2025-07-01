@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/cache/redis"
 	"github.com/JMURv/sso/internal/config"
@@ -14,9 +18,6 @@ import (
 	"github.com/JMURv/sso/internal/repo/s3"
 	"github.com/JMURv/sso/internal/smtp"
 	"go.uber.org/zap"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func mustRegisterLogger(mode string) {

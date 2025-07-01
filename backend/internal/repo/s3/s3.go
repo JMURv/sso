@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/JMURv/sso/internal/config"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"go.uber.org/zap"
-	"time"
 )
 
 type S3 struct {
@@ -24,7 +25,6 @@ func New(conf config.Config) *S3 {
 			Secure: conf.Minio.UseSSL,
 		},
 	)
-
 	if err != nil {
 		zap.L().Fatal("failed to create MinIO client", zap.Error(err))
 	}
@@ -60,6 +60,7 @@ func New(conf config.Config) *S3 {
 	}
 
 	zap.L().Info("MinIO connection established", zap.String("addr", conf.Minio.Addr))
+
 	return &S3{
 		cli:    client,
 		bucket: conf.Minio.Bucket,

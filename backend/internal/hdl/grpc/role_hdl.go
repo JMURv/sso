@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"errors"
+
 	"github.com/JMURv/sso/api/grpc/v1/gen"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"

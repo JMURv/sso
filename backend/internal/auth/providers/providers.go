@@ -6,15 +6,16 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/JMURv/sso/internal/auth/providers/oauth2/google"
 	g_oidc "github.com/JMURv/sso/internal/auth/providers/oidc/google"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type Port interface {
@@ -24,8 +25,10 @@ type Port interface {
 	ValidateSignedState(signedState string, maxAge time.Duration) error
 }
 
-type Flow string
-type Providers string
+type (
+	Flow      string
+	Providers string
+)
 
 const (
 	OIDC   Flow = "oidc"

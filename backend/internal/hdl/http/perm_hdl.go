@@ -2,6 +2,9 @@ package http
 
 import (
 	"errors"
+	"net/http"
+	"strconv"
+
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
@@ -10,8 +13,6 @@ import (
 	_ "github.com/JMURv/sso/internal/models"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
-	"net/http"
-	"strconv"
 )
 
 func (h *Handler) RegisterPermRoutes() {

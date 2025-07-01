@@ -3,6 +3,7 @@ package google
 import (
 	"context"
 	"fmt"
+
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/coreos/go-oidc/v3/oidc"

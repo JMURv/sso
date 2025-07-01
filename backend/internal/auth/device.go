@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/sha256"
 	"fmt"
+
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/mssola/useragent"

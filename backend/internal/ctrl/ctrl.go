@@ -2,9 +2,6 @@ package ctrl
 
 import (
 	"context"
-	"github.com/go-webauthn/webauthn/protocol"
-	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"time"
@@ -15,6 +12,9 @@ import (
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo/s3"
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/google/uuid"
 )
 
 type AppRepo interface {

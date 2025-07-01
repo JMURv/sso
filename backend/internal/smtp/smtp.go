@@ -3,6 +3,7 @@ package smtp
 import (
 	"context"
 	"fmt"
+
 	"github.com/JMURv/sso/internal/config"
 	md "github.com/JMURv/sso/internal/models"
 	"go.uber.org/zap"

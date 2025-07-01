@@ -2,6 +2,8 @@ package http
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/JMURv/sso/internal/hdl"
@@ -14,7 +16,6 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 func (h *Handler) RegisterUserRoutes() {

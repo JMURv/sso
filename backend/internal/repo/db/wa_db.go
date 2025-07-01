@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/go-webauthn/webauthn/webauthn"

@@ -1,9 +1,10 @@
 package db
 
 import (
-	md "github.com/JMURv/sso/internal/models"
 	"strconv"
 	"strings"
+
+	md "github.com/JMURv/sso/internal/models"
 )
 
 func ScanOauth2Connections(conns []string) ([]md.Oauth2Connection, error) {

@@ -1,9 +1,10 @@
 package db
 
 import (
-	md "github.com/JMURv/sso/internal/models"
 	"strings"
 	"time"
+
+	md "github.com/JMURv/sso/internal/models"
 )
 
 func ScanDevices(req []string) ([]md.Device, error) {

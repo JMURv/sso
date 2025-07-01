@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+
 	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/cache"
 	"github.com/JMURv/sso/internal/config"
@@ -16,8 +19,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"net/http"
-	"strings"
 )
 
 type waRepo interface {

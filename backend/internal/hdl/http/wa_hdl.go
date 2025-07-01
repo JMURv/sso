@@ -2,6 +2,8 @@ package http
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/JMURv/sso/internal/auth/captcha"
 	"github.com/JMURv/sso/internal/ctrl"
 	"github.com/JMURv/sso/internal/dto"
@@ -11,7 +13,6 @@ import (
 	_ "github.com/go-webauthn/webauthn/protocol"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 func (h *Handler) RegisterWebAuthnRoutes() {

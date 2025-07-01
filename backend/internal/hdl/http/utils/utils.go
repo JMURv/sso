@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	"go.uber.org/zap"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -18,6 +16,8 @@ import (
 	"github.com/JMURv/sso/internal/hdl"
 	"github.com/JMURv/sso/internal/hdl/validation"
 	"github.com/JMURv/sso/internal/repo/s3"
+	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
 )
 
 type ErrorsResponse struct {
@@ -89,9 +89,11 @@ func ParseAndValidate(w http.ResponseWriter, r *http.Request, dst any) bool {
 	return true
 }
 
-var ErrInvalidFileUpload = errors.New("invalid file upload")
-var ErrFileTooLarge = errors.New("file too large")
-var ErrInvalidFileType = errors.New("invalid file type")
+var (
+	ErrInvalidFileUpload = errors.New("invalid file upload")
+	ErrFileTooLarge      = errors.New("file too large")
+	ErrInvalidFileType   = errors.New("invalid file type")
+)
 
 func ParseFileField(r *http.Request, fieldName string, fileReq *s3.UploadFileRequest) error {
 	file, header, err := r.FormFile(fieldName)

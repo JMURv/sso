@@ -3,13 +3,14 @@ package ctrl
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/JMURv/sso/internal/auth/providers"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"time"
 )
 
 func (c *Controller) GetOIDCAuthURL(ctx context.Context, provider string) (*dto.StartProviderResponse, error) {

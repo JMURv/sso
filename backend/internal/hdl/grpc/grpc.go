@@ -3,6 +3,8 @@ package grpc
 import (
 	"errors"
 	"fmt"
+	"net"
+
 	"github.com/JMURv/sso/api/grpc/v1/gen"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/ctrl"
@@ -14,7 +16,6 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
-	"net"
 )
 
 type Handler struct {

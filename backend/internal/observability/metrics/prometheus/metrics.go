@@ -3,15 +3,16 @@ package prometheus
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 var SrvMetrics = grpcprom.NewServerMetrics(

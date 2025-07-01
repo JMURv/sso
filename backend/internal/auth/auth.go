@@ -2,11 +2,6 @@ package auth
 
 import (
 	"context"
-	"github.com/go-webauthn/webauthn/protocol"
-	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
 
@@ -16,6 +11,11 @@ import (
 	wa "github.com/JMURv/sso/internal/auth/webauthn"
 	"github.com/JMURv/sso/internal/config"
 	md "github.com/JMURv/sso/internal/models"
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Core interface {

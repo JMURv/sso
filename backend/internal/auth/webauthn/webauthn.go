@@ -2,11 +2,12 @@ package wa
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/JMURv/sso/internal/config"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 type Port interface {

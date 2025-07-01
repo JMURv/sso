@@ -3,6 +3,8 @@ package ctrl
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/JMURv/sso/internal/auth/providers"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
@@ -10,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"time"
 )
 
 type oauth2Repo interface {

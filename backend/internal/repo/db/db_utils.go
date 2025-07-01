@@ -4,6 +4,11 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"errors"
+	"math/big"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/JMURv/sso/internal/config"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
@@ -11,10 +16,6 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
-	"math/big"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 func applyMigrations(db *sql.DB, conf config.Config) error {

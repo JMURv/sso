@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
@@ -282,7 +283,6 @@ func (r *Repository) CreateUser(ctx context.Context, req *dto.CreateUserRequest)
 		req.IsActive,
 		req.IsEmail,
 	).Scan(&id)
-
 	if err != nil {
 		if err, ok := err.(*pgconn.PgError); ok && err.Code == "23505" {
 			zap.L().Debug(

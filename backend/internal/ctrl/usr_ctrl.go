@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
@@ -35,9 +36,11 @@ type userRepo interface {
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 }
 
-const userCacheKey = "user:%v"
-const usersListKey = "users-list:%v:%v:%v"
-const userPattern = "users-*"
+const (
+	userCacheKey = "user:%v"
+	usersListKey = "users-list:%v:%v:%v"
+	userPattern  = "users-*"
+)
 
 func (c *Controller) IsUserExist(ctx context.Context, email string) (*dto.ExistsUserResponse, error) {
 	const op = "users.IsUserExist.ctrl"

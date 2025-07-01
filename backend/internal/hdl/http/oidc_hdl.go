@@ -1,11 +1,12 @@
 package http
 
 import (
+	"net/http"
+
 	"github.com/JMURv/sso/internal/hdl"
 	mid "github.com/JMURv/sso/internal/hdl/http/middleware"
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	"github.com/go-chi/chi/v5"
-	"net/http"
 )
 
 func (h *Handler) RegisterOIDCRoutes() {

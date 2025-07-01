@@ -3,6 +3,9 @@ package http
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
+
 	_ "github.com/JMURv/sso/api/rest/v1"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/ctrl"
@@ -12,8 +15,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
-	"net/http"
-	"time"
 )
 
 type Handler struct {

@@ -2,6 +2,8 @@ package google
 
 import (
 	"context"
+	"io"
+
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	"github.com/goccy/go-json"
@@ -9,7 +11,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"io"
 )
 
 type Provider struct {

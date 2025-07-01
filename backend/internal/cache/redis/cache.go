@@ -3,12 +3,13 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"time"
+
 	"github.com/JMURv/sso/internal/cache"
 	"github.com/JMURv/sso/internal/config"
 	"github.com/go-redis/redis/v8"
 	ot "github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
-	"time"
 )
 
 type Cache struct {

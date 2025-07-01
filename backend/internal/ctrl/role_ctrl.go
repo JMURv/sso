@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
@@ -12,9 +13,11 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
-const roleKey = "role:%v"
-const roleListKey = "roles-list:%v:%v:%v"
-const rolePattern = "roles-*"
+const (
+	roleKey     = "role:%v"
+	roleListKey = "roles-list:%v:%v:%v"
+	rolePattern = "roles-*"
+)
 
 type roleCtrl interface {
 	ListRoles(ctx context.Context, page, size int, filters map[string]any) (*dto.PaginatedRoleResponse, error)
@@ -123,7 +126,6 @@ func (c *Controller) DeleteRole(ctx context.Context, id uint64) error {
 	if err != nil && errors.Is(err, repo.ErrNotFound) {
 		return ErrNotFound
 	} else if err != nil {
-
 		return err
 	}
 

@@ -1,9 +1,10 @@
 package db
 
 import (
-	md "github.com/JMURv/sso/internal/models"
 	"strconv"
 	"strings"
+
+	md "github.com/JMURv/sso/internal/models"
 )
 
 func ScanPerms(req []string) ([]md.Permission, error) {

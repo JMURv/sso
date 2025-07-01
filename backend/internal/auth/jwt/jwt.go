@@ -3,14 +3,14 @@ package jwt
 import (
 	"context"
 	"errors"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"github.com/opentracing/opentracing-go"
-	"go.uber.org/zap"
 	"time"
 
 	"github.com/JMURv/sso/internal/config"
 	md "github.com/JMURv/sso/internal/models"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/opentracing/opentracing-go"
+	"go.uber.org/zap"
 )
 
 type Port interface {
@@ -21,9 +21,16 @@ type Port interface {
 	ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
 }
 
-var ErrWhileCreatingToken = errors.New("error while creating token")
-var ErrUnexpectedSignMethod = errors.New("unexpected signing method")
-var ErrInvalidToken = errors.New("invalid token")
+var (
+	// ErrWhileCreatingToken is an error while creating token.
+	ErrWhileCreatingToken = errors.New("error while creating token")
+
+	// ErrUnexpectedSignMethod is an error that indicates unexpected sign method.
+	ErrUnexpectedSignMethod = errors.New("unexpected signing method")
+
+	// ErrInvalidToken is an error that indicates invalid token.
+	ErrInvalidToken = errors.New("invalid token")
+)
 
 type Core struct {
 	secret []byte
@@ -94,7 +101,6 @@ func (c *Core) NewToken(ctx context.Context, uid uuid.UUID, roles []md.Role, d t
 			},
 		},
 	).SignedString(c.secret)
-
 	if err != nil {
 		zap.L().Error(
 			ErrWhileCreatingToken.Error(),
@@ -120,7 +126,6 @@ func (c *Core) ParseClaims(ctx context.Context, tokenStr string) (Claims, error)
 			return c.secret, nil
 		},
 	)
-
 	if err != nil {
 		zap.L().Error(
 			"Failed to parse claims",

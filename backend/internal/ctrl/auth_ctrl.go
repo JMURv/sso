@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/opentracing/opentracing-go"
-	"go.uber.org/zap"
 	"math/rand"
 	"strconv"
 	"time"
@@ -14,13 +11,19 @@ import (
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/auth/jwt"
 	"github.com/JMURv/sso/internal/cache"
+	"github.com/JMURv/sso/internal/config"
 	"github.com/JMURv/sso/internal/dto"
 	md "github.com/JMURv/sso/internal/models"
 	"github.com/JMURv/sso/internal/repo"
+	"github.com/google/uuid"
+	"github.com/opentracing/opentracing-go"
+	"go.uber.org/zap"
 )
 
-const codeCacheKey = "code:%v"
-const recoveryCacheKey = "recovery:%v"
+const (
+	codeCacheKey     = "code:%v"
+	recoveryCacheKey = "recovery:%v"
+)
 
 type authRepo interface {
 	CreateToken(ctx context.Context, userID uuid.UUID, hashedT string, expiresAt time.Time, device *md.Device) error
@@ -34,6 +37,7 @@ func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid
 	defer span.Finish()
 
 	var res dto.TokenPair
+
 	access, refresh, err := c.au.GenPair(ctx, uid, p)
 	if err != nil {
 		return res, err
@@ -46,6 +50,7 @@ func (c *Controller) GenPair(ctx context.Context, d *dto.DeviceRequest, uid uuid
 
 	res.Access = access
 	res.Refresh = refresh
+
 	return res, nil
 }
 
@@ -98,6 +103,7 @@ func (c *Controller) Refresh(ctx context.Context, d *dto.DeviceRequest, req *dto
 			zap.String("op", op),
 			zap.String("userID", claims.UID.String()),
 		)
+
 		return nil, auth.ErrTokenRevoked
 	}
 
@@ -130,6 +136,7 @@ func (c *Controller) ParseClaims(ctx context.Context, token string) (res jwt.Cla
 	if err != nil {
 		return res, err
 	}
+
 	return res, nil
 }
 
@@ -141,6 +148,7 @@ func (c *Controller) Logout(ctx context.Context, uid uuid.UUID) error {
 	if err := c.repo.RevokeAllTokens(ctx, uid); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -161,6 +169,7 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, req *dto.Chec
 			zap.Int("stored code", storedCode),
 			zap.Int("request code", req.Code),
 		)
+
 		return ErrCodeIsNotValid
 	}
 
@@ -192,6 +201,7 @@ func (c *Controller) CheckForgotPasswordEmail(ctx context.Context, req *dto.Chec
 	}
 
 	c.cache.Delete(ctx, fmt.Sprintf(userCacheKey, req.ID))
+
 	return nil
 }
 
@@ -211,7 +221,9 @@ func (c *Controller) SendForgotPasswordEmail(ctx context.Context, email string) 
 	code := rand.Intn(9999-1000+1) + 1000
 
 	go c.smtp.SendForgotPasswordEmail(ctx, strconv.Itoa(code), res.ID.String(), email)
-	c.cache.Set(ctx, time.Minute*15, fmt.Sprintf(recoveryCacheKey, res.ID.String()), code)
+
+	c.cache.Set(ctx, config.MinCacheTime, fmt.Sprintf(recoveryCacheKey, res.ID.String()), code)
+
 	return nil
 }
 
@@ -248,6 +260,7 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 
 			tokens.Access = access
 			tokens.Refresh = refresh
+
 			return tokens, nil
 		}
 	}
@@ -256,7 +269,9 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 	code := rand.Intn(9999-1000+1) + 1000
 
 	go c.smtp.SendLoginEmail(ctx, code, email)
-	c.cache.Set(ctx, time.Minute*15, fmt.Sprintf(codeCacheKey, email), code)
+
+	c.cache.Set(ctx, config.MinCacheTime, fmt.Sprintf(codeCacheKey, email), code)
+
 	return tokens, nil
 }
 

@@ -3,6 +3,8 @@ package grpc
 import (
 	"context"
 	"errors"
+	"strconv"
+
 	pb "github.com/JMURv/sso/api/grpc/v1/gen"
 	"github.com/JMURv/sso/internal/auth"
 	"github.com/JMURv/sso/internal/ctrl"
@@ -15,7 +17,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"strconv"
 )
 
 func (h *Handler) Authenticate(ctx context.Context, req *pb.SSO_EmailAndPasswordRequest) (*pb.SSO_TokenPair, error) {

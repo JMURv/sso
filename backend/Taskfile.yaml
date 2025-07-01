@@ -4,7 +4,12 @@ tasks:
   lint:
     desc: Lint app
     cmds:
-      - golangci-lint run
+      - golangci-lint run --fix
+
+  fmt:
+    desc: Format app
+    cmds:
+      - golangci-lint fmt
 
   doc:
     desc: Generate docs

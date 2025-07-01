@@ -1,7 +1,8 @@
 package db
 
-const permSelect = `SELECT COUNT(*) FROM permission p %s`
-const permList = `
+const (
+	permSelect = `SELECT COUNT(*) FROM permission p %s`
+	permList   = `
 SELECT
 	p.id,
 	p.name,
@@ -11,7 +12,11 @@ FROM permission p
 ORDER BY name
 LIMIT $%d OFFSET $%d
 `
-const permGet = `SELECT id, name, description FROM permission WHERE id = $1`
-const permCreate = `INSERT INTO permission (name, description) VALUES ($1, $2) RETURNING id`
-const permUpdate = `UPDATE permission SET name = $1, description = $2 WHERE id = $3`
-const permDelete = `DELETE FROM permission WHERE id = $1`
+)
+
+const (
+	permGet    = `SELECT id, name, description FROM permission WHERE id = $1`
+	permCreate = `INSERT INTO permission (name, description) VALUES ($1, $2) RETURNING id`
+	permUpdate = `UPDATE permission SET name = $1, description = $2 WHERE id = $3`
+	permDelete = `DELETE FROM permission WHERE id = $1`
+)

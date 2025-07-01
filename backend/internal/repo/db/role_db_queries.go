@@ -18,10 +18,13 @@ GROUP BY r.id
 ORDER BY name 
 LIMIT $%d OFFSET $%d
 `
-const roleGet = `SELECT id, name, description FROM roles WHERE id = $1`
-const roleCreate = `INSERT INTO roles (name, description) VALUES ($1, $2) RETURNING id`
-const roleUpdate = `UPDATE roles SET name = $1, description = $2 WHERE id = $3`
-const roleDelete = `DELETE FROM roles WHERE id = $1`
+
+const (
+	roleGet    = `SELECT id, name, description FROM roles WHERE id = $1`
+	roleCreate = `INSERT INTO roles (name, description) VALUES ($1, $2) RETURNING id`
+	roleUpdate = `UPDATE roles SET name = $1, description = $2 WHERE id = $3`
+	roleDelete = `DELETE FROM roles WHERE id = $1`
+)
 
 const roleAddPermQ = `
 INSERT INTO role_permissions (role_id, permission_id) 

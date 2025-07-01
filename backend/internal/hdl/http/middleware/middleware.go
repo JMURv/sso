@@ -4,10 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/opentracing/opentracing-go"
-	"go.uber.org/zap"
 	"net/http"
 	"strings"
 	"time"
@@ -19,6 +15,10 @@ import (
 	"github.com/JMURv/sso/internal/hdl/http/utils"
 	md "github.com/JMURv/sso/internal/models"
 	metrics "github.com/JMURv/sso/internal/observability/metrics/prometheus"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/opentracing/opentracing-go"
+	"go.uber.org/zap"
 )
 
 func Auth(au auth.Core) func(http.Handler) http.Handler {
@@ -109,8 +109,10 @@ func CheckRights(c ctrl.AppCtrl) func(http.Handler) http.Handler {
 	}
 }
 
-var ErrIPIsIncorrect = errors.New("ip is incorrect")
-var ErrUAIsIncorrect = errors.New("user agent is incorrect")
+var (
+	ErrIPIsIncorrect = errors.New("ip is incorrect")
+	ErrUAIsIncorrect = errors.New("user agent is incorrect")
+)
 
 func Device(next http.Handler) http.Handler {
 	return http.HandlerFunc(

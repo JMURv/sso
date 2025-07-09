@@ -260,7 +260,6 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 
 			tokens.Access = access
 			tokens.Refresh = refresh
-
 			return tokens, nil
 		}
 	}
@@ -269,9 +268,7 @@ func (c *Controller) SendLoginCode(ctx context.Context, d *dto.DeviceRequest, em
 	code := rand.Intn(9999-1000+1) + 1000
 
 	go c.smtp.SendLoginEmail(ctx, code, email)
-
 	c.cache.Set(ctx, config.MinCacheTime, fmt.Sprintf(codeCacheKey, email), code)
-
 	return tokens, nil
 }
 

@@ -82,7 +82,7 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, http.StatusOK, res)
+	utils.StatusResponse(w, http.StatusOK)
 }
 
 // refresh godoc
@@ -133,7 +133,7 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, http.StatusOK, res)
+	utils.StatusResponse(w, http.StatusOK)
 }
 
 // parseClaims godoc
@@ -277,10 +277,8 @@ func (h *Handler) sendLoginCode(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if res.Access != "" {
-		utils.SetAuthCookies(w, res.Access, res.Refresh)
-	}
-	utils.SuccessResponse(w, http.StatusOK, res)
+	utils.SetAuthCookies(w, res.Access, res.Refresh)
+	utils.StatusResponse(w, http.StatusOK)
 }
 
 // checkLoginCode godoc
@@ -322,7 +320,7 @@ func (h *Handler) checkLoginCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SetAuthCookies(w, res.Access, res.Refresh)
-	utils.SuccessResponse(w, http.StatusOK, res)
+	utils.StatusResponse(w, http.StatusOK)
 }
 
 // sendForgotPasswordEmail godoc
